@@ -80,7 +80,6 @@ public abstract class TupleTypeInfoBase<T> extends CompositeType<T> {
 		return tupleType;
 	}
 
-	
 	/**
 	 * Recursively add all fields in this tuple type. We need this in particular to get all
 	 * the types.
@@ -269,5 +268,4 @@ public abstract class TupleTypeInfoBase<T> extends CompositeType<T> {
 		bld.append('>');
 		return bld.toString();
 	}
-	
 }

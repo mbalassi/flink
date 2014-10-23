@@ -42,7 +42,7 @@ import com.google.common.base.Joiner;
 
 /**
  * TypeInformation for arbitrary (they have to be java-beans-style) java objects (what we call POJO).
- * 
+ *
  */
 public class PojoTypeInfo<T> extends CompositeType<T> {
 
@@ -58,7 +58,7 @@ public class PojoTypeInfo<T> extends CompositeType<T> {
 	private final Class<T> typeClass;
 
 	private PojoField[] fields;
-	
+
 	private int totalFields;
 
 	public PojoTypeInfo(Class<T> typeClass, List<PojoField> fields) {
@@ -72,7 +72,7 @@ public class PojoTypeInfo<T> extends CompositeType<T> {
 			}
 		});
 		this.fields = tempFields.toArray(new PojoField[tempFields.size()]);
-		
+
 		// check if POJO is public
 		if(!Modifier.isPublic(typeClass.getModifiers())) {
 			throw new RuntimeException("POJO "+typeClass+" is not public");
@@ -97,7 +97,7 @@ public class PojoTypeInfo<T> extends CompositeType<T> {
 	public int getArity() {
 		return fields.length;
 	}
-	
+
 	@Override
 	public int getTotalFields() {
 		return totalFields;
@@ -112,7 +112,7 @@ public class PojoTypeInfo<T> extends CompositeType<T> {
 	public boolean isKeyType() {
 		return Comparable.class.isAssignableFrom(typeClass);
 	}
-	
+
 
 	@Override
 	public void getFlatFields(String fieldExpression, int offset, List<FlatFieldDescriptor> result) {
@@ -281,6 +281,23 @@ public class PojoTypeInfo<T> extends CompositeType<T> {
 		return new PojoComparator<T>(finalKeyFields, finalFieldComparators, createSerializer(config), typeClass);
 	}
 
+	public String[] getFieldNames() {
+		String[] result = new String[fields.length];
+		for (int i = 0; i < fields.length; i++) {
+			result[i] = fields[i].field.getName();
+		}
+		return result;
+	}
+
+	@Override
+	public int getFieldIndex(String fieldName) {
+		for (int i = 0; i < fields.length; i++) {
+			if (fields[i].field.getName().equals(fieldName)) {
+				return i;
+			}
+		}
+		return -1;
+	}
 
 	@Override
 	public TypeSerializer<T> createSerializer(ExecutionConfig config) {
