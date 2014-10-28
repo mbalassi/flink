@@ -73,8 +73,11 @@ import org.apache.flink.streaming.partitioner.ForwardPartitioner;
 import org.apache.flink.streaming.partitioner.ShufflePartitioner;
 import org.apache.flink.streaming.partitioner.StreamPartitioner;
 import org.apache.flink.streaming.util.keys.FieldsKeySelector;
+<<<<<<< HEAD
 import org.apache.flink.streaming.util.keys.PojoKeySelector;
+=======
 import org.apache.flink.streaming.util.serialization.CombineTypeWrapper;
+>>>>>>> [streaming] Integrated the policy based windowing into DataStream and introduced WindowedDataStream to handle windowing helper.
 import org.apache.flink.streaming.util.serialization.FunctionTypeWrapper;
 import org.apache.flink.streaming.util.serialization.ObjectTypeWrapper;
 import org.apache.flink.streaming.util.serialization.TypeWrapper;
