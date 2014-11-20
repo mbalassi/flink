@@ -57,12 +57,15 @@ import org.apache.flink.streaming.api.invokable.StreamInvokable;
 import org.apache.flink.streaming.api.invokable.operator.CounterInvokable;
 import org.apache.flink.streaming.api.invokable.operator.FilterInvokable;
 import org.apache.flink.streaming.api.invokable.operator.FlatMapInvokable;
+import org.apache.flink.streaming.api.invokable.operator.GroupedWindowingInvokable;
 import org.apache.flink.streaming.api.invokable.operator.MapInvokable;
 import org.apache.flink.streaming.api.invokable.operator.StreamReduceInvokable;
 import org.apache.flink.streaming.api.invokable.operator.WindowingInvokable;
 import org.apache.flink.streaming.api.invokable.util.DefaultTimeStamp;
 import org.apache.flink.streaming.api.invokable.util.TimeStamp;
 import org.apache.flink.streaming.api.windowing.helper.WindowingHelper;
+import org.apache.flink.streaming.api.windowing.policy.CloneableEvictionPolicy;
+import org.apache.flink.streaming.api.windowing.policy.CloneableTriggerPolicy;
 import org.apache.flink.streaming.api.windowing.policy.EvictionPolicy;
 import org.apache.flink.streaming.api.windowing.policy.TriggerPolicy;
 import org.apache.flink.streaming.api.windowing.policy.TumblingEvictionPolicy;
@@ -759,7 +762,46 @@ public class DataStream<OUT> {
 	public WindowedDataStream<OUT> window(WindowingHelper... policyHelpers) {
 		return new WindowedDataStream<OUT>(this, policyHelpers);
 	}
-	
+
+	/**
+	 * Sets up windowing based on policies. Additionally a grouping can be
+	 * defined using a {@link KeySelector}.
+	 * 
+	 * This method allows to specify multiple trigger and eviction policies in a
+	 * list. Trigger can be centralized or distributed. Eviction policies can
+	 * only be distributed. Distributed policies have to be cloneable.
+	 * 
+	 * @param distributedTriggerPolicies
+	 *            The list of trigger policies which gets cloned and maintained
+	 *            separately for each group.
+	 * @param distributedEvictionPolicies
+	 *            The list of eviction policies which gets cloned and maintained
+	 *            separately for each group.
+	 * @param centralTriggerPolicies
+	 *            The list of central trigger policies. Central policies are
+	 *            only present once and trigger all groups.
+	 * @param reduceFunction
+	 *            The user defined reduce function.
+	 * @param keySelector
+	 *            A key selector for extracting the grouping key.
+	 * @return A {@link SingleOutputStreamOperator} providing further
+	 *         operations.
+	 */
+	public SingleOutputStreamOperator<Tuple2<OUT, String[]>, ?> groupedWindow(
+			LinkedList<CloneableTriggerPolicy<OUT>> distributedTriggerPolicies,
+			LinkedList<CloneableEvictionPolicy<OUT>> distributedEvictionPolicies,
+			LinkedList<TriggerPolicy<OUT>> centralTriggerPolicies,
+			ReduceFunction<OUT> reduceFunction, KeySelector<OUT, ?> keySelector) {
+		String[] sample = { "" };
+		return addFunction("NextGenGroupedWindowReduce", reduceFunction,
+				new FunctionTypeWrapper<OUT>(reduceFunction, ReduceFunction.class, 0),
+				new CombineTypeWrapper<OUT, String[]>(this.outTypeWrapper,
+						new ObjectTypeWrapper<String[]>(sample)),
+				new GroupedWindowingInvokable<OUT>(reduceFunction, keySelector,
+						distributedTriggerPolicies, distributedEvictionPolicies,
+						centralTriggerPolicies));
+	}
+
 	/**
 	 * Collects the data stream elements into sliding batches creating a new
 	 * {@link BatchedDataStream}. The user can apply transformations like
