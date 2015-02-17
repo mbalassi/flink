@@ -140,12 +140,13 @@ object AkkaUtils {
         | serialize-messages = off
         |
         | loglevel = $logLevel
-        | stdout-loglevel = $logLevel
+        | stdout-loglevel = WARNING
         |
         | log-dead-letters = $logLifecycleEvents
         | log-dead-letters-during-shutdown = $logLifecycleEvents
         |
         | actor {
+        |   guardian-supervisor-strategy = "akka.actor.StoppingSupervisorStrategy"
         |   default-dispatcher {
         |     throughput = $akkaThroughput
         |
@@ -200,8 +201,6 @@ object AkkaUtils {
       ConfigConstants.DEFAULT_AKKA_LOG_LIFECYCLE_EVENTS)
 
     val logLifecycleEvents = if (lifecycleEvents) "on" else "off"
-
-    val logLevel = getLogLevel
 
     val configString =
       s"""
@@ -282,26 +281,13 @@ object AkkaUtils {
   }
 
   def getChild(parent: ActorRef, child: String)(implicit system: ActorSystem, timeout:
-  FiniteDuration): ActorRef = {
-    Await.result(system.actorSelection(parent.path / child).resolveOne()(timeout), timeout)
+  FiniteDuration): Future[ActorRef] = {
+    system.actorSelection(parent.path / child).resolveOne()(timeout)
   }
 
-  def getReference(path: String)(implicit system: ActorSystem, timeout: FiniteDuration): ActorRef
-  = {
-    Await.result(system.actorSelection(path).resolveOne()(timeout), timeout)
-  }
-
-  @throws(classOf[IOException])
-  def ask[T](actorSelection: ActorSelection, msg: Any)(implicit timeout: FiniteDuration): T
-    = {
-    val future = Patterns.ask(actorSelection, msg, timeout)
-    Await.result(future, timeout).asInstanceOf[T]
-  }
-
-  @throws(classOf[IOException])
-  def ask[T](actor: ActorRef, msg: Any)(implicit timeout: FiniteDuration): T = {
-    val future = Patterns.ask(actor, msg, timeout)
-    Await.result(future, timeout).asInstanceOf[T]
+  def getReference(path: String)(implicit system: ActorSystem, timeout: FiniteDuration):
+  Future[ActorRef] = {
+    system.actorSelection(path).resolveOne()(timeout)
   }
 
   /**

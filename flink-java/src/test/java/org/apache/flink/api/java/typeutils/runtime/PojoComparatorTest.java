@@ -20,6 +20,7 @@ package org.apache.flink.api.java.typeutils.runtime;
 
 import java.util.Arrays;
 
+import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeutils.ComparatorTestBase;
 import org.apache.flink.api.common.typeutils.CompositeType;
@@ -47,12 +48,12 @@ public class PojoComparatorTest extends ComparatorTestBase<PojoContainingTuple> 
 		ExpressionKeys<PojoContainingTuple> keys = new ExpressionKeys<PojoContainingTuple>(new String[] {"theTuple.*"}, cType);
 		boolean[] orders = new boolean[keys.getNumberOfKeyFields()];
 		Arrays.fill(orders, ascending);
-		return cType.createComparator(keys.computeLogicalKeyPositions(), orders, 0);
+		return cType.createComparator(keys.computeLogicalKeyPositions(), orders, 0, new ExecutionConfig());
 	}
 
 	@Override
 	protected TypeSerializer<PojoContainingTuple> createSerializer() {
-		return type.createSerializer();
+		return type.createSerializer(new ExecutionConfig());
 	}
 
 	@Override

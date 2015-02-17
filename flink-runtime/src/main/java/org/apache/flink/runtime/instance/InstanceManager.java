@@ -65,7 +65,7 @@ public class InstanceManager {
 	private int totalNumberOfAliveTaskSlots;
 
 	/** Flag marking the system as shut down */
-	private volatile boolean shutdown;
+	private volatile boolean isShutdown;
 
 	// ------------------------------------------------------------------------
 	// Constructor and set-up
@@ -102,10 +102,10 @@ public class InstanceManager {
 
 	public void shutdown() {
 		synchronized (this.lock) {
-			if (this.shutdown) {
+			if (this.isShutdown) {
 				return;
 			}
-			this.shutdown = true;
+			this.isShutdown = true;
 
 			for (Instance i : this.registeredHostsById.values()) {
 				i.markDead();
@@ -124,7 +124,7 @@ public class InstanceManager {
 		}
 		
 		synchronized (this.lock) {
-			if (this.shutdown) {
+			if (this.isShutdown) {
 				return false;
 			}
 			
@@ -147,7 +147,7 @@ public class InstanceManager {
 	public InstanceID registerTaskManager(ActorRef taskManager, InstanceConnectionInfo connectionInfo,
 										HardwareDescription resources, int numberOfSlots){
 		synchronized(this.lock){
-			if (this.shutdown) {
+			if (this.isShutdown) {
 				throw new IllegalStateException("InstanceManager is shut down.");
 			}
 			
@@ -211,6 +211,10 @@ public class InstanceManager {
 		}
 	}
 
+	public boolean isRegistered(ActorRef taskManager) {
+		return registeredHostsByConnection.containsKey(taskManager);
+	}
+
 	public int getNumberOfRegisteredTaskManagers() {
 		return this.registeredHostsById.size();
 	}
@@ -225,6 +229,10 @@ public class InstanceManager {
 			// concurrent modifications do not interfere with the traversals or lookups
 			return new HashSet<Instance>(registeredHostsById.values());
 		}
+	}
+
+	public Instance getRegisteredInstanceById(InstanceID instanceID) {
+		return registeredHostsById.get(instanceID);
 	}
 
 	public Instance getRegisteredInstance(ActorRef ref) {

@@ -26,9 +26,13 @@ import org.apache.flink.api.common.typeutils.TypeSerializer;
  */
 public class IntegerTypeInfo<T> extends NumericTypeInfo<T> {
 
+<<<<<<< HEAD
 	protected IntegerTypeInfo(Class<T> clazz, Class<?>[] possibleCastTargetTypes,
 	                          TypeSerializer<T> serializer, Class<? extends
 			TypeComparator<T>> comparatorClass) {
+=======
+	protected IntegerTypeInfo(Class<T> clazz, Class<?>[] possibleCastTargetTypes, TypeSerializer<T> serializer, Class<? extends TypeComparator<T>> comparatorClass) {
+>>>>>>> refs/remotes/aljoscha/linq
 		super(clazz, possibleCastTargetTypes, serializer, comparatorClass);
 	}
 }

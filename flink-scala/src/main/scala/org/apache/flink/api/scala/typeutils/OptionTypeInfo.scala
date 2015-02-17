@@ -17,6 +17,7 @@
  */
 package org.apache.flink.api.scala.typeutils
 
+import org.apache.flink.api.common.ExecutionConfig
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.common.typeutils.TypeSerializer
 
@@ -37,12 +38,13 @@ class OptionTypeInfo[A, T <: Option[A]](elemTypeInfo: TypeInformation[A])
   override def getGenericParameters = List[TypeInformation[_]](elemTypeInfo).asJava
 
 
-  def createSerializer(): TypeSerializer[T] = {
+  def createSerializer(executionConfig: ExecutionConfig): TypeSerializer[T] = {
     if (elemTypeInfo == null) {
       // this happens when the type of a DataSet is None, i.e. DataSet[None]
       new OptionSerializer(new NothingSerializer).asInstanceOf[TypeSerializer[T]]
     } else {
-      new OptionSerializer(elemTypeInfo.createSerializer()).asInstanceOf[TypeSerializer[T]]
+      new OptionSerializer(elemTypeInfo.createSerializer(executionConfig))
+        .asInstanceOf[TypeSerializer[T]]
     }
   }
 

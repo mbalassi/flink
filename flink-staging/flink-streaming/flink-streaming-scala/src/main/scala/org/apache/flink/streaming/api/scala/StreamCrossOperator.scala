@@ -18,6 +18,8 @@
 
 package org.apache.flink.streaming.api.scala
 
+import org.apache.flink.api.common.ExecutionConfig
+
 import scala.reflect.ClassTag
 import org.apache.commons.lang.Validate
 import org.apache.flink.api.common.functions.CrossFunction
@@ -46,10 +48,14 @@ class StreamCrossOperator[I1, I2](i1: JavaStream[I1], i2: JavaStream[I2]) extend
       Seq(input1.getType, input2.getType),
       Array("_1", "_2")) {
 
+<<<<<<< HEAD
       override def createSerializer: TypeSerializer[(I1, I2)] = {
+=======
+      override def createSerializer(executionConfig: ExecutionConfig): TypeSerializer[(I1, I2)] = {
+>>>>>>> refs/remotes/aljoscha/linq
         val fieldSerializers: Array[TypeSerializer[_]] = new Array[TypeSerializer[_]](getArity)
         for (i <- 0 until getArity) {
-          fieldSerializers(i) = types(i).createSerializer
+          fieldSerializers(i) = types(i).createSerializer(executionConfig)
         }
 
         new CaseClassSerializer[(I1, I2)](classOf[(I1, I2)], fieldSerializers) {

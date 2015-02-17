@@ -27,6 +27,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
+import org.apache.flink.api.common.ExecutionConfig;
+import org.apache.flink.api.common.typeinfo.TypeInformation;
+import org.apache.flink.api.java.typeutils.GenericTypeInfo;
+import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.core.memory.DataInputView;
 import org.apache.flink.core.memory.MemoryUtils;
@@ -84,9 +88,12 @@ public class KryoVersusAvroMinibenchmark {
 			System.out.println("Kryo serializer");
 			{
 				final TestDataOutputSerializer outView = new TestDataOutputSerializer(100000000);
-				final KryoSerializer<MyType> serializer = new KryoSerializer<MyType>(MyType.class);
-				serializer.getKryo().register(Tuple2.class);
-				
+				ExecutionConfig conf = new ExecutionConfig();
+				conf.registerKryoType(MyType.class);
+				conf.enableForceKryo();
+				TypeInformation<MyType> typeInfo = new GenericTypeInfo<MyType>(MyType.class);
+				final TypeSerializer<MyType> serializer = typeInfo.createSerializer(conf);
+
 				long start = System.nanoTime();
 				
 				for (int k = 0; k < NUM_ELEMENTS; k++) {
@@ -470,33 +477,33 @@ public class KryoVersusAvroMinibenchmark {
 		public void skipBytesToRead(int numBytes) throws IOException {
 			int skippedBytes = skipBytes(numBytes);
 
-			if(skippedBytes < numBytes){
+			if (skippedBytes < numBytes){
 				throw new EOFException("Could not skip " + numBytes +" bytes.");
 			}
 		}
 
 		@Override
 		public int read(byte[] b, int off, int len) throws IOException {
-			if(b == null){
+			if (b == null) {
 				throw new NullPointerException("Byte array b cannot be null.");
 			}
 
-			if(off < 0){
+			if (off < 0) {
 				throw new IndexOutOfBoundsException("Offset cannot be negative.");
 			}
 
-			if(len < 0){
+			if (len < 0) {
 				throw new IndexOutOfBoundsException("Length cannot be negative.");
 			}
 
-			if(b.length - off < len){
+			if (b.length - off < len) {
 				throw new IndexOutOfBoundsException("Byte array does not provide enough space to store requested data" +
 						".");
 			}
 
-			if(this.position >= this.end){
+			if (this.position >= this.end) {
 				return -1;
-			}else{
+			} else {
 				int toRead = Math.min(this.end-this.position, len);
 				System.arraycopy(this.buffer,this.position,b,off,toRead);
 				this.position += toRead;

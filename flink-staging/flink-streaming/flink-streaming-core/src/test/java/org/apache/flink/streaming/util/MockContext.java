@@ -23,6 +23,7 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 
+import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.typeutils.TypeExtractor;
 import org.apache.flink.streaming.api.StreamConfig;
@@ -31,6 +32,7 @@ import org.apache.flink.streaming.api.streamrecord.StreamRecord;
 import org.apache.flink.streaming.api.streamrecord.StreamRecordSerializer;
 import org.apache.flink.streaming.api.streamvertex.StreamTaskContext;
 import org.apache.flink.streaming.io.CoReaderIterator;
+import org.apache.flink.streaming.io.IndexedReaderIterator;
 import org.apache.flink.util.Collector;
 import org.apache.flink.util.MutableObjectIterator;
 
@@ -40,7 +42,7 @@ public class MockContext<IN, OUT> implements StreamTaskContext<OUT> {
 
 	private Collector<OUT> collector;
 	private StreamRecordSerializer<IN> inDeserializer;
-	private MutableObjectIterator<StreamRecord<IN>> iterator;
+	private IndexedReaderIterator<StreamRecord<IN>> iterator;
 
 	public MockContext(Collection<IN> inputs) {
 		this.inputs = inputs;
@@ -49,17 +51,18 @@ public class MockContext<IN, OUT> implements StreamTaskContext<OUT> {
 		}
 
 		TypeInformation<IN> inTypeInfo = TypeExtractor.getForObject(inputs.iterator().next());
-		inDeserializer = new StreamRecordSerializer<IN>(inTypeInfo);
+		inDeserializer = new StreamRecordSerializer<IN>(inTypeInfo, new ExecutionConfig());
 
-		iterator = new MockInputIterator();
+		iterator = new IndexedInputIterator();
 		outputs = new ArrayList<OUT>();
 		collector = new MockCollector<OUT>(outputs);
 	}
 
-	private class MockInputIterator implements MutableObjectIterator<StreamRecord<IN>> {
+	private class IndexedInputIterator extends IndexedReaderIterator<StreamRecord<IN>> {
 		Iterator<IN> listIterator;
 
-		public MockInputIterator() {
+		public IndexedInputIterator() {
+			super(null, null);
 			listIterator = inputs.iterator();
 		}
 
@@ -80,8 +83,13 @@ public class MockContext<IN, OUT> implements StreamTaskContext<OUT> {
 				result.setObject(listIterator.next());
 				return result;
 			} else {
-				 return null;
+				return null;
 			}
+		}
+
+		@Override
+		public int getLastChannelIndex() {
+			return 0;
 		}
 	}
 
@@ -104,7 +112,7 @@ public class MockContext<IN, OUT> implements StreamTaskContext<OUT> {
 	public static <IN, OUT> List<OUT> createAndExecute(StreamInvokable<IN, OUT> invokable,
 			List<IN> inputs) {
 		MockContext<IN, OUT> mockContext = new MockContext<IN, OUT>(inputs);
-		invokable.setup(mockContext);
+		invokable.setup(mockContext, new ExecutionConfig());
 		try {
 			invokable.open(null);
 			invokable.invoke();
@@ -154,6 +162,12 @@ public class MockContext<IN, OUT> implements StreamTaskContext<OUT> {
 	@Override
 	public <X, Y> CoReaderIterator<X, Y> getCoReader() {
 		throw new IllegalArgumentException("CoReader not available");
+	}
+
+	@SuppressWarnings("unchecked")
+	@Override
+	public <X> IndexedReaderIterator<X> getIndexedInput(int index) {
+		return (IndexedReaderIterator<X>) iterator;
 	}
 
 }

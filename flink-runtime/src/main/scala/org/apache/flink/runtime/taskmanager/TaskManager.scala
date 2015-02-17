@@ -46,6 +46,7 @@ import org.apache.flink.runtime.jobgraph.IntermediateDataSetID
 import org.apache.flink.runtime.jobmanager.JobManager
 import org.apache.flink.runtime.memorymanager.DefaultMemoryManager
 import org.apache.flink.runtime.messages.JobManagerMessages.UpdateTaskExecutionState
+import org.apache.flink.runtime.messages.Messages.Acknowledge
 import org.apache.flink.runtime.messages.RegistrationMessages.{AlreadyRegistered,
 RefuseRegistration, AcknowledgeRegistration, RegisterTaskManager}
 import org.apache.flink.runtime.messages.TaskManagerMessages._
@@ -53,6 +54,8 @@ import org.apache.flink.runtime.messages.TaskManagerProfilerMessages
 .{UnregisterProfilingListener, UnmonitorTask, MonitorTask, RegisterProfilingListener}
 import org.apache.flink.runtime.net.NetUtils
 import org.apache.flink.runtime.profiling.ProfilingUtils
+import org.apache.flink.runtime.security.SecurityUtils
+import org.apache.flink.runtime.security.SecurityUtils.FlinkSecuredRunner
 import org.apache.flink.runtime.util.EnvironmentInformation
 import org.apache.flink.util.ExceptionUtils
 import org.slf4j.LoggerFactory
@@ -133,6 +136,7 @@ import scala.collection.JavaConverters._
   var registrationAttempts: Int = 0
   var registered: Boolean = false
   var currentJobManager = ActorRef.noSender
+  var profilerListener: Option[ActorRef] = None
   var instanceID: InstanceID = null
   var heartbeatScheduler: Option[Cancellable] = None
 
@@ -166,7 +170,12 @@ import scala.collection.JavaConverters._
 
     ioManager.shutdown()
     memoryManager.shutdown()
-    fileCache.shutdown()
+
+    try {
+      fileCache.shutdown()
+    } catch {
+      case t: Throwable => log.error(t, "FileCache did not shutdown properly.")
+    }
 
     if (libraryCacheManager != null) {
       try {
@@ -215,20 +224,20 @@ import scala.collection.JavaConverters._
         }
       }
 
-    case AcknowledgeRegistration(id, blobPort) =>
+    case AcknowledgeRegistration(id, blobPort, profilerListener) =>
       if(!registered) {
-        finishRegistration(sender, id, blobPort)
+        finishRegistration(sender, id, blobPort, profilerListener)
       } else {
         log.info("The TaskManager {} is already registered at the JobManager {}, but received " +
           "another AcknowledgeRegistration message.", self.path, currentJobManager.path)
       }
 
-    case AlreadyRegistered(id, blobPort) =>
+    case AlreadyRegistered(id, blobPort, profilerListener) =>
       if(!registered) {
         log.warning("The TaskManager {} seems to be already registered at the JobManager {} even" +
           "though it has not yet finished the registration process.", self.path, sender.path)
 
-        finishRegistration(sender, id, blobPort)
+        finishRegistration(sender, id, blobPort, profilerListener)
       } else {
         // ignore AlreadyRegistered messages which arrived after AcknowledgeRegistration
         log.info("The TaskManager {} has already been registered at the JobManager {}.",
@@ -251,8 +260,13 @@ import scala.collection.JavaConverters._
     case SubmitTask(tdd) =>
       submitTask(tdd)
 
-    case UpdateTask(executionId, resultId, partitionInfo) =>
-      updateTask(executionId, resultId, partitionInfo)
+    case updateMsg:UpdateTask =>
+      updateMsg match {
+        case UpdateTaskSinglePartitionInfo(executionID, resultID, partitionInfo) =>
+          updateTask(executionID, List((resultID, partitionInfo)))
+        case UpdateTaskMultiplePartitionInfos(executionID, partitionInfos) =>
+          updateTask(executionID, partitionInfos)
+      }
 
     case CancelTask(executionID) =>
       runningTasks.get(executionID) match {
@@ -260,7 +274,10 @@ import scala.collection.JavaConverters._
           // execute cancel operation concurrently
           Future {
             task.cancelExecution()
+          }.onFailure{
+            case t: Throwable => log.error(t, "Could not cancel task {}.", task)
           }
+
           sender ! new TaskOperationResult(executionID, true)
         case None =>
           sender ! new TaskOperationResult(executionID, false,
@@ -300,6 +317,15 @@ import scala.collection.JavaConverters._
     case LogMemoryUsage =>
       logMemoryStats()
 
+    case SendStackTrace =>
+      val traces = Thread.getAllStackTraces.asScala
+      val stackTraceStr = traces.map((trace: (Thread, Array[StackTraceElement])) => {
+        val (thread, elements) = trace
+        "Thread: " + thread.getName + '\n' + elements.mkString("\n")
+      }).mkString("\n\n")
+
+      sender ! StackTrace(instanceID, stackTraceStr)
+
     case NotifyWhenRegisteredAtJobManager =>
       if (registered) {
         sender ! RegisteredAtJobManager
@@ -313,6 +339,8 @@ import scala.collection.JavaConverters._
           // execute failing operation concurrently
           Future {
             task.failExternally(cause)
+          }.onFailure{
+            case t: Throwable => log.error(t, "Could not fail task {} externally.", task)
           }
         case None =>
       }
@@ -379,7 +407,7 @@ import scala.collection.JavaConverters._
 
       task.setEnvironment(env)
 
-      // register the task with the network stack and profilers
+      // register the task with the network stack and profiles
       networkEnvironment match {
         case Some(ne) => ne.registerTask(task)
         case None => throw new RuntimeException(
@@ -442,7 +470,11 @@ import scala.collection.JavaConverters._
     networkEnvironment = None
 
     if(libraryCacheManager != null){
-      libraryCacheManager.shutdown()
+      try {
+        libraryCacheManager.shutdown()
+      } catch {
+        case t: Throwable => log.error(t, "Could not shut down the library cache manager.")
+      }
     }
 
     libraryCacheManager = null
@@ -453,57 +485,64 @@ import scala.collection.JavaConverters._
 
     heartbeatScheduler = None
 
-    profiler foreach {
-      _.tell(UnregisterProfilingListener, JobManager.getProfiler(currentJobManager))
+    profilerListener foreach {
+      listener =>
+        profiler foreach {
+          _.tell(UnregisterProfilingListener, listener)
+        }
     }
 
+    profilerListener = None
     currentJobManager = ActorRef.noSender
     instanceID = null
     registered = false
   }
 
-  private def updateTask(executionId: ExecutionAttemptID, resultId: IntermediateDataSetID,
-                         partitionInfo: PartitionInfo): Unit = {
+  private def updateTask(executionId: ExecutionAttemptID,
+                         partitionInfos: Seq[(IntermediateDataSetID, PartitionInfo)]): Unit = {
 
-    partitionInfo.getProducerLocation match {
-      case PartitionInfo.PartitionLocation.UNKNOWN =>
-        sender ! TaskOperationResult(executionId, success = false,
-          "Tried to update task with UNKNOWN channel.")
-
-      case _ =>
-        runningTasks.get(executionId) match {
-          case Some(task) =>
-            Option(task.getEnvironment.getReaderById(resultId)) match {
+    runningTasks.get(executionId) match {
+      case Some(task) =>
+        val errors = partitionInfos flatMap {
+          case (resultID, partitionInfo) =>
+            Option(task.getEnvironment.getReaderById(resultID)) match {
               case Some(reader) =>
                 Future {
                   try {
                     reader.updateInputChannel(partitionInfo)
                   } catch {
                     case t: Throwable =>
-                      log.error("Task update failure: {} Trying to cancel task.", t.getMessage)
+                      log.error(t, "Task update failure. Trying to cancel task.")
 
                       try {
                         task.cancelExecution()
                       } catch {
                         case t: Throwable =>
-                          log.error("Failed canceling task with execution ID {} after task" +
-                            "update failure: {}.", executionId, t.getMessage)
+                          log.error(t, "Failed canceling task with execution ID {} after task" +
+                            "update failure..", executionId)
                       }
                   }
                 }
-                sender ! TaskOperationResult(executionId, success = true)
-              case None => sender ! TaskOperationResult(executionId, success = false,
-                s"No reader with ID $resultId  was found.")
+                None
+              case None => Some(s"No reader with ID $resultID for task $executionId was found.")
             }
-
-          case None => sender ! TaskOperationResult(executionId, success = false,
-            s"No task with execution ID $executionId was found.")
         }
+
+        if(errors.isEmpty) {
+          sender ! Acknowledge
+        } else {
+          sender ! Failure(new IllegalStateException(errors.mkString("\n")))
+        }
+      case None =>
+        log.info("Could not update task with ID {}, because it is no longer running.",
+          executionId)
+        sender ! Acknowledge
     }
   }
 
-  private def finishRegistration(jobManager: ActorRef, id: InstanceID, blobPort: Int): Unit = {
-    setupTaskManager(jobManager, id, blobPort)
+  private def finishRegistration(jobManager: ActorRef, id: InstanceID, blobPort: Int,
+                                  profilerListener: Option[ActorRef]): Unit = {
+    setupTaskManager(jobManager, id, blobPort, profilerListener)
 
     for (listener <- waitForRegistration) {
       listener ! RegisteredAtJobManager
@@ -512,9 +551,11 @@ import scala.collection.JavaConverters._
     waitForRegistration.clear()
   }
 
-  private def setupTaskManager(jobManager: ActorRef, id: InstanceID, blobPort: Int): Unit = {
+  private def setupTaskManager(jobManager: ActorRef, id: InstanceID, blobPort: Int,
+                                profilerListener: Option[ActorRef]): Unit = {
     registered = true
     currentJobManager = jobManager
+    this.profilerListener = profilerListener
     instanceID = id
 
     // watch job manager to detect when it dies
@@ -527,8 +568,11 @@ import scala.collection.JavaConverters._
     heartbeatScheduler = Some(context.system.scheduler.schedule(
       TaskManager.HEARTBEAT_INTERVAL, TaskManager.HEARTBEAT_INTERVAL, self, SendHeartbeat))
 
-    profiler foreach {
-      _.tell(RegisterProfilingListener, JobManager.getProfiler(currentJobManager))
+    profilerListener foreach {
+      listener =>
+        profiler foreach {
+          _.tell(RegisterProfilingListener, listener)
+        }
     }
   }
 
@@ -544,7 +588,8 @@ import scala.collection.JavaConverters._
     }
 
     try {
-      networkEnvironment = Some(new NetworkEnvironment(currentJobManager, timeout, networkConfig))
+      networkEnvironment = Some(new NetworkEnvironment(self, currentJobManager, timeout,
+        networkConfig))
     } catch {
       case ioe: IOException =>
         log.error(ioe, "Failed to instantiate network environment.")
@@ -571,7 +616,8 @@ import scala.collection.JavaConverters._
 
       log.info("Determined BLOB server address to be {}.", address)
 
-      libraryCacheManager = new BlobLibraryCacheManager(new BlobCache(address), cleanupInterval)
+      libraryCacheManager = new BlobLibraryCacheManager(
+                                     new BlobCache(address, configuration), cleanupInterval)
     } else {
       libraryCacheManager = new FallbackLibraryCacheManager
     }
@@ -659,8 +705,21 @@ object TaskManager {
 
   def main(args: Array[String]): Unit = {
     EnvironmentInformation.logEnvironmentInfo(LOG, "TaskManager")
-
     val (hostname, port, configuration) = parseArgs(args)
+
+    if(SecurityUtils.isSecurityEnabled) {
+      LOG.info("Security is enabled. Starting secure TaskManager.")
+      SecurityUtils.runSecured(new FlinkSecuredRunner[Unit] {
+        override def run(): Unit = {
+          startActor(hostname, port, configuration)
+        }
+      })
+    } else {
+      startActor(hostname, port, configuration)
+    }
+  }
+
+  def startActor(hostname: String, port: Int, configuration: Configuration) : Unit = {
 
     val (taskManagerSystem, _) = startActorSystemAndActor(hostname, port, configuration,
       localAkkaCommunication = false, localTaskManagerCommunication = false)
@@ -847,7 +906,7 @@ object TaskManager {
 
     val taskManagerConfig = TaskManagerConfiguration(numberOfSlots, memorySize, pageSize,
       tmpDirs, cleanupInterval, memoryLoggingIntervalMs, profilingInterval, timeout,
-      maxRegistrationDuration)
+      maxRegistrationDuration, configuration)
 
     (connectionInfo, jobManagerURL, taskManagerConfig, networkConfig)
   }

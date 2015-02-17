@@ -20,14 +20,17 @@ package org.apache.flink.api.scala.typeutils
 
 import java.util.regex.{Pattern, Matcher}
 
+import org.apache.flink.api.common.ExecutionConfig
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.common.typeinfo.AtomicType
 import org.apache.flink.api.common.typeutils.CompositeType.InvalidFieldReferenceException
 import org.apache.flink.api.common.typeutils.CompositeType.FlatFieldDescriptor
+import org.apache.flink.api.common.typeutils._
 import org.apache.flink.api.java.operators.Keys.ExpressionKeys
-import org.apache.flink.api.java.typeutils.PojoTypeInfo.NamedFlatFieldDescriptor
-import org.apache.flink.api.java.typeutils.TupleTypeInfoBase
-import org.apache.flink.api.common.typeutils.{CompositeType, TypeComparator}
+import org.apache.flink.api.java.typeutils.{TupleTypeInfoBase, PojoTypeInfo}
+import PojoTypeInfo.NamedFlatFieldDescriptor
+
+import scala.collection.JavaConverters._
 
 import scala.collection.JavaConverters._
 
@@ -81,13 +84,13 @@ abstract class CaseClassTypeInfo[T <: Product](
     comparatorHelperIndex += 1
   }
 
-  override protected def getNewComparator: TypeComparator[T] = {
+  override protected def getNewComparator(executionConfig: ExecutionConfig): TypeComparator[T] = {
     val finalLogicalKeyFields = logicalKeyFields.take(comparatorHelperIndex)
     val finalComparators = fieldComparators.take(comparatorHelperIndex)
     val maxKey = finalLogicalKeyFields.max
 
     // create serializers only up to the last key, fields after that are not needed
-    val fieldSerializers = types.take(maxKey + 1).map(_.createSerializer)
+    val fieldSerializers = types.take(maxKey + 1).map(_.createSerializer(executionConfig))
     new CaseClassComparator[T](finalLogicalKeyFields, finalComparators, fieldSerializers.toArray)
   }
 
@@ -224,7 +227,11 @@ abstract class CaseClassTypeInfo[T <: Product](
     }
   }
 
+<<<<<<< HEAD
   override def toString = clazz.getSimpleName + "(" + fieldNames.zip(types).map {
+=======
+  override def toString = clazz.getName + "(" + fieldNames.zip(types).map {
+>>>>>>> refs/remotes/aljoscha/linq
     case (n, t) => n + ": " + t}
     .mkString(", ") + ")"
 }

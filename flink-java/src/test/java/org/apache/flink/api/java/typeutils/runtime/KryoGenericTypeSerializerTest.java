@@ -20,6 +20,7 @@ package org.apache.flink.api.java.typeutils.runtime;
 
 import static org.junit.Assert.*;
 
+import org.apache.flink.api.common.ExecutionConfig;
 import org.junit.Test;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
 
@@ -70,14 +71,14 @@ public class KryoGenericTypeSerializerTest extends AbstractGenericTypeSerializer
 
 	@Override
 	protected <T> TypeSerializer<T> createSerializer(Class<T> type) {
-		return new KryoSerializer<T>(type);
+		return new KryoSerializer<T>(type, new ExecutionConfig());
 	}
 	
 	/**
-	 * Make sure that the kryo serializer forwards EOF exceptions properly
+	 * Make sure that the kryo serializer forwards EOF exceptions properly when serializing
 	 */
 	@Test
-	public void testForwardEOFException() {
+	public void testForwardEOFExceptionWhileSerializing() {
 		try {
 			// construct a long string
 			String str;
@@ -94,7 +95,7 @@ public class KryoGenericTypeSerializerTest extends AbstractGenericTypeSerializer
 			
 			// construct a memory target that is too small for the string
 			TestDataOutputSerializer target = new TestDataOutputSerializer(10000, 30000);
-			KryoSerializer<String> serializer = new KryoSerializer<String>(String.class);
+			KryoSerializer<String> serializer = new KryoSerializer<String>(String.class, new ExecutionConfig());
 			
 			try {
 				serializer.serialize(str, target);
@@ -102,6 +103,45 @@ public class KryoGenericTypeSerializerTest extends AbstractGenericTypeSerializer
 			}
 			catch (java.io.EOFException e) {
 				// that is how we like it
+			}
+			catch (Exception e) {
+				fail("throws wrong exception: should throw a java.io.EOFException, has thrown a " + e.getClass().getName());
+			}
+		}
+		catch (Exception e) {
+			e.printStackTrace();
+			fail(e.getMessage());
+		}
+	}
+
+	/**
+	 * Make sure that the kryo serializer forwards EOF exceptions properly when serializing
+	 */
+	@Test
+	public void testForwardEOFExceptionWhileDeserializing() {
+		try {
+			int numElements = 100;
+			// construct a memory target that is too small for the string
+			TestDataOutputSerializer target = new TestDataOutputSerializer(5*numElements, 5*numElements);
+			KryoSerializer<Integer> serializer = new KryoSerializer<Integer>(Integer.class, new ExecutionConfig());
+
+			for(int i = 0; i < numElements; i++){
+				serializer.serialize(i, target);
+			}
+
+			TestInputView source = new TestInputView(target.copyByteBuffer());
+
+			for(int i = 0; i < numElements; i++){
+				int value = serializer.deserialize(source);
+				assertEquals(i, value);
+			}
+
+			try {
+				serializer.deserialize(source);
+				fail("should throw a java.io.EOFException");
+			}
+			catch (java.io.EOFException e) {
+				// that is how we like it :-)
 			}
 			catch (Exception e) {
 				fail("throws wrong exception: should throw a java.io.EOFException, has thrown a " + e.getClass().getName());

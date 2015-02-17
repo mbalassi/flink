@@ -20,6 +20,7 @@ package org.apache.flink.streaming.api.invokable;
 import java.io.IOException;
 import java.io.Serializable;
 
+import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.functions.Function;
 import org.apache.flink.api.common.functions.RuntimeContext;
 import org.apache.flink.api.common.functions.util.FunctionUtils;
@@ -28,8 +29,8 @@ import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.streamrecord.StreamRecord;
 import org.apache.flink.streaming.api.streamrecord.StreamRecordSerializer;
 import org.apache.flink.streaming.api.streamvertex.StreamTaskContext;
+import org.apache.flink.streaming.io.IndexedReaderIterator;
 import org.apache.flink.util.Collector;
-import org.apache.flink.util.MutableObjectIterator;
 import org.apache.flink.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,7 +49,9 @@ public abstract class StreamInvokable<IN, OUT> implements Serializable {
 
 	protected StreamTaskContext<OUT> taskContext;
 
-	protected MutableObjectIterator<StreamRecord<IN>> recordIterator;
+	protected ExecutionConfig executionConfig = null;
+
+	protected IndexedReaderIterator<StreamRecord<IN>> recordIterator;
 	protected StreamRecordSerializer<IN> inSerializer;
 	protected TypeSerializer<IN> objectSerializer;
 	protected StreamRecord<IN> nextRecord;
@@ -70,16 +73,18 @@ public abstract class StreamInvokable<IN, OUT> implements Serializable {
 	 * 
 	 * @param taskContext
 	 *            StreamTaskContext representing the vertex
+	 * @param executionConfig
 	 */
-	public void setup(StreamTaskContext<OUT> taskContext) {
+	public void setup(StreamTaskContext<OUT> taskContext, ExecutionConfig executionConfig) {
 		this.collector = taskContext.getOutputCollector();
-		this.recordIterator = taskContext.getInput(0);
+		this.recordIterator = taskContext.getIndexedInput(0);
 		this.inSerializer = taskContext.getInputSerializer(0);
 		if (this.inSerializer != null) {
 			this.nextRecord = inSerializer.createInstance();
 			this.objectSerializer = inSerializer.getObjectSerializer();
 		}
 		this.taskContext = taskContext;
+		this.executionConfig = executionConfig;
 	}
 
 	/**
