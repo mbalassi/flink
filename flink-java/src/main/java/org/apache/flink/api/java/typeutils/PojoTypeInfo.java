@@ -39,12 +39,26 @@ import org.apache.flink.api.java.operators.Keys.ExpressionKeys;
 
 import com.google.common.base.Joiner;
 
-
 /**
+<<<<<<< HEAD
  * TypeInformation for arbitrary (they have to be java-beans-style) java objects (what we call POJO).
  *
+=======
+ * TypeInformation for "Java Beans"-style types. Flink refers to them as POJOs,
+ * since the conditions are slightly different from Java Beans.
+ * A type is considered a FLink POJO type, if it fulfills the conditions below.
+ * <ul>
+ *   <li>It is a public class, and standalone (not a non-static inner class)</li>
+ *   <li>It has a public no-argument constructor.</li>
+ *   <li>All fields are either public, or have public getters and setters.</li>
+ * </ul>
+ * 
+ * @param <T> The type represented by this type information.
+>>>>>>> cfce493feb70a49d2722dc2a0d79f845f7e0461a
  */
 public class PojoTypeInfo<T> extends CompositeType<T> {
+	
+	private static final long serialVersionUID = 1L;
 
 	private final static String REGEX_FIELD = "[\\p{L}_\\$][\\p{L}\\p{Digit}_\\$]*";
 	private final static String REGEX_NESTED_FIELDS = "("+REGEX_FIELD+")(\\.(.+))?";

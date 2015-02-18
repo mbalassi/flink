@@ -64,35 +64,40 @@ class LocalFlinkMiniCluster(userConfiguration: Configuration, singleActorSystem:
     config
   }
 
-  override def startJobManager(implicit system: ActorSystem):
-  ActorRef = {
+  override def startJobManager(system: ActorSystem): ActorRef = {
     val config = configuration.clone()
-    JobManager.startActor(config, system, false)
+    val (jobManager, _) = JobManager.startJobManagerActors(config, system)
+    jobManager
   }
 
   override def startTaskManager(index: Int)(implicit system: ActorSystem): ActorRef = {
     val config = configuration.clone()
 
-    val rpcPort = config.getInteger(ConfigConstants.TASK_MANAGER_IPC_PORT_KEY, ConfigConstants
-      .DEFAULT_TASK_MANAGER_IPC_PORT)
-    val dataPort = config.getInteger(ConfigConstants.TASK_MANAGER_DATA_PORT_KEY, ConfigConstants
-      .DEFAULT_TASK_MANAGER_DATA_PORT)
+    val rpcPort = config.getInteger(
+      ConfigConstants.TASK_MANAGER_IPC_PORT_KEY,
+      ConfigConstants.DEFAULT_TASK_MANAGER_IPC_PORT)
+
+    val dataPort = config.getInteger(
+      ConfigConstants.TASK_MANAGER_DATA_PORT_KEY,
+      ConfigConstants.DEFAULT_TASK_MANAGER_DATA_PORT)
 
     if(rpcPort > 0){
       config.setInteger(ConfigConstants.TASK_MANAGER_IPC_PORT_KEY, rpcPort + index)
     }
-
     if(dataPort > 0){
       config.setInteger(ConfigConstants.TASK_MANAGER_DATA_PORT_KEY, dataPort + index)
     }
 
-    val localExecution = if(numTaskManagers == 1){
-      true
+    val localExecution = numTaskManagers == 1
+
+    val taskManagerName = if(singleActorSystem) {
+      TaskManager.TASK_MANAGER_NAME + "_" + (index + 1)
     } else {
-      false
+      TaskManager.TASK_MANAGER_NAME
     }
 
     TaskManager.startActorWithConfiguration(HOSTNAME,
+      taskManagerName,
       config,
       singleActorSystem,
       localExecution)(system)
@@ -107,8 +112,8 @@ class LocalFlinkMiniCluster(userConfiguration: Configuration, singleActorSystem:
         config.setString(ConfigConstants.JOB_MANAGER_IPC_ADDRESS_KEY, HOSTNAME)
         config.setInteger(ConfigConstants.JOB_MANAGER_IPC_PORT_KEY, getJobManagerRPCPort)
 
-        val jc = JobClient.startActorWithConfiguration(config,
-          singleActorSystem)(jobClientActorSystem)
+        val jc = JobClient.createJobClientFromConfig(config, singleActorSystem,
+                                                            jobClientActorSystem)
         jobClient = Some(jc)
         jc
     }

@@ -42,17 +42,6 @@ public final class ConfigConstants {
 	public static final String DEFAULT_EXECUTION_RETRIES_KEY = "execution-retries.default";
 	
 	// -------------------------------- Runtime -------------------------------
-
-	/**
-	 * The config parameter defining the storage directory to be used by the blob server.
-	 */
-	public static final String BLOB_STORAGE_DIRECTORY_KEY = "blob.storage.directory";
-
-	/**
-	 * The config parameter defining the cleanup interval of the library cache manager.
-	 */
-	public static final String LIBRARY_CACHE_MANAGER_CLEANUP_INTERVAL = "library-cache-manager" +
-			".cleanup.interval";
 	
 	/**
 	 * The config parameter defining the network address to connect to
@@ -65,18 +54,38 @@ public final class ConfigConstants {
 	 * for communication with the job manager.
 	 */
 	public static final String JOB_MANAGER_IPC_PORT_KEY = "jobmanager.rpc.port";
-	
-	/**
-	 * The config parameter defining the number of handler threads for the jobmanager RPC service.
-	 */
-	public static final String JOB_MANAGER_IPC_HANDLERS_KEY = "jobmanager.rpc.numhandler";
 
 	/**
 	 * The config parameter defining the number of seconds that a task manager heartbeat may be missing before it is
 	 * marked as failed.
 	 */
 	public static final String JOB_MANAGER_DEAD_TASKMANAGER_TIMEOUT_KEY = "jobmanager.max-heartbeat-delay-before-failure.msecs";
-	
+
+	/**
+	 * The config parameter defining the storage directory to be used by the blob server.
+	 */
+	public static final String BLOB_STORAGE_DIRECTORY_KEY = "blob.storage.directory";
+
+	/**
+	 * The config parameter defining number of retires for failed BLOB fetches.
+	 */
+	public static final String BLOB_FETCH_RETRIES_KEY = "blob.fetch.retries";
+
+	/**
+	 * The config parameter defining the maximum number of concurrent BLOB fetches that the JobManager serves.
+	 */
+	public static final String BLOB_FETCH_CONCURRENT_KEY = "blob.fetch.num-concurrent";
+
+	/**
+	 * The config parameter defining the backlog of BLOB fetches on the JobManager
+	 */
+	public static final String BLOB_FETCH_BACKLOG_KEY = "blob.fetch.backlog";
+
+	/**
+	 * The config parameter defining the cleanup interval of the library cache manager.
+	 */
+	public static final String LIBRARY_CACHE_MANAGER_CLEANUP_INTERVAL = "library-cache-manager.cleanup.interval";
+
 	/**
 	 * The config parameter defining the task manager's IPC port from the configuration.
 	 */
@@ -362,6 +371,11 @@ public final class ConfigConstants {
 	 * Timeout for all blocking calls
 	 */
 	public static final String AKKA_ASK_TIMEOUT = "akka.ask.timeout";
+
+	/**
+	 * Timeout for all blocking calls
+	 */
+	public static final String AKKA_LOOKUP_TIMEOUT = "akka.lookup.timeout";
 	
 	// ----------------------------- Miscellaneous ----------------------------
 	
@@ -399,18 +413,28 @@ public final class ConfigConstants {
 	 * The default network port to connect to for communication with the job manager.
 	 */
 	public static final int DEFAULT_JOB_MANAGER_IPC_PORT = 6123;
-
-	/**
-	 * The default number of handler threads for the jobmanager RPC service.
-	 */
-	public static final int DEFAULT_JOB_MANAGER_IPC_HANDLERS = 8;
 	
 	/**
 	 * Default number of seconds after which a task manager is marked as failed.
 	 */
 	// 30 seconds (its enough to get to mars, should be enough to detect failure)
 	public static final int DEFAULT_JOB_MANAGER_DEAD_TASKMANAGER_TIMEOUT = 30*1000;
-	
+
+	/**
+	 * Default number of retries for failed BLOB fetches.
+	 */
+	public static final int DEFAULT_BLOB_FETCH_RETRIES = 5;
+
+	/**
+	 * Default number of concurrent BLOB fetch operations.
+	 */
+	public static final int DEFAULT_BLOB_FETCH_CONCURRENT = 50;
+
+	/**
+	 * Default BLOB fetch connection backlog.
+	 */
+	public static final int DEFAULT_BLOB_FETCH_BACKLOG = 1000;
+
 	/**
 	 * The default network port the task manager expects incoming IPC connections. The {@code 0} means that
 	 * the TaskManager searches for a free port.
@@ -604,6 +628,8 @@ public final class ConfigConstants {
 	public static String DEFAULT_AKKA_FRAMESIZE = "10485760b";
 
 	public static String DEFAULT_AKKA_ASK_TIMEOUT = "100 s";
+
+	public static String DEFAULT_AKKA_LOOKUP_TIMEOUT = "10 s";
 	
 
 	// ----------------------------- LocalExecution ----------------------------

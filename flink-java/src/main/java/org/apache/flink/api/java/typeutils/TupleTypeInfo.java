@@ -31,9 +31,11 @@ import org.apache.flink.api.java.tuple.*;
 import org.apache.flink.api.java.typeutils.runtime.TupleComparator;
 import org.apache.flink.api.java.typeutils.runtime.TupleSerializer;
 
-
-
-
+/**
+ * A {@link TypeInformation} for the tuple types of the Java API.
+ *
+ * @param <T> The type of the tuple.
+ */
 public final class TupleTypeInfo<T extends Tuple> extends TupleTypeInfoBase<T> {
 
 	protected final String[] fieldNames;

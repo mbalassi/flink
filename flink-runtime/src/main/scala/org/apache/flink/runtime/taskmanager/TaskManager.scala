@@ -354,6 +354,20 @@ import scala.collection.JavaConverters._
       cleanupTaskManager()
 
       tryJobManagerRegistration()
+
+    case FailIntermediateResultPartitions(executionID) =>
+      log.info("Fail intermediate result partitions associated with execution {}.", executionID)
+      networkEnvironment foreach {
+        _.getPartitionManager.failIntermediateResultPartitions(executionID)
+      }
+  }
+
+  /**
+   * Handle unmatched messages with an exception.
+   */
+  override def unhandled(message: Any): Unit = {
+    // let the actor crash
+    throw new RuntimeException("Received unknown message " + message)
   }
 
   /**
@@ -711,18 +725,19 @@ object TaskManager {
       LOG.info("Security is enabled. Starting secure TaskManager.")
       SecurityUtils.runSecured(new FlinkSecuredRunner[Unit] {
         override def run(): Unit = {
-          startActor(hostname, port, configuration)
+          startActor(hostname, port, configuration, TaskManager.TASK_MANAGER_NAME)
         }
       })
     } else {
-      startActor(hostname, port, configuration)
+      startActor(hostname, port, configuration, TaskManager.TASK_MANAGER_NAME)
     }
   }
 
-  def startActor(hostname: String, port: Int, configuration: Configuration) : Unit = {
+  def startActor(hostname: String, port: Int, configuration: Configuration,
+                 taskManagerName: String) : Unit = {
 
     val (taskManagerSystem, _) = startActorSystemAndActor(hostname, port, configuration,
-      localAkkaCommunication = false, localTaskManagerCommunication = false)
+      taskManagerName, localAkkaCommunication = false, localTaskManagerCommunication = false)
 
     taskManagerSystem.awaitTermination()
   }
@@ -780,6 +795,7 @@ object TaskManager {
   }
 
   def startActorSystemAndActor(hostname: String, port: Int, configuration: Configuration,
+                               taskManagerName: String,
                                localAkkaCommunication: Boolean,
                                localTaskManagerCommunication: Boolean): (ActorSystem, ActorRef) = {
     implicit val actorSystem = AkkaUtils.createActorSystem(configuration, Some((hostname, port)))
@@ -788,7 +804,7 @@ object TaskManager {
       parseConfiguration(hostname, configuration, localAkkaCommunication,
         localTaskManagerCommunication)
 
-    (actorSystem, startActor(connectionInfo, jobManagerURL, taskManagerConfig,
+    (actorSystem, startActor(taskManagerName, connectionInfo, jobManagerURL, taskManagerConfig,
       networkConfig))
   }
 
@@ -820,19 +836,24 @@ object TaskManager {
 
     val jobManagerURL = if (localAkkaCommunication) {
       // JobManager and TaskManager are in the same ActorSystem -> Use local Akka URL
-      JobManager.getLocalAkkaURL
-    } else {
-      val jobManagerAddress = configuration.getString(ConfigConstants
-          .JOB_MANAGER_IPC_ADDRESS_KEY, null)
-      val jobManagerRPCPort = configuration.getInteger(ConfigConstants.JOB_MANAGER_IPC_PORT_KEY,
-          ConfigConstants.DEFAULT_JOB_MANAGER_IPC_PORT)
+      JobManager.getLocalJobManagerAkkaURL
+    }
+    else {
+      val jobManagerAddress = configuration.getString(
+        ConfigConstants.JOB_MANAGER_IPC_ADDRESS_KEY, null)
+
+      val jobManagerRPCPort = configuration.getInteger(
+        ConfigConstants.JOB_MANAGER_IPC_PORT_KEY,
+        ConfigConstants.DEFAULT_JOB_MANAGER_IPC_PORT)
 
       if (jobManagerAddress == null) {
-        throw new RuntimeException("JobManager address has not been specified in the " +
-          "configuration.")
+        throw new RuntimeException(
+          "JobManager address has not been specified in the configuration.")
       }
 
-      JobManager.getRemoteAkkaURL(jobManagerAddress + ":" + jobManagerRPCPort)
+      val hostPort = new InetSocketAddress(InetAddress.getByName(jobManagerAddress),
+                                           jobManagerRPCPort)
+      JobManager.getRemoteJobManagerAkkaURL(hostPort)
     }
 
     val slots = configuration.getInteger(ConfigConstants.TASK_MANAGER_NUM_TASK_SLOTS, 1)
@@ -911,19 +932,23 @@ object TaskManager {
     (connectionInfo, jobManagerURL, taskManagerConfig, networkConfig)
   }
 
-  def startActor(connectionInfo: InstanceConnectionInfo, jobManagerURL: String,
+  def startActor(taskManagerName: String,
+                 connectionInfo: InstanceConnectionInfo,
+                 jobManagerURL: String,
                  taskManagerConfig: TaskManagerConfiguration,
                  networkConfig: NetworkEnvironmentConfiguration)
                 (implicit actorSystem: ActorSystem): ActorRef = {
-    startActor(Props(new TaskManager(connectionInfo, jobManagerURL, taskManagerConfig,
-      networkConfig)))
+    startActor(taskManagerName,
+      Props(new TaskManager(connectionInfo, jobManagerURL, taskManagerConfig, networkConfig)))
   }
 
-  def startActor(props: Props)(implicit actorSystem: ActorSystem): ActorRef = {
-    actorSystem.actorOf(props, TASK_MANAGER_NAME)
+  def startActor(taskManagerName: String, props: Props)
+                (implicit actorSystem: ActorSystem): ActorRef = {
+    actorSystem.actorOf(props, taskManagerName)
   }
 
-  def startActorWithConfiguration(hostname: String, configuration: Configuration,
+  def startActorWithConfiguration(hostname: String, taskManagerName: String,
+                                  configuration: Configuration,
                                   localAkkaCommunication: Boolean,
                                   localTaskManagerCommunication: Boolean)
                                  (implicit system: ActorSystem) = {
@@ -931,7 +956,8 @@ object TaskManager {
       parseConfiguration(hostname, configuration, localAkkaCommunication,
         localTaskManagerCommunication)
 
-    startActor(connectionInfo, jobManagerURL, taskManagerConfig, networkConnectionConfiguration)
+    startActor(taskManagerName, connectionInfo, jobManagerURL, taskManagerConfig,
+      networkConnectionConfiguration)
   }
 
   def startProfiler(instancePath: String, reportInterval: Long)(implicit system: ActorSystem):

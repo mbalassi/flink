@@ -16,25 +16,15 @@
  * limitations under the License.
  */
 
-package org.apache.flink.runtime.jobmanager
-
-import akka.actor.Actor
-import org.apache.flink.runtime.jobmanager.web.WebInfoServer
+package org.apache.flink.runtime.client;
 
 /**
- * Mixin for the [[JobManager]] which starts a [[WebInfoServer]] for the JobManager.
+ * An exception which is thrown by the JobClient if a job is aborted as a result of a user
+ * cancellation.
  */
-trait WithWebServer extends Actor {
-  that: JobManager =>
+public class JobCancellationException extends Exception {
 
-  val webServer = new WebInfoServer(configuration, self, archive, timeout)
-  webServer.start()
-
-  abstract override def postStop(): Unit = {
-    log.info("Stopping webserver.")
-    webServer.stop()
-    log.info("Stopped webserver.")
-
-    super.postStop()
-  }
+	public JobCancellationException(final String msg, final Throwable cause){
+		super(msg, cause);
+	}
 }
