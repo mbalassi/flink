@@ -112,10 +112,7 @@ public class PojoTypeInfo<T> extends CompositeType<T> {
 	public boolean isKeyType() {
 		return Comparable.class.isAssignableFrom(typeClass);
 	}
-<<<<<<< HEAD
-=======
 
->>>>>>> refs/remotes/aljoscha/linq
 
 	@Override
 	public void getFlatFields(String fieldExpression, int offset, List<FlatFieldDescriptor> result) {

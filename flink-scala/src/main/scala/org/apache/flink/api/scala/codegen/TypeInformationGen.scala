@@ -19,14 +19,9 @@ package org.apache.flink.api.scala.codegen
 
 import java.lang.reflect.{Field, Modifier}
 
-<<<<<<< HEAD
-import org.apache.flink.api.common.expressions.Row
-import org.apache.flink.api.common.typeinfo.{TypeInformation, BasicArrayTypeInfo,
-PrimitiveArrayTypeInfo, BasicTypeInfo}
-=======
+
 import org.apache.flink.api.common.ExecutionConfig
 import org.apache.flink.api.common.typeinfo._
->>>>>>> refs/remotes/aljoscha/linq
 
 import org.apache.flink.api.common.typeutils._
 import org.apache.flink.api.java.typeutils._
@@ -123,12 +118,9 @@ private[flink] trait TypeInformationGen[C <: Context] {
         genericTypeInfos.splice.toArray,
         fieldsExpr.splice,
         fieldNamesExpr.splice) {
-<<<<<<< HEAD
-        override def createSerializer: TypeSerializer[T] = {
-=======
+
 
         override def createSerializer(executionConfig: ExecutionConfig): TypeSerializer[T] = {
->>>>>>> refs/remotes/aljoscha/linq
           val fieldSerializers: Array[TypeSerializer[_]] = new Array[TypeSerializer[_]](getArity)
           for (i <- 0 until getArity) {
             fieldSerializers(i) = types(i).createSerializer(executionConfig)

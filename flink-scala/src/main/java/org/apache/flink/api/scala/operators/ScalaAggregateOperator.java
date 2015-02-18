@@ -19,24 +19,16 @@
 package org.apache.flink.api.scala.operators;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 
 import org.apache.commons.lang3.Validate;
 import org.apache.flink.api.common.InvalidProgramException;
-import org.apache.flink.api.common.expressions.Row;
-import org.apache.flink.api.common.expressions.typeinfo.RowTypeInfo;
 import org.apache.flink.api.common.functions.GroupReduceFunction;
 import org.apache.flink.api.common.operators.Operator;
 import org.apache.flink.api.common.operators.SingleInputSemanticProperties;
 import org.apache.flink.api.common.operators.UnaryOperatorInformation;
 import org.apache.flink.api.common.operators.base.GroupReduceOperatorBase;
-<<<<<<< HEAD
-import org.apache.flink.api.common.typeutils.CompositeType;
-import org.apache.flink.api.common.typeutils.TypeSerializer;
-=======
 import org.apache.flink.api.common.typeinfo.TypeInformation;
->>>>>>> refs/remotes/aljoscha/linq
 import org.apache.flink.api.java.aggregation.AggregationFunction;
 import org.apache.flink.api.java.aggregation.AggregationFunctionFactory;
 import org.apache.flink.api.java.aggregation.Aggregations;
@@ -60,320 +52,247 @@ import scala.Product;
  */
 public class ScalaAggregateOperator<IN> extends SingleInputOperator<IN, IN, ScalaAggregateOperator<IN>> {
 
-	private final List<AggregationFunction<?>> aggregationFunctions = new ArrayList<AggregationFunction<?>>(4);
+    private final List<AggregationFunction<?>> aggregationFunctions = new ArrayList<AggregationFunction<?>>(4);
 
-	private final List<Integer> fields = new ArrayList<Integer>(4);
+    private final List<Integer> fields = new ArrayList<Integer>(4);
 
-	private final Grouping<IN> grouping;
+    private final Grouping<IN> grouping;
 
-	/**
-	 * <p>
-	 * Non grouped aggregation
-	 */
-	public ScalaAggregateOperator(org.apache.flink.api.java.DataSet<IN> input, Aggregations function, int field) {
-		super(Validate.notNull(input), input.getType());
+    /**
+     * <p>
+     * Non grouped aggregation
+     */
+    public ScalaAggregateOperator(org.apache.flink.api.java.DataSet<IN> input, Aggregations function, int field) {
+        super(Validate.notNull(input), input.getType());
 
-		Validate.notNull(function);
+        Validate.notNull(function);
 
-		if (!input.getType().isTupleType()) {
-			throw new InvalidProgramException("Aggregating on field positions is only possible on tuple data types.");
-		}
+        if (!input.getType().isTupleType()) {
+            throw new InvalidProgramException("Aggregating on field positions is only possible on tuple data types.");
+        }
 
-		TupleTypeInfoBase<?> inType = (TupleTypeInfoBase<?>) input.getType();
+        TupleTypeInfoBase<?> inType = (TupleTypeInfoBase<?>) input.getType();
 
-		if (field < 0 || field >= inType.getArity()) {
-			throw new IllegalArgumentException("Aggregation field position is out of range.");
-		}
+        if (field < 0 || field >= inType.getArity()) {
+            throw new IllegalArgumentException("Aggregation field position is out of range.");
+        }
 
-		AggregationFunctionFactory factory = function.getFactory();
-		AggregationFunction<?> aggFunct = factory.createAggregationFunction(inType.getTypeAt(field).getTypeClass());
+        AggregationFunctionFactory factory = function.getFactory();
+        AggregationFunction<?> aggFunct = factory.createAggregationFunction(inType.getTypeAt(field).getTypeClass());
 
-		// this is the first aggregation operator after a regular data set (non grouped aggregation)
-		this.aggregationFunctions.add(aggFunct);
-		this.fields.add(field);
-		this.grouping = null;
-	}
+        // this is the first aggregation operator after a regular data set (non grouped aggregation)
+        this.aggregationFunctions.add(aggFunct);
+        this.fields.add(field);
+        this.grouping = null;
+    }
 
-	/**
-	 *
-	 * Grouped aggregation
-	 *
-	 * @param input
-	 * @param function
-	 * @param field
-	 */
-	public ScalaAggregateOperator(Grouping<IN> input, Aggregations function, int field) {
-		super(Validate.notNull(input).getDataSet(), input.getDataSet().getType());
+    /**
+     *
+     * Grouped aggregation
+     *
+     * @param input
+     * @param function
+     * @param field
+     */
+    public ScalaAggregateOperator(Grouping<IN> input, Aggregations function, int field) {
+        super(Validate.notNull(input).getDataSet(), input.getDataSet().getType());
 
-		Validate.notNull(function);
+        Validate.notNull(function);
 
-		if (!input.getDataSet().getType().isTupleType()) {
-			throw new InvalidProgramException("Aggregating on field positions is only possible on tuple data types.");
-		}
+        if (!input.getDataSet().getType().isTupleType()) {
+            throw new InvalidProgramException("Aggregating on field positions is only possible on tuple data types.");
+        }
 
-		CompositeType<?> inType = (CompositeType<?>) input.getDataSet().getType();
+        TupleTypeInfoBase<?> inType = (TupleTypeInfoBase<?>) input.getDataSet().getType();
 
-		if (field < 0 || field >= inType.getArity()) {
-			throw new IllegalArgumentException("Aggregation field position is out of range.");
-		}
+        if (field < 0 || field >= inType.getArity()) {
+            throw new IllegalArgumentException("Aggregation field position is out of range.");
+        }
 
-		AggregationFunctionFactory factory = function.getFactory();
-		AggregationFunction<?> aggFunct = factory.createAggregationFunction(inType.getTypeAt(field).getTypeClass());
+        AggregationFunctionFactory factory = function.getFactory();
+        AggregationFunction<?> aggFunct = factory.createAggregationFunction(inType.getTypeAt(field).getTypeClass());
 
-		// set the aggregation fields
-		this.aggregationFunctions.add(aggFunct);
-		this.fields.add(field);
-		this.grouping = input;
-	}
+        // set the aggregation fields
+        this.aggregationFunctions.add(aggFunct);
+        this.fields.add(field);
+        this.grouping = input;
+    }
 
 
-	public ScalaAggregateOperator<IN> and(Aggregations function, int field) {
-		Validate.notNull(function);
+    public ScalaAggregateOperator<IN> and(Aggregations function, int field) {
+        Validate.notNull(function);
 
-		TupleTypeInfoBase<?> inType = (TupleTypeInfoBase<?>) getType();
+        TupleTypeInfoBase<?> inType = (TupleTypeInfoBase<?>) getType();
 
-		if (field < 0 || field >= inType.getArity()) {
-			throw new IllegalArgumentException("Aggregation field position is out of range.");
-		}
+        if (field < 0 || field >= inType.getArity()) {
+            throw new IllegalArgumentException("Aggregation field position is out of range.");
+        }
 
 
-		AggregationFunctionFactory factory = function.getFactory();
-		AggregationFunction<?> aggFunct = factory.createAggregationFunction(inType.getTypeAt(field).getTypeClass());
+        AggregationFunctionFactory factory = function.getFactory();
+        AggregationFunction<?> aggFunct = factory.createAggregationFunction(inType.getTypeAt(field).getTypeClass());
 
-		this.aggregationFunctions.add(aggFunct);
-		this.fields.add(field);
+        this.aggregationFunctions.add(aggFunct);
+        this.fields.add(field);
 
-		return this;
-	}
+        return this;
+    }
 
-	@SuppressWarnings("unchecked")
-	@Override
-	protected org.apache.flink.api.common.operators.base.GroupReduceOperatorBase<IN, IN, GroupReduceFunction<IN, IN>> translateToDataFlow(Operator<IN> input) {
+    @SuppressWarnings("unchecked")
+    @Override
+    protected org.apache.flink.api.common.operators.base.GroupReduceOperatorBase<IN, IN, GroupReduceFunction<IN, IN>> translateToDataFlow(Operator<IN> input) {
 
-		// sanity check
-		if (this.aggregationFunctions.isEmpty() || this.aggregationFunctions.size() != this.fields.size()) {
-			throw new IllegalStateException();
-		}
+        // sanity check
+        if (this.aggregationFunctions.isEmpty() || this.aggregationFunctions.size() != this.fields.size()) {
+            throw new IllegalStateException();
+        }
 
 
-		// construct the aggregation function
-		AggregationFunction<Object>[] aggFunctions = new AggregationFunction[this.aggregationFunctions.size()];
-		int[] fields = new int[this.fields.size()];
-		StringBuilder genName = new StringBuilder();
+        // construct the aggregation function
+        AggregationFunction<Object>[] aggFunctions = new AggregationFunction[this.aggregationFunctions.size()];
+        int[] fields = new int[this.fields.size()];
+        StringBuilder genName = new StringBuilder();
 
-		for (int i = 0; i < fields.length; i++) {
-			aggFunctions[i] = (AggregationFunction<Object>) this.aggregationFunctions.get(i);
-			fields[i] = this.fields.get(i);
+        for (int i = 0; i < fields.length; i++) {
+            aggFunctions[i] = (AggregationFunction<Object>) this.aggregationFunctions.get(i);
+            fields[i] = this.fields.get(i);
 
-			genName.append(aggFunctions[i].toString()).append('(').append(fields[i]).append(')').append(',');
-		}
-		genName.setLength(genName.length()-1);
+            genName.append(aggFunctions[i].toString()).append('(').append(fields[i]).append(')').append(',');
+        }
+        genName.setLength(genName.length()-1);
 
-		@SuppressWarnings("rawtypes")
-<<<<<<< HEAD
-		RichGroupReduceFunction<IN, IN> function = null;
-		if (getInputType() instanceof RowTypeInfo) {
-			function = new RowAggregatingUdf(aggFunctions, fields);
-		} else {
-			function = new CaseClassAggregatingUdf(getInputType().createSerializer(), aggFunctions, fields);
+        @SuppressWarnings("rawtypes")
+        RichGroupReduceFunction<IN, IN> function = new AggregatingUdf(getInputType(), aggFunctions, fields);
 
-		}
-=======
-		RichGroupReduceFunction<IN, IN> function = new AggregatingUdf(getInputType(), aggFunctions, fields);
->>>>>>> refs/remotes/aljoscha/linq
 
+        String name = getName() != null ? getName() : genName.toString();
 
-		String name = getName() != null ? getName() : genName.toString();
-
-		// distinguish between grouped reduce and non-grouped reduce
-		if (this.grouping == null) {
-			// non grouped aggregation
-			UnaryOperatorInformation<IN, IN> operatorInfo = new UnaryOperatorInformation<IN, IN>(getInputType(), getResultType());
-			GroupReduceOperatorBase<IN, IN, GroupReduceFunction<IN, IN>> po =
-					new GroupReduceOperatorBase<IN, IN, GroupReduceFunction<IN, IN>>(function, operatorInfo, new int[0], name);
-
-			po.setCombinable(true);
-
-			// set input
-			po.setInput(input);
-			// set dop
-			po.setDegreeOfParallelism(this.getParallelism());
-
-			return po;
-		}
-
-		if (this.grouping.getKeys() instanceof Keys.ExpressionKeys) {
-			// grouped aggregation
-			int[] logicalKeyPositions = this.grouping.getKeys().computeLogicalKeyPositions();
-			UnaryOperatorInformation<IN, IN> operatorInfo = new UnaryOperatorInformation<IN, IN>(getInputType(), getResultType());
-			GroupReduceOperatorBase<IN, IN, GroupReduceFunction<IN, IN>> po =
-					new GroupReduceOperatorBase<IN, IN, GroupReduceFunction<IN, IN>>(function, operatorInfo, logicalKeyPositions, name);
-
-			po.setCombinable(true);
-
-			// set input
-			po.setInput(input);
-			// set dop
-			po.setDegreeOfParallelism(this.getParallelism());
-
-			SingleInputSemanticProperties props = new SingleInputSemanticProperties();
-
-			for (int keyField : logicalKeyPositions) {
-				boolean keyFieldUsedInAgg = false;
-				for (int aggField : fields) {
-					if (keyField == aggField) {
-						keyFieldUsedInAgg = true;
-						break;
-					}
-				}
-
-				if (!keyFieldUsedInAgg) {
-					props.addForwardedField(keyField, keyField);
-				}
-			}
-
-			po.setSemanticProperties(props);
-			po.setCustomPartitioner(grouping.getCustomPartitioner());
-
-			return po;
-		}
-		else if (this.grouping.getKeys() instanceof Keys.SelectorFunctionKeys) {
-			throw new UnsupportedOperationException("Aggregate does not support grouping with KeySelector functions, yet.");
-		}
-		else {
-			throw new UnsupportedOperationException("Unrecognized key type.");
-		}
-
-	}
-
-	// --------------------------------------------------------------------------------------------
-
-	@Combinable
-	public static final class RowAggregatingUdf<T extends Row> extends RichGroupReduceFunction<T, T> {
-		private static final long serialVersionUID = 1L;
-
-		private final int[] fieldPositions;
-
-		private final AggregationFunction<Object>[] aggFunctions;
-
-
-		public RowAggregatingUdf(AggregationFunction<Object>[] aggFunctions, int[] fieldPositions) {
-			Validate.notNull(aggFunctions);
-			Validate.notNull(aggFunctions);
-			Validate.isTrue(aggFunctions.length == fieldPositions.length);
-
-			this.aggFunctions = aggFunctions;
-			this.fieldPositions = fieldPositions;
-		}
-
-
-		@Override
-		public void open(Configuration parameters) throws Exception {
-			for (int i = 0; i < aggFunctions.length; i++) {
-				aggFunctions[i].initializeAggregate();
-			}
-		}
-
-		@Override
-		public void reduce(Iterable<T> records, Collector<T> out) {
-			final AggregationFunction<Object>[] aggFunctions = this.aggFunctions;
-			final int[] fieldPositions = this.fieldPositions;
-
-			// aggregators are initialized from before
-
-			T current = null;
-			final Iterator<T> values = records.iterator();
-			while (values.hasNext()) {
-				current = values.next();
-
-				for (int i = 0; i < fieldPositions.length; i++) {
-					Object val = current.productElement(fieldPositions[i]);
-					aggFunctions[i].aggregate(val);
-				}
-			}
-
-			for (int i = 0; i < fieldPositions.length; i++) {
-				Object aggVal = aggFunctions[i].getAggregate();
-				current.setField(fieldPositions[i], aggVal);
-				aggFunctions[i].initializeAggregate();
-			}
-
-			out.collect(current);
-		}
-
-	}
-
-
-	@Combinable
-	public static final class CaseClassAggregatingUdf<T extends Product> extends RichGroupReduceFunction<T, T> {
-		private static final long serialVersionUID = 1L;
-
-		private final int[] fieldPositions;
-
-		private final AggregationFunction<Object>[] aggFunctions;
-
-		private transient TupleSerializerBase<T> serializer;
-
-<<<<<<< HEAD
-		public CaseClassAggregatingUdf(TypeSerializer<T> serializer,
-			AggregationFunction<Object>[] aggFunctions, int[]
-				fieldPositions) {
-			Validate.notNull(serializer);
-=======
-		private TypeInformation<T> typeInfo;
-
-		public AggregatingUdf(TypeInformation<T> typeInfo, AggregationFunction<Object>[] aggFunctions, int[] fieldPositions) {
-			Validate.notNull(typeInfo);
->>>>>>> refs/remotes/aljoscha/linq
-			Validate.notNull(aggFunctions);
-			Validate.isTrue(aggFunctions.length == fieldPositions.length);
-			Validate.isTrue(typeInfo.isTupleType(), "TypeInfo for Scala Aggregate Operator must be a tuple TypeInfo.");
-			this.typeInfo = typeInfo;
-			this.aggFunctions = aggFunctions;
-			this.fieldPositions = fieldPositions;
-		}
-
-
-		@Override
-		public void open(Configuration parameters) throws Exception {
-			for (AggregationFunction<Object> aggFunction : aggFunctions) {
-				aggFunction.initializeAggregate();
-			}
-			this.serializer = (TupleSerializerBase<T>) typeInfo.createSerializer(getRuntimeContext().getExecutionConfig());
-		}
-
-		@Override
-		public void reduce(Iterable<T> records, Collector<T> out) {
-			final AggregationFunction<Object>[] aggFunctions = this.aggFunctions;
-			final int[] fieldPositions = this.fieldPositions;
-
-			// aggregators are initialized from before
-
-			T current = null;
-			for (T record : records) {
-				current = record;
-				for (int i = 0; i < fieldPositions.length; i++) {
-					Object val = current.productElement(fieldPositions[i]);
-					aggFunctions[i].aggregate(val);
-				}
-			}
-
-			Object[] fields = new Object[serializer.getArity()];
-			int length = serializer.getArity();
-			// First copy all tuple fields, then overwrite the aggregated ones
-			for (int i = 0; i < length; i++) {
-				fields[i] = current.productElement(i);
-			}
-			for (int i = 0; i < fieldPositions.length; i++) {
-				Object aggVal = aggFunctions[i].getAggregate();
-				fields[fieldPositions[i]] = aggVal;
-				aggFunctions[i].initializeAggregate();
-			}
-
-			T result = serializer.createInstance(fields);
-
-			out.collect(result);
-		}
-
-	}
+        // distinguish between grouped reduce and non-grouped reduce
+        if (this.grouping == null) {
+            // non grouped aggregation
+            UnaryOperatorInformation<IN, IN> operatorInfo = new UnaryOperatorInformation<IN, IN>(getInputType(), getResultType());
+            GroupReduceOperatorBase<IN, IN, GroupReduceFunction<IN, IN>> po =
+                    new GroupReduceOperatorBase<IN, IN, GroupReduceFunction<IN, IN>>(function, operatorInfo, new int[0], name);
+
+            po.setCombinable(true);
+
+            // set input
+            po.setInput(input);
+            // set dop
+            po.setDegreeOfParallelism(this.getParallelism());
+
+            return po;
+        }
+
+        if (this.grouping.getKeys() instanceof Keys.ExpressionKeys) {
+            // grouped aggregation
+            int[] logicalKeyPositions = this.grouping.getKeys().computeLogicalKeyPositions();
+            UnaryOperatorInformation<IN, IN> operatorInfo = new UnaryOperatorInformation<IN, IN>(getInputType(), getResultType());
+            GroupReduceOperatorBase<IN, IN, GroupReduceFunction<IN, IN>> po =
+                    new GroupReduceOperatorBase<IN, IN, GroupReduceFunction<IN, IN>>(function, operatorInfo, logicalKeyPositions, name);
+
+            po.setCombinable(true);
+
+            // set input
+            po.setInput(input);
+            // set dop
+            po.setDegreeOfParallelism(this.getParallelism());
+
+            SingleInputSemanticProperties props = new SingleInputSemanticProperties();
+
+            for (int keyField : logicalKeyPositions) {
+                boolean keyFieldUsedInAgg = false;
+                for (int aggField : fields) {
+                    if (keyField == aggField) {
+                        keyFieldUsedInAgg = true;
+                        break;
+                    }
+                }
+
+                if (!keyFieldUsedInAgg) {
+                    props.addForwardedField(keyField, keyField);
+                }
+            }
+
+            po.setSemanticProperties(props);
+            po.setCustomPartitioner(grouping.getCustomPartitioner());
+
+            return po;
+        }
+        else if (this.grouping.getKeys() instanceof Keys.SelectorFunctionKeys) {
+            throw new UnsupportedOperationException("Aggregate does not support grouping with KeySelector functions, yet.");
+        }
+        else {
+            throw new UnsupportedOperationException("Unrecognized key type.");
+        }
+
+    }
+
+    // --------------------------------------------------------------------------------------------
+
+    @Combinable
+    public static final class AggregatingUdf<T extends Product> extends RichGroupReduceFunction<T, T> {
+        private static final long serialVersionUID = 1L;
+
+        private final int[] fieldPositions;
+
+        private final AggregationFunction<Object>[] aggFunctions;
+
+        private TupleSerializerBase<T> serializer;
+
+        private TypeInformation<T> typeInfo;
+
+        public AggregatingUdf(TypeInformation<T> typeInfo, AggregationFunction<Object>[] aggFunctions, int[] fieldPositions) {
+            Validate.notNull(typeInfo);
+            Validate.notNull(aggFunctions);
+            Validate.isTrue(aggFunctions.length == fieldPositions.length);
+            Validate.isTrue(typeInfo.isTupleType(), "TypeInfo for Scala Aggregate Operator must be a tuple TypeInfo.");
+            this.typeInfo = typeInfo;
+            this.aggFunctions = aggFunctions;
+            this.fieldPositions = fieldPositions;
+        }
+
+
+        @Override
+        public void open(Configuration parameters) throws Exception {
+            for (AggregationFunction<Object> aggFunction : aggFunctions) {
+                aggFunction.initializeAggregate();
+            }
+            this.serializer = (TupleSerializerBase<T>) typeInfo.createSerializer(getRuntimeContext().getExecutionConfig());
+        }
+
+        @Override
+        public void reduce(Iterable<T> records, Collector<T> out) {
+            final AggregationFunction<Object>[] aggFunctions = this.aggFunctions;
+            final int[] fieldPositions = this.fieldPositions;
+
+            // aggregators are initialized from before
+
+            T current = null;
+            for (T record : records) {
+                current = record;
+                for (int i = 0; i < fieldPositions.length; i++) {
+                    Object val = current.productElement(fieldPositions[i]);
+                    aggFunctions[i].aggregate(val);
+                }
+            }
+
+            Object[] fields = new Object[serializer.getArity()];
+            int length = serializer.getArity();
+            // First copy all tuple fields, then overwrite the aggregated ones
+            for (int i = 0; i < length; i++) {
+                fields[i] = current.productElement(i);
+            }
+            for (int i = 0; i < fieldPositions.length; i++) {
+                Object aggVal = aggFunctions[i].getAggregate();
+                fields[fieldPositions[i]] = aggVal;
+                aggFunctions[i].initializeAggregate();
+            }
+
+            T result = serializer.createInstance(fields);
+
+            out.collect(result);
+        }
+
+    }
 }

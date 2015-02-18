@@ -227,11 +227,8 @@ abstract class CaseClassTypeInfo[T <: Product](
     }
   }
 
-<<<<<<< HEAD
-  override def toString = clazz.getSimpleName + "(" + fieldNames.zip(types).map {
-=======
+
   override def toString = clazz.getName + "(" + fieldNames.zip(types).map {
->>>>>>> refs/remotes/aljoscha/linq
     case (n, t) => n + ": " + t}
     .mkString(", ") + ")"
 }
