@@ -46,10 +46,10 @@ public class StreamSourceVertex<OUT> extends StreamVertex<OUT, OUT> {
 		sourceInvokable = null;
 	}
 
-	@Override
-	public void initializeInvoke() {
-		// TODO initialize serializers of ftWriters
-	}
+//	@Override
+//	public void initializeInvoke() {
+//		// TODO initialize serializers of ftWriters
+//	}
 
 	@Override
 	public void setInputsOutputs() {
@@ -68,27 +68,27 @@ public class StreamSourceVertex<OUT> extends StreamVertex<OUT, OUT> {
 			// TODO activate xor if events are working
 //			XorHandler sourceXorHandler = new SourceFTXorHandler(ftWriter);
 			XorHandler sourceXorHandler = new NonFTXorHandler();
-			abstractFTHandler = new FTHandler(persister, sourceXorHandler, anchorHandler);
+			abstractFTHandler = new FTHandler<OUT>(persister, sourceXorHandler, anchorHandler);
 		} else {
-			abstractFTHandler = new NonFTHandler();
+			abstractFTHandler = new NonFTHandler<OUT>();
 		}
 		userInvokable = sourceInvokable;
 		outputHandler = new OutputHandler<OUT>(this, abstractFTHandler);
 	}
 
-	@Override
-	protected void setInvokable() {
-		sourceInvokable = configuration.getUserInvokable(userClassLoader);
-		sourceInvokable.setup(this, abstractFTHandler);
-	}
+//	@Override
+//	protected void setInvokable() {
+//		sourceInvokable = configuration.getUserInvokable(userClassLoader);
+//		sourceInvokable.setup(this, abstractFTHandler);
+//	}
 
-	@Override
-	public void invoke() throws Exception {
-		initializeInvoke();
-		inputHandler = new InputHandler<OUT>(this);
-		outputHandler.invokeUserFunction("SOURCE", sourceInvokable);
-		abstractFTHandler.close();
-	}
+//	@Override
+//	public void invoke() throws Exception {
+//		initializeInvoke();
+//		// inputHandler = new InputHandler<OUT>(this);
+//		outputHandler.invokeUserFunction("SOURCE", sourceInvokable);
+//		abstractFTHandler.close();
+//	}
 
 	@SuppressWarnings("unchecked")
 	@Override

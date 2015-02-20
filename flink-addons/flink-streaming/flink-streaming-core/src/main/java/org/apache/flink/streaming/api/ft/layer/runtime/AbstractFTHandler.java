@@ -46,7 +46,9 @@ public abstract class AbstractFTHandler<T> extends XorHandler implements
 
 	@Override
 	public void setAnchorRecord(IdentifiableStreamRecord anchorRecord) {
-		anchorHandler.setAnchorRecord(anchorRecord);
+		if(anchorRecord != null) {
+			anchorHandler.setAnchorRecord(anchorRecord);
+		}
 	}
 
 	@Override
@@ -62,7 +64,9 @@ public abstract class AbstractFTHandler<T> extends XorHandler implements
 
 	@Override
 	public void xor(IdentifiableStreamRecord record) {
-		xorHandler.xor(record);
+		if(record != null) {
+			xorHandler.xor(record);
+		}
 	}
 
 	@Override

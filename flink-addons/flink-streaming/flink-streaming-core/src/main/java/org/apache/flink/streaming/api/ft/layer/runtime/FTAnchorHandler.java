@@ -26,9 +26,7 @@ public class FTAnchorHandler implements AnchorHandler {
 
 	@Override
 	public void setAnchorRecord(IdentifiableStreamRecord anchorRecord) {
-		if (anchorRecord != null) {
 			this.anchorRecordId = anchorRecord.getId();
-		}
 	}
 
 	@Override

@@ -64,9 +64,8 @@ public class FailedRecordCollector implements Collector<SemiDeserializedStreamRe
 
 		for (RecordWriter<SerializationDelegate<SemiDeserializedStreamRecord>> output : outputs) {
 			try {
-				RecordId newRecordId = setOutRecordId(serializationDelegate);
+				ftLayer.xor(setOutRecordId(serializationDelegate));
 				output.emit(serializationDelegate);
-				ftLayer.xor(newRecordId);
 			} catch (Exception e) {
 				if (LOG.isErrorEnabled()) {
 					LOG.error("Emit failed due to: {}", StringUtils.stringifyException(e));
@@ -77,9 +76,7 @@ public class FailedRecordCollector implements Collector<SemiDeserializedStreamRe
 
 	protected RecordId setOutRecordId(SerializationDelegate<SemiDeserializedStreamRecord> outRecord) {
 		long sourceRecordId = outRecord.getInstance().getId().getSourceRecordId();
-		RecordId newSourceRecordId = RecordId.newRecordId(sourceRecordId);
-		outRecord.getInstance().setId(newSourceRecordId);
-		return newSourceRecordId;
+		return outRecord.getInstance().newId(sourceRecordId);
 	}
 
 	@Override

@@ -17,8 +17,6 @@
 
 package org.apache.flink.streaming.api.streamvertex;
 
-import java.util.Map;
-
 import org.apache.flink.runtime.execution.Environment;
 import org.apache.flink.runtime.io.network.api.reader.MutableRecordReader;
 import org.apache.flink.runtime.io.network.api.writer.BufferWriter;
@@ -40,6 +38,8 @@ import org.apache.flink.streaming.io.CoReaderIterator;
 import org.apache.flink.streaming.state.OperatorState;
 import org.apache.flink.util.Collector;
 import org.apache.flink.util.MutableObjectIterator;
+
+import java.util.Map;
 
 public class StreamVertex<IN, OUT> extends AbstractInvokable implements
 		StreamTaskContext<OUT> {
@@ -119,9 +119,9 @@ public class StreamVertex<IN, OUT> extends AbstractInvokable implements
 //			TODO activate xor handling
 //			XorHandler taskXorHandler = new TaskFTXorHandler(ftReader);
 			XorHandler taskXorHandler = new NonFTXorHandler();
-			abstractFTHandler = new FTHandler(new NonFTPersister<OUT>(), taskXorHandler, anchorHandler);
+			abstractFTHandler = new FTHandler<OUT>(new NonFTPersister<OUT>(), taskXorHandler, anchorHandler);
 		} else {
-			abstractFTHandler = new NonFTHandler();
+			abstractFTHandler = new NonFTHandler<OUT>();
 		}
 		outputHandler = new OutputHandler<OUT>(this, abstractFTHandler);
 	}
@@ -149,6 +149,7 @@ public class StreamVertex<IN, OUT> extends AbstractInvokable implements
 	public void invoke() throws Exception {
 		initializeInvoke();
 		outputHandler.invokeUserFunction("TASK", userInvokable);
+		abstractFTHandler.close();
 	}
 
 	@Override

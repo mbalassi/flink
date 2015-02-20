@@ -35,7 +35,7 @@ import org.apache.flink.streaming.api.ft.layer.runtime.FTLayerVertex;
 import org.apache.flink.streaming.api.ft.layer.event.FailException;
 import org.apache.flink.streaming.api.ft.layer.runtime.FTLayerConfig;
 import org.apache.flink.streaming.api.ft.layer.id.RecordId;
-import org.apache.flink.streaming.api.ft.layer.id.RecordWithHashCode;
+import org.apache.flink.streaming.api.ft.layer.util.RecordWithHashCode;
 import org.apache.flink.streaming.api.ft.layer.serialization.SemiDeserializedStreamRecord;
 import org.apache.flink.streaming.api.function.sink.SinkFunction;
 import org.apache.flink.streaming.api.function.source.SourceFunction;

@@ -599,6 +599,14 @@ public class StreamGraph extends StreamingPlan {
 		return operatorNames.get(vertexName);
 	}
 
+	public FTStatus getFTStatus() {
+		return ftStatus;
+	}
+
+	public KeySelector<?, ?> getKeySelector(String upStreamVertexName) {
+		return keySelectors.get(upStreamVertexName);
+	}
+
 	@Override
 	public String getStreamingPlanAsJSON() {
 
@@ -674,11 +682,4 @@ public class StreamGraph extends StreamingPlan {
 		}
 	}
 
-	public FTStatus getFTStatus() {
-		return ftStatus;
-	}
-
-	public KeySelector<?, ?> getKeySelector(String upStreamVertexName) {
-		return keySelectors.get(upStreamVertexName);
-	}
 }

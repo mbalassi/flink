@@ -19,7 +19,7 @@ package org.apache.flink.streaming.api.ft.layer;
 
 import java.util.LinkedHashMap;
 
-import org.apache.flink.streaming.api.ft.layer.id.RecordWithHashCode;
+import org.apache.flink.streaming.api.ft.layer.util.RecordWithHashCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

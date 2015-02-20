@@ -22,7 +22,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 
 import org.apache.flink.streaming.api.ft.layer.id.RecordId;
-import org.apache.flink.streaming.api.ft.layer.id.RecordWithHashCode;
+import org.apache.flink.streaming.api.ft.layer.util.RecordWithHashCode;
 import org.apache.flink.streaming.api.ft.layer.serialization.SemiDeserializedStreamRecord;
 import org.apache.flink.streaming.api.ft.layer.util.ExpiredFunction;
 import org.slf4j.Logger;

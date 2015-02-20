@@ -20,10 +20,8 @@ package org.apache.flink.streaming.api.ft;
 import org.apache.flink.streaming.api.ft.layer.AbstractPersistenceLayer;
 import org.apache.flink.streaming.api.ft.layer.AckerTable;
 import org.apache.flink.streaming.api.ft.layer.FTLayer;
-import org.apache.flink.streaming.api.ft.layer.DefaultPersistenceLayer;
-import org.apache.flink.streaming.api.ft.layer.TimeoutPersistenceLayer;
 import org.apache.flink.streaming.api.ft.layer.id.RecordId;
-import org.apache.flink.streaming.api.ft.layer.id.RecordWithHashCode;
+import org.apache.flink.streaming.api.ft.layer.util.RecordWithHashCode;
 import org.apache.flink.streaming.api.ft.layer.serialization.SemiDeserializedStreamRecord;
 import org.junit.Test;
 

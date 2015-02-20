@@ -17,7 +17,7 @@
 
 package org.apache.flink.streaming.api.ft.layer;
 
-import org.apache.flink.streaming.api.ft.layer.id.RecordWithHashCode;
+import org.apache.flink.streaming.api.ft.layer.util.RecordWithHashCode;
 import org.apache.flink.streaming.api.ft.layer.util.ExpiredFunction;
 
 public class TimeoutPersistenceLayer extends AbstractPersistenceLayer<Long, RecordWithHashCode> {

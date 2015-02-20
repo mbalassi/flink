@@ -6,7 +6,7 @@
  * (the "License"); you may not use this file except in compliance with
  * the License.  You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -15,24 +15,33 @@
  * limitations under the License.
  */
 
-package org.apache.flink.streaming.api.ft.layer.id;
+package org.apache.flink.streaming.api.ft.layer.util;
 
-public class RecordWithId<T> {
+public class RecordWithHashCode {
+	private byte[] serializedRecord;
+	private int hashCode;
 
-	private T record;
-	private long id;
-
-	public RecordWithId(T record, long id) {
-		this.record = record;
-		this.id = id;
+	public RecordWithHashCode(byte[] serializedRecord, int hashCode) {
+		this.serializedRecord = serializedRecord;
+		this.hashCode = hashCode;
 	}
 
-	public T getRecord() {
-		return record;
+	public byte[] getSerializedRecord() {
+		return serializedRecord;
 	}
 
-	public long getId() {
-		return id;
+	public int getHashCode() {
+		return hashCode;
+	}
+
+	public String toString() {
+		String result = "[";
+		for (int i = 0; i < serializedRecord.length; i++) {
+			result += ", " + serializedRecord[i];
+		}
+		result = result.replaceFirst(", ", "");
+		result += "]";
+		return result + " hash:" + hashCode;
 	}
 
 }

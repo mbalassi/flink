@@ -17,9 +17,6 @@
 
 package org.apache.flink.streaming.api.invokable;
 
-import java.io.IOException;
-import java.io.Serializable;
-
 import org.apache.flink.api.common.functions.Function;
 import org.apache.flink.api.common.functions.RuntimeContext;
 import org.apache.flink.api.common.functions.util.FunctionUtils;
@@ -35,6 +32,9 @@ import org.apache.flink.util.MutableObjectIterator;
 import org.apache.flink.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.io.Serializable;
 
 /**
  * The StreamInvokable represents the base class for all invokables in the
@@ -137,9 +137,7 @@ public abstract class StreamInvokable<IN, OUT> implements Serializable {
 	}
 
 	protected void ackAnchorRecord() {
-		if (nextRecord != null) {
-			abstractFTHandler.xor(nextRecord);
-		}
+		abstractFTHandler.xor(nextRecord);
 	}
 
 	/**

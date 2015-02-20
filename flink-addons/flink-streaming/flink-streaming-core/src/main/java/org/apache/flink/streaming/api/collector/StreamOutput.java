@@ -67,8 +67,8 @@ public class StreamOutput<OUT> implements Collector<OUT> {
 
 		try {
 			abstractFTHandler.setOutRecordId(serializationDelegate);
-			output.emit(serializationDelegate);
 			abstractFTHandler.xor(serializationDelegate.getInstance());
+			output.emit(serializationDelegate);
 		} catch (Exception e) {
 			if (LOG.isErrorEnabled()) {
 				LOG.error("Emit failed due to: {}", StringUtils.stringifyException(e));
