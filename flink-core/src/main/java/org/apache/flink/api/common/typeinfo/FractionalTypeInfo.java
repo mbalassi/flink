@@ -26,9 +26,20 @@ import org.apache.flink.api.common.typeutils.TypeSerializer;
  */
 public class FractionalTypeInfo<T> extends NumericTypeInfo<T> {
 
-	protected FractionalTypeInfo(Class<T> clazz, Class<?>[] possibleCastTargetTypes,
-	                             TypeSerializer<T> serializer, Class<? extends
-			TypeComparator<T>> comparatorClass) {
+
+	protected FractionalTypeInfo(Class<T> clazz, Class<?>[] possibleCastTargetTypes, TypeSerializer<T> serializer, Class<? extends TypeComparator<T>> comparatorClass) {
+
 		super(clazz, possibleCastTargetTypes, serializer, comparatorClass);
 	}
 }
+
+/*
+
+    <<<<<<< HEAD
+    protected FractionalTypeInfo(Class<T> clazz, Class<?>[] possibleCastTargetTypes,
+                                 TypeSerializer<T> serializer, Class<? extends
+            TypeComparator<T>> comparatorClass) {
+        =======
+        protected FractionalTypeInfo(Class<T> clazz, Class<?>[] possibleCastTargetTypes, TypeSerializer<T> serializer, Class<? extends TypeComparator<T>> comparatorClass) {
+            >>>>>>> tmp_Blinq
+*/

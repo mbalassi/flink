@@ -31,6 +31,8 @@ import org.apache.flink.api.common.typeutils.{CompositeType, TypeComparator}
 
 import scala.collection.JavaConverters._
 
+import scala.collection.JavaConverters._
+
 /**
  * TypeInformation for Case Classes. Creation and access is different from
  * our Java Tuples so we have to treat them differently.
@@ -224,7 +226,7 @@ abstract class CaseClassTypeInfo[T <: Product](
     }
   }
 
-  override def toString = clazz.getSimpleName + "(" + fieldNames.zip(types).map {
+  override def toString = clazz.getName + "(" + fieldNames.zip(types).map {
     case (n, t) => n + ": " + t}
     .mkString(", ") + ")"
 }
