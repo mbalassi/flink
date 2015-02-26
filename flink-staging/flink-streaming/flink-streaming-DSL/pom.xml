@@ -63,12 +63,14 @@ under the License.
         </dependency>
 
         <!--copy from flink-linq-->
+<!--
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
             <version>${guava.version}</version>
             <scope>provided</scope>
         </dependency>
+-->
 
         <dependency>
             <groupId>org.apache.flink</groupId>
@@ -123,6 +125,12 @@ under the License.
             <type>test-jar</type>
             <scope>test</scope>
         </dependency>
+
+        <dependency>
+            <groupId>org.apache.flink</groupId>
+            <artifactId>flink-linq</artifactId>
+            <version>${project.version}</version>
+        </dependency>
         
     </dependencies>
     <build>
@@ -157,7 +165,6 @@ under the License.
                     </executions>
                 </plugin>
 
-                <!-- self-contained jars for each example -->
 
                 <!-- Scala Compiler -->
                 <plugin>
