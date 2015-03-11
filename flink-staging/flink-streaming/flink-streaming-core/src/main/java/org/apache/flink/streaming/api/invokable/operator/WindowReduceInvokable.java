@@ -120,6 +120,6 @@ public class WindowReduceInvokable<OUT> extends BatchReduceInvokable<OUT> {
 //				}
 //			}
 //		}
-	}
+//	}
 
 }
