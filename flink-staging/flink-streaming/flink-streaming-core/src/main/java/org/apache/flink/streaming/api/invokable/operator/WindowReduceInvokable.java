@@ -19,18 +19,17 @@ package org.apache.flink.streaming.api.invokable.operator;
 
 import org.apache.flink.api.common.functions.ReduceFunction;
 import org.apache.flink.configuration.Configuration;
-import org.apache.flink.streaming.api.invokable.util.DefaultTimeStamp;
-import org.apache.flink.streaming.api.invokable.util.TimeStamp;
+import org.apache.flink.streaming.api.windowing.helper.TimestampWrapper;
 
 public class WindowReduceInvokable<OUT> extends BatchReduceInvokable<OUT> {
 	private static final long serialVersionUID = 1L;
 	protected long startTime;
 	protected long nextRecordTime;
-	protected TimeStamp<OUT> timestamp;
+	protected TimestampWrapper<OUT> timestamp;
 	protected StreamWindow window;
 
 	public WindowReduceInvokable(ReduceFunction<OUT> reduceFunction, long windowSize,
-			long slideInterval, TimeStamp<OUT> timestamp) {
+			long slideInterval, TimestampWrapper<OUT> timestamp) {
 		super(reduceFunction, windowSize, slideInterval);
 		this.timestamp = timestamp;
 		this.startTime = timestamp.getStartTime();
@@ -41,9 +40,11 @@ public class WindowReduceInvokable<OUT> extends BatchReduceInvokable<OUT> {
 		super.open(config);
 		this.window = new StreamWindow();
 		this.batch = this.window;
-		if (timestamp instanceof DefaultTimeStamp) {
-			(new TimeCheck()).start();
-		}
+		
+		//We will not use SystemTimestamp, just skip to fix this...
+		//if (timestamp instanceof SystemTimestamp) {
+		//	(new TimeCheck()).start();
+		//}
 	}
 
 	protected class StreamWindow extends StreamBatch {
@@ -104,21 +105,21 @@ public class WindowReduceInvokable<OUT> extends BatchReduceInvokable<OUT> {
 
 	}
 
-	private class TimeCheck extends Thread {
-		@Override
-		public void run() {
-			while (true) {
-				try {
-					Thread.sleep(slideSize);
-				} catch (InterruptedException e) {
-				}
-				if (isRunning) {
-					window.checkWindowEnd(System.currentTimeMillis());
-				} else {
-					break;
-				}
-			}
-		}
+//	private class TimeCheck extends Thread {
+//		@Override
+//		public void run() {
+//			while (true) {
+//				try {
+//					Thread.sleep(slideSize);
+//				} catch (InterruptedException e) {
+//				}
+//				if (isRunning) {
+//					window.checkWindowEnd(System.currentTimeMillis());
+//				} else {
+//					break;
+//				}
+//			}
+//		}
 	}
 
 }
