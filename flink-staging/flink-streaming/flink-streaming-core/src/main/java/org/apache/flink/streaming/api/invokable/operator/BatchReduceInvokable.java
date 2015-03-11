@@ -55,28 +55,17 @@ public class BatchReduceInvokable<OUT> extends StreamInvokable<OUT, OUT> {
 	}
 
 	@Override
-	protected void immutableInvoke() throws Exception {
-		if ((reuse = recordIterator.next(reuse)) == null) {
-			throw new RuntimeException("DataStream must not be empty");
-		}
+	public void invoke() throws Exception {
+		readNext();
 
-		while (reuse != null) {
-			StreamBatch batch = getBatch(reuse);
+		while (nextRecord != null) {
+			StreamBatch batch = getBatch(nextRecord);
 
-			batch.reduceToBuffer(reuse.getObject());
-
-			resetReuse();
-			reuse = recordIterator.next(reuse);
+			batch.reduceToBuffer(nextRecord.getObject());
 		}
 
 		reduceLastBatch();
 
-	}
-
-	@Override
-	protected void mutableInvoke() throws Exception {
-		System.out.println("Immutable setting is used");
-		immutableInvoke();
 	}
 
 	protected StreamBatch getBatch(StreamRecord<OUT> next) {
