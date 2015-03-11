@@ -56,9 +56,8 @@ public class BatchReduceInvokable<OUT> extends StreamInvokable<OUT, OUT> {
 
 	@Override
 	public void invoke() throws Exception {
-		readNext();
-
-		while (nextRecord != null) {
+		
+		while (readNext() != null) {
 			StreamBatch batch = getBatch(nextRecord);
 
 			batch.reduceToBuffer(nextRecord.getObject());
