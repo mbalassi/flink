@@ -19,6 +19,7 @@ import org.apache.flink.streaming.api.windowing.policy.EvictionPolicy;
 import org.apache.flink.streaming.api.windowing.policy.TimeEvictionPolicy;
 import org.apache.flink.streaming.api.windowing.policy.TimeTriggerPolicy;
 import org.apache.flink.streaming.api.windowing.policy.TriggerPolicy;
+import org.apache.flink.streaming.util.TestStreamEnvironment;
 
 public class TestCase1 {
 
@@ -38,7 +39,7 @@ public class TestCase1 {
 
 	public static long runTest(long maxValue, long windowSize, long slideSize, int version) throws Exception {
 
-		StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironment(1);
+		StreamExecutionEnvironment env = new TestStreamEnvironment(1, 32);
 
 		Timestamp<Long> timestamp = new TrivialTimestamp();
 
@@ -92,8 +93,8 @@ public class TestCase1 {
 		long beginTime = System.currentTimeMillis();
 		env.execute("Example");
 		long duration = System.currentTimeMillis() - beginTime;
-		System.out.println("**********************************************\n DURATION: "
-				+ duration + "\n");
+//		System.out.println("**********************************************\n DURATION: "
+//				+ duration + "\n");
 		return duration;
 	}
 
