@@ -16,12 +16,7 @@
  * limitations under the License.
  */
 
-<<<<<<< HEAD:flink-core/src/main/java/org/apache/flink/util/AbstractID.java
-package org.apache.flink.util;
-=======
-
 package org.apache.flink.runtime;
->>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2:flink-runtime/src/main/java/org/apache/flink/runtime/AbstractID.java
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -160,19 +155,6 @@ public class AbstractID implements IOReadableWritable, Comparable<AbstractID>, j
 		out.writeLong(this.upperPart);
 	}
 
-<<<<<<< HEAD:flink-core/src/main/java/org/apache/flink/util/AbstractID.java
-=======
-	public void write(ByteBuffer buffer) {
-		buffer.putLong(this.lowerPart);
-		buffer.putLong(this.upperPart);
-	}
-
-	public void writeTo(ByteBuf buf) {
-		buf.writeLong(this.lowerPart);
-		buf.writeLong(this.upperPart);
-	}
-
->>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2:flink-runtime/src/main/java/org/apache/flink/runtime/AbstractID.java
 	// --------------------------------------------------------------------------------------------
 	
 	@Override

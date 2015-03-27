@@ -39,7 +39,6 @@ public abstract class TypeInformation<T> implements Serializable {
 	 * Returns the generic parameters of this type.
 	 *
 	 * @return The list of generic parameters. This list can be empty.
-<<<<<<< HEAD
 	 */
 	public List<TypeInformation<?>> getGenericParameters() {
 		// Return an empty list as the default implementation
@@ -51,8 +50,7 @@ public abstract class TypeInformation<T> implements Serializable {
 	 * to be hashable and comparable to be keys.
 	 *  
 	 * @return True, if the type can be used as a key, false otherwise.
-=======
->>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2
+
 	 */
 	public List<TypeInformation<?>> getGenericParameters() {
 		// Return an empty list as the default implementation

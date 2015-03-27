@@ -166,24 +166,6 @@ public abstract class CompositeType<T> extends TypeInformation<T> {
 	public boolean hasField(String fieldName) {
 		return getFieldIndex(fieldName) >= 0;
 	}
-<<<<<<< HEAD
-
-	/**
-	 * Returns the names of the composite fields of this type. The order of the returned array must
-	 * be consistent with the internal field index ordering.
-	 */
-	public abstract String[] getFieldNames();
-
-	/**
-	 * Returns the field index of the composite field of the given name.
-	 *
-	 * @return The field index or -1 if this type does not have a field of the given name.
-	 */
-	public abstract int getFieldIndex(String fieldName);
-
-	public static class InvalidFieldReferenceException extends IllegalArgumentException {
-=======
->>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2
 
 	/**
 	 * Returns the names of the composite fields of this type. The order of the returned array must
