@@ -21,7 +21,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.commons.lang3.Validate;
-import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.functions.FilterFunction;
 import org.apache.flink.api.common.functions.FlatMapFunction;
 import org.apache.flink.api.common.functions.FoldFunction;
@@ -214,10 +213,6 @@ public class DataStream<OUT> {
 		return environment;
 	}
 
-	protected ExecutionConfig getExecutionConfig() {
-		return environment.getConfig();
-	}
-
 	/**
 	 * Creates a new {@link DataStream} by merging {@link DataStream} outputs of
 	 * the same type with each other. The DataStreams merged using this operator
@@ -260,12 +255,17 @@ public class DataStream<OUT> {
 
 	/**
 	 * Creates a new {@link ConnectedDataStream} by connecting
+<<<<<<< HEAD
 	 * {@link DataStream} outputs of (possible) different types with each other.
 	 * The DataStreams connected using this operator can be used with
 	 * CoFunctions to apply joint transformations.
+=======
+	 * {@link DataStream} outputs of different type with each other. The
+	 * DataStreams connected using this operators can be used with CoFunctions.
+>>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2
 	 * 
 	 * @param dataStream
-	 *            The DataStream with which this stream will be connected.
+	 *            The DataStream with which this stream will be joined.
 	 * @return The {@link ConnectedDataStream}.
 	 */
 	public <R> ConnectedDataStream<OUT, R> connect(DataStream<R> dataStream) {
@@ -331,7 +331,7 @@ public class DataStream<OUT> {
 
 	private GroupedDataStream<OUT> groupBy(Keys<OUT> keys) {
 		return new GroupedDataStream<OUT>(this, clean(KeySelectorUtil.getSelectorForKeys(keys,
-				getType(), getExecutionConfig())));
+				getType(), environment.getConfig())));
 	}
 
 	/**
@@ -509,10 +509,9 @@ public class DataStream<OUT> {
 	}
 
 	/**
-	 * Applies a reduce transformation on the data stream. The returned stream
-	 * contains all the intermediate values of the reduce transformation. The
-	 * user can also extend the {@link RichReduceFunction} to gain access to
-	 * other features provided by the
+	 * Applies a reduce transformation on the data stream. The user can also
+	 * extend the {@link RichReduceFunction} to gain access to other features
+	 * provided by the
 	 * {@link org.apache.flink.api.common.functions.RichFunction} interface.
 	 * 
 	 * @param reducer
@@ -660,8 +659,7 @@ public class DataStream<OUT> {
 	 * @return The transformed DataStream.
 	 */
 	public SingleOutputStreamOperator<OUT, ?> sum(String field) {
-		return aggregate((AggregationFunction<OUT>) SumAggregator.getSumFunction(field, getType(),
-				getExecutionConfig()));
+		return aggregate((AggregationFunction<OUT>) SumAggregator.getSumFunction(field, getType()));
 	}
 
 	/**
@@ -692,7 +690,7 @@ public class DataStream<OUT> {
 	 */
 	public SingleOutputStreamOperator<OUT, ?> min(String field) {
 		return aggregate(ComparableAggregator.getAggregator(field, getType(), AggregationType.MIN,
-				false, getExecutionConfig()));
+				false));
 	}
 
 	/**
@@ -723,7 +721,7 @@ public class DataStream<OUT> {
 	 */
 	public SingleOutputStreamOperator<OUT, ?> max(String field) {
 		return aggregate(ComparableAggregator.getAggregator(field, getType(), AggregationType.MAX,
-				false, getExecutionConfig()));
+				false));
 	}
 
 	/**
@@ -743,7 +741,7 @@ public class DataStream<OUT> {
 	 */
 	public SingleOutputStreamOperator<OUT, ?> minBy(String field, boolean first) {
 		return aggregate(ComparableAggregator.getAggregator(field, getType(),
-				AggregationType.MINBY, first, getExecutionConfig()));
+				AggregationType.MINBY, first));
 	}
 
 	/**
@@ -763,7 +761,7 @@ public class DataStream<OUT> {
 	 */
 	public SingleOutputStreamOperator<OUT, ?> maxBy(String field, boolean first) {
 		return aggregate(ComparableAggregator.getAggregator(field, getType(),
-				AggregationType.MAXBY, first, getExecutionConfig()));
+				AggregationType.MAXBY, first));
 	}
 
 	/**
@@ -874,15 +872,14 @@ public class DataStream<OUT> {
 
 	/**
 	 * Create a {@link WindowedDataStream} that can be used to apply
-	 * transformation like {@link WindowedDataStream#reduceWindow},
-	 * {@link WindowedDataStream#mapWindow} or aggregations on preset
-	 * chunks(windows) of the data stream. To define windows a
-	 * {@link WindowingHelper} such as {@link Time}, {@link Count} and
+	 * transformation like {@link WindowedDataStream#reduce} or aggregations on
+	 * preset chunks(windows) of the data stream. To define the windows one or
+	 * more {@link WindowingHelper} such as {@link Time}, {@link Count} and
 	 * {@link Delta} can be used.</br></br> When applied to a grouped data
 	 * stream, the windows (evictions) and slide sizes (triggers) will be
 	 * computed on a per group basis. </br></br> For more advanced control over
 	 * the trigger and eviction policies please refer to
-	 * {@link #window(trigger, eviction)} </br> </br> For example to create a
+	 * {@link #window(triggers, evicters)} </br> </br> For example to create a
 	 * sum every 5 seconds in a tumbling fashion:</br>
 	 * {@code ds.window(Time.of(5, TimeUnit.SECONDS)).sum(field)} </br></br> To
 	 * create sliding windows use the
@@ -892,34 +889,34 @@ public class DataStream<OUT> {
 	 * {@code ds.window(Time.of(5, TimeUnit.SECONDS)).every(Time.of(3,
 	 *       TimeUnit.SECONDS)).sum(field)}
 	 * 
-	 * @param policyHelper
+	 * @param policyHelpers
 	 *            Any {@link WindowingHelper} such as {@link Time},
-	 *            {@link Count} and {@link Delta} to define the window size.
+	 *            {@link Count} and {@link Delta} to define the window.
 	 * @return A {@link WindowedDataStream} providing further operations.
 	 */
 	@SuppressWarnings({ "rawtypes", "unchecked" })
-	public WindowedDataStream<OUT> window(WindowingHelper policyHelper) {
-		return new WindowedDataStream<OUT>(this, policyHelper);
+	public WindowedDataStream<OUT> window(WindowingHelper... policyHelpers) {
+		return new WindowedDataStream<OUT>(this, policyHelpers);
 	}
 
 	/**
 	 * Create a {@link WindowedDataStream} using the given {@link TriggerPolicy}
-	 * and {@link EvictionPolicy}. Windowing can be used to apply transformation
-	 * like {@link WindowedDataStream#reduceWindow},
-	 * {@link WindowedDataStream#mapWindow} or aggregations on preset
-	 * chunks(windows) of the data stream.</br></br>For most common use-cases
-	 * please refer to {@link #window(WindowingHelper)}
+	 * s and {@link EvictionPolicy}s. Windowing can be used to apply
+	 * transformation like {@link WindowedDataStream#reduce} or aggregations on
+	 * preset chunks(windows) of the data stream.</br></br>For most common
+	 * use-cases please refer to {@link #window(WindowingHelper...)}
 	 * 
-	 * @param trigger
-	 *            The {@link TriggerPolicy} that will determine how often the
-	 *            user function is called on the window.
-	 * @param eviction
-	 *            The {@link EvictionPolicy} that will determine the number of
-	 *            elements in each time window.
+	 * @param triggers
+	 *            The list of {@link TriggerPolicy}s that will determine how
+	 *            often the user function is called on the window.
+	 * @param evicters
+	 *            The list of {@link EvictionPolicy}s that will determine the
+	 *            number of elements in each time window.
 	 * @return A {@link WindowedDataStream} providing further operations.
 	 */
-	public WindowedDataStream<OUT> window(TriggerPolicy<OUT> trigger, EvictionPolicy<OUT> eviction) {
-		return new WindowedDataStream<OUT>(this, trigger, eviction);
+	public WindowedDataStream<OUT> window(List<TriggerPolicy<OUT>> triggers,
+			List<EvictionPolicy<OUT>> evicters) {
+		return new WindowedDataStream<OUT>(this, triggers, evicters);
 	}
 
 	/**

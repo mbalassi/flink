@@ -175,8 +175,45 @@ object JobManagerMessages {
    * @param runtime
    * @param accumulatorResults
    */
+<<<<<<< HEAD:flink-runtime/src/main/scala/org/apache/flink/runtime/messages/JobManagerMessages.scala
   case class JobResultSuccess(jobID: JobID, runtime: Long,
                               accumulatorResults: java.util.Map[String, AnyRef]) {}
+=======
+  case class JobResultSuccess(jobID: JobID, runtime: Long, accumulatorResults: java.util.Map[String,
+    AnyRef]) extends JobResult {}
+
+  /**
+   * Denotes a cancellation of the job.
+   * @param jobID
+   * @param msg
+   */
+  case class JobResultCanceled(jobID: JobID, msg: String) extends JobResult
+
+  /**
+   * Denotes a failed job execution.
+   * @param jobID
+   * @param msg
+   */
+  case class JobResultFailed(jobID: JobID, msg:String) extends JobResult
+
+  sealed trait SubmissionResponse{
+    def jobID: JobID
+  }
+
+  /**
+   * Denotes a successful job submission.
+   * @param jobID
+   */
+  case class SubmissionSuccess(jobID: JobID) extends SubmissionResponse
+
+  /**
+   * Denotes a failed job submission. The cause of the failure is denoted by [[cause]].
+   *
+   * @param jobID
+   * @param cause of the submission failure
+   */
+  case class SubmissionFailure(jobID: JobID, cause: Throwable) extends SubmissionResponse
+>>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2:flink-runtime/src/main/scala/org/apache/flink/runtime/messages/JobmanagerMessages.scala
 
   sealed trait CancellationResponse{
     def jobID: JobID

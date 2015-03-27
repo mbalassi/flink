@@ -134,7 +134,7 @@ public class StreamVertex<IN, OUT> extends AbstractInvokable implements StreamTa
 
 	protected void setInvokable() {
 		userInvokable = configuration.getUserInvokable(userClassLoader);
-		userInvokable.setup(this);
+		userInvokable.setup(this, getExecutionConfig());
 	}
 
 	public String getName() {

@@ -52,7 +52,7 @@ public class BlobLibraryCacheManagerTest {
 
 		try {
 			server = new BlobServer(new Configuration());
-			InetSocketAddress blobSocketAddress = new InetSocketAddress(server.getPort());
+			InetSocketAddress blobSocketAddress = new InetSocketAddress(server.getServerPort());
 			BlobClient bc = new BlobClient(blobSocketAddress);
 
 			keys.add(bc.put(buf));

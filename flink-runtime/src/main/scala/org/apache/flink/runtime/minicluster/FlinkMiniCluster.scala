@@ -18,9 +18,6 @@
 
 package org.apache.flink.runtime.minicluster
 
-import java.net.InetAddress
-import akka.pattern.Patterns.gracefulStop
-
 import akka.pattern.ask
 import akka.actor.{ActorRef, ActorSystem}
 import com.typesafe.config.Config
@@ -50,9 +47,7 @@ abstract class FlinkMiniCluster(val userConfiguration: Configuration,
   //                           Construction
   // --------------------------------------------------------------------------
 
-  // NOTE: THIS MUST BE getByName("localhost"), which is 127.0.0.1 and
-  // not getLocalHost(), which may be 127.0.1.1
-  val HOSTNAME = InetAddress.getByName("localhost").getHostAddress()
+  val HOSTNAME = "localhost"
 
   val timeout = AkkaUtils.getTimeout(userConfiguration)
 
@@ -84,9 +79,14 @@ abstract class FlinkMiniCluster(val userConfiguration: Configuration,
 
   def generateConfiguration(userConfiguration: Configuration): Configuration
 
+<<<<<<< HEAD
   def startJobManager(system: ActorSystem): ActorRef
 
   def startTaskManager(index: Int, system: ActorSystem): ActorRef
+=======
+  def startJobManager(implicit system: ActorSystem): ActorRef
+  def startTaskManager(index: Int)(implicit system: ActorSystem): ActorRef
+>>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2
 
   def getJobManagerAkkaConfig: Config = {
     if (singleActorSystem) {
@@ -140,16 +140,6 @@ abstract class FlinkMiniCluster(val userConfiguration: Configuration,
   }
 
   def shutdown(): Unit = {
-    val futures = taskManagerActors map {
-        gracefulStop(_, timeout)
-    }
-
-    val future = gracefulStop(jobManagerActor, timeout)
-
-    implicit val executionContext = AkkaUtils.globalExecutionContext
-
-    Await.ready(Future.sequence(future +: futures), timeout)
-
     if(!singleActorSystem){
       taskManagerActorSystems foreach {
         _.shutdown()

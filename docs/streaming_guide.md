@@ -34,7 +34,7 @@ Flink Streaming is an extension of the batch Flink API for high-throughput, low-
 Flink Streaming API
 -----------
 
-The Streaming API is currently part of the *flink-staging* Maven project. All relevant classes are located in the *org.apache.flink.streaming* package.
+The Streaming API is currently part of the *addons* Maven project. All relevant classes are located in the *org.apache.flink.streaming* package.
 
 Add the following dependency to your `pom.xml` to use the Flink Streaming.
 
@@ -267,11 +267,16 @@ Usage: `dataStream.forward()`
 Usage: `dataStream.shuffle()`
  * *Distribute*: Distribute partitioning directs the output data stream to the next operator in a round-robin fashion, achieving a balanced distribution.
 Usage: `dataStream.distribute()`
+<<<<<<< HEAD
  * *Field/Key*: Field/Key partitioning partitions the output data stream based on the hash code of a selected key of the tuples. Data points with the same key are directed to the same operator instance. This partition is applied when using the `groupBy` operator.
+=======
+ * *Field/Key*: Field/Key partitioning partitions the output data stream based on the hash code of a selected key of the tuples. Data points with the same key are directed to the same operator instance. The user can define keys by field positions (for tuple and array types), field expressions (for Pojo types) and custom keys using the `KeySelector` interface. 
+Usage: `dataStream.groupBy(keys)`
+>>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2
  * *Broadcast*: Broadcast partitioning sends the output data stream to all parallel instances of the next operator.
 Usage: `dataStream.broadcast()`
- * *Global*: All data points end up at the same operator instance. To achieve this use the parallelism setting of the corresponding operator.
-Usage: `operator.setParallelism(1)`
+ * *Global*: All data are sent to the first instance of the next processing operator. Use this option with care to avoid serious performance bottlenecks.
+Usage: `dataStream.global()`
 
 ### Connecting to the outside world
 
@@ -549,7 +554,7 @@ The Flink Streaming API supports different types of pre-defined aggregation oper
 
 Types of aggregations: `sum(field)`, `min(field)`, `max(field)`, `minBy(field, first)`, `maxBy(field, first)`.
 
-With `sum`, `min`, and `max` for every incoming tuple the selected field is replaced with the current aggregated value. Fields can be selected using either field positions or field expressions (similarly to grouping).
+With `sum`, `min`, and `max` for every incoming tuple the selected field is replaced with the current aggregated value. Fields can be selected using either field positions or field expressions (similarly to grouping).  
 
 With `minBy` and `maxBy` the output of the operator is the element with the current minimal or maximal value at the given field. If more components share the minimum or maximum value, the user can decide if the operator should return the first or last element. This can be set by the `first` boolean parameter.
 
@@ -557,25 +562,24 @@ There is also an option to apply user defined aggregations with the usage of the
 
 ### Window operators
 
+<<<<<<< HEAD
 Flink streaming provides very flexible windowing semantics to create arbitrary windows (also referred to as discretizations or slices) of the data streams and apply reduce, map or aggregation transformations on the windows acquired. Windowing can be used for instance to create rolling aggregations of the most recent N elements, where N could be defined by Time, Count or any arbitrary user defined measure.
+=======
+Flink streaming provides very flexible windowing semantics to create arbitrary windows (also referred to as discretizations or slices) of the data streams and apply reduction or aggregation operations on the windows acquired. Windowing can be used for instance to create rolling aggregations of the most recent N elements, where N could be defined by Time, Count or any arbitrary user defined measure.
+>>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2
 
-The user can control the size (eviction) of the windows and the frequency of reduction or aggregation calls (trigger) on them in an intuitive API (some examples):
+The user can control the size (eviction) of the windows and the frequency of reduction or aggregation calls (triggers) on them in an intuitive API:
 
- * `dataStream.window(eviction).every(trigger).reduceWindow(…)`
- * `dataStream.window(…).every(…).mapWindow(…).flatten()`
- * `dataStream.window(…).every(…).groupBy(…).aggregate(…).getDiscretizedStream()`
 
+<<<<<<< HEAD
 The core abstraction of the Windowing semantics is the `WindowedDataStream` and the `StreamWindow`. The `WindowedDataStream` is created when we call the `window(…)` method of the DataStream and represents the windowed discretisation of the underlying stream. The user can think about it simply as a `DataStream<StreamWindow<T>>` where additional API functions are supplied to provide efficient transformations of individual windows. 
+=======
+ * `dataStream.window(…).every(…).reduce(…)`
+ * `dataStream.window(…).every(…).reduceGroup(…)`
+ * `dataStream.window(…).every(…).aggregate(…)`
+>>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2
 
-The result of a window transformation is again a `WindowedDataStream` which can also be used to further transform the resulting windows. In this sense, window transformations define mapping from stream windows to stream windows.
-
-The user has different ways of using the a result of a window operation:
-
- * `windowedDataStream.flatten()` - streams the results element wise and returns a `DataStream<T>` where T is the type of the underlying windowed stream
- * `windowedDataStream.getDiscretizedStream()` - returns a `DataStream<StreamWindow<T>>` for applying some advanced logic on the stream windows itself
- * Calling any window transformation further transforms the windows, while preserving the windowing logic
-
-The next example would create windows that hold elements of the last 5 seconds, and the user defined transformation would be executed on the windows every second (sliding the window by 1 second):
+The next example would create windows that hold elements of the last 5 seconds, and the user defined aggregation/reduce is executed on the windows every second (sliding the window by 1 second):
 
 <div class="codetabs" markdown="1">
 <div data-lang="java" markdown="1">
@@ -590,7 +594,7 @@ dataStream.window(Time.of(5, TimeUnit.SECONDS)).every(Time.of(1, TimeUnit.SECOND
 </div>
 </div>
 
-This approach is often referred to as policy based windowing. Different policies (count, time, etc.) can be mixed as well, for example to downsample our stream, a window that takes the latest 100 elements of the stream every minute is created as follows:
+This approach is often referred to as policy based windowing. Different policies (count, time, etc.) can be mixed as well; for example to downsample our stream, a window that takes the latest 100 elements of the stream every minute is created as follows:
 
 <div class="codetabs" markdown="1">
 <div data-lang="java" markdown="1">
@@ -605,7 +609,11 @@ dataStream.window(Count.of(100)).every(Time.of(1, TimeUnit.MINUTES))
 </div>
 </div>
 
+<<<<<<< HEAD
 The user can also omit the `every(…)` call which results in a tumbling window emptying the window after every transformation call.
+=======
+The user can also omit the `.every(…)` call which results in a tumbling window emptying the window after every aggregation call.
+>>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2
 
 Several predefined policies are provided in the API, including delta-based, count-based and time-based policies. These can be accessed through the static methods provided by the `PolicyHelper` classes:
 
@@ -613,19 +621,24 @@ Several predefined policies are provided in the API, including delta-based, coun
  * `Count.of(…)`
  * `Delta.of(…)`
 
-For detailed description of these policies please refer to the [Javadocs](http://flink.apache.org/docs/latest/api/java/).
+For detailed description of these policies please refer to the javadocs.
 
 #### Policy based windowing
 The policy based windowing is a highly flexible way to specify stream discretisation also called windowing semantics. Two types of policies are used for such a specification:
 
  * `TriggerPolicy` defines when to trigger the reduce UDF on the current window and emit the result. In the API it completes a window statement such as: `window(…).every(…)`, while the triggering policy is passed within `every`. 
 
+When multiple triggers are used, the reduction or aggregation is executed at every trigger.
+
 Several predefined policies are provided in the API, including delta-based, punctuation based, count-based and time-based policies. Policies are in general UDFs and can implement any custom behaviour.
 
  * `EvictionPolicy` defines the length of a window as a means of a predicate for evicting tuples when they are no longer needed. In the API this can be defined by the `window(…)` operation on a stream. There are mostly the same predefined policy types provided as for trigger policies.
 
-In addition to the `dataStream.window(…).every(…)` style users can specifically pass the trigger and eviction policies during the window call:
+When multiple evictions are used the strictest one controls the elements in the window. For instance in the call `dataStream.window(Count.of(5), Time.of(1,TimeUnit.SECONDS)).every(…)` produces a window of maximum 5 elements which have arrived in the last second.
 
+In addition to the `dataStream.window(…).every(…)` style users can specifically pass the list of trigger and eviction policies during the window call:
+
+<<<<<<< HEAD
 <div class="codetabs" markdown="1">
 <div data-lang="java" markdown="1">
 {% highlight java %}
@@ -642,13 +655,20 @@ dataStream.window(triggerPolicy, evictionPolicy)
 </div>
 
 By default most triggers can only trigger when a new element arrives. This might not be suitable for all the use-cases, especially when time based windowing is applied. To also provide triggering between elements so called active policies (the two interfaces controlling this special behaviour is ActiveTriggerPolicy and CentralActiveTrigger) can be used. The predefined time-based policies are already implemented in such a way and can hold as an example for user defined active policy implementations. 
+=======
+~~~java
+dataStream.window(ListOfTriggerPolicies, ListOfEvictionPolicies)
+~~~
+
+By default most triggers can only trigger when a new element arrives. This might not be suitable for all the use-cases, especially when time based windowing is applied. To also provide trigering between elements so called active policies can be used. The predefined time-based policies are already implemented in such a way and can hold as an example for user defined active policy implementations. 
+>>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2
 
 Time-based trigger and eviction policies can work with user defined `TimeStamp` implementations, these policies already cover most use cases.
  
 #### Reduce on windowed data streams
-The `WindowedDataStream<T>.reduceWindow(ReduceFunction<T>)` transformation calls the user-defined `ReduceFunction` at every trigger on the records currently in the window. The user can also use the different pre-implemented streaming aggregations such as `sum, min, max, minBy` and `maxBy`.
+The transformation calls a user-defined `ReduceFunction` at every trigger on the records currently in the window. The user can also use the different streaming aggregations.
 
-The following is an example for a window reduce that sums the elements in the last minute with 10 seconds slide interval:
+A window reduce that sums the elements in the last minute with 10 seconds slide interval:
 
 <div class="codetabs" markdown="1">
 <div data-lang="java" markdown="1">
@@ -666,9 +686,10 @@ dataStream.window(Time.of(1, TimeUnit.MINUTES)).every(Time.of(10,TimeUnit.SECOND
 </div>
 
 
-#### Map on windowed data streams
-The `WindowedDataStream<T>.mapWindow(WindowMapFunction<T,O>)` transformation calls  `mapWindow(…)` for each `StreamWindow` in the discretised stream providing access to all elements in the window through the iterable interface. At each function call the output `StreamWindow<O>` will consist of all the elements collected to the collector. This allows a straightforward way of mapping one stream window to another.
+#### ReduceGroup on windowed data streams
+The transformation calls a `GroupReduceFunction` for each data batch or data window similarly as a reduce, but providing access to all elements in the window.
 
+<<<<<<< HEAD
 <div class="codetabs" markdown="1">
 <div data-lang="java" markdown="1">
 {% highlight java %}
@@ -688,10 +709,18 @@ windowedDataStream.mapWindow(windowMapFunction)
 Calling the `groupBy(…)` method on a windowed stream groups the elements by the given fields inside the stream windows. The window sizes (evictions) and slide sizes (triggers) will be calculated on the whole stream (in a global fashion), but the user defined functions will be applied on a per group basis. This means that for a call `windowedStream.groupBy(…).reduceWindow(…)` will transform each window into another window consisting of as many elements as groups, with the reduced values per key. Similarly the `mapWindow` transformation is applied per group as well.
 
 The user can also create discretisation on a per group basis calling `window(…).every(…)` on an already grouped data stream. This will apply the discretisation logic independently for each key.
+=======
+~~~java
+dataStream.window(…).every(…).reduceGroup(reducer);
+~~~
 
-To highlight the differences let us look at two examples.
+#### Grouped operations on windowed data streams
+Calling the `.groupBy(fields)` method on a windowed stream groups the elements by the given fields inside the windows. The window sizes (evictions) and slide sizes (triggers) will be calculated on the whole stream (in a central fashion), but the user defined functions will be applied on a per group basis.
 
-To get the maximal value for each key on the last 100 elements (global) we use the first approach:
+The user can also create windows and triggers on a per group basis calling `.window(…).every(…)` on an already grouped data stream. To highlight the differences let us look at to examples.
+>>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2
+
+To get the maximal value by key on the last 100 elements we use the first approach:
 
 <div class="codetabs" markdown="1">
 <div data-lang="java" markdown="1">
@@ -708,7 +737,9 @@ dataStream.window(Count.of(100)).every(…).groupBy(groupingField).max(field)
 
 </div>
 
-Using this approach we took the last 100 elements, divided it into groups by key then applied the aggregation. To create fixed size windows for every key we need to reverse the order of the groupBy call. So to take the max for the last 100 elements in Each group:
+Using this approach we took the last 100 elements, divided it into groups by key then applied the aggregation.
+
+To create fixed size windows for every key we need to reverse the order of the groupBy call. So to take the max for the last 100 elements in Each group:
 
 <div class="codetabs" markdown="1">
 <div data-lang="java" markdown="1">
@@ -727,6 +758,7 @@ dataStream.groupBy(groupingField).window(Count.of(100)).every(…).max(field)
 
 This will create separate windows for different keys and apply the trigger and eviction policies on a per group basis.
 
+<<<<<<< HEAD
 #### Applying multiple transformations on a window
 Using the `WindowedDataStream` abstraction we can apply several transformations one after another on the discretised streams without having to re-discretise it:
 
@@ -761,6 +793,11 @@ For example `dataStream.window(Count.of(100)).maxBy(field)` would create global 
 ### Temporal database style operators
 
 While database style operators like joins (on key) and crosses are hard to define properly on data streams, a straightforward implementation is to apply these operators on windows of the data streams. 
+=======
+### Temporal database style operators
+
+While database style operators like joins (on key) and crosses are hard to define properly on data streams, a straight forward implementation is to apply these operators on windows of the data streams.
+>>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2
 
 Currently join and cross operators are supported on time windows.
 
@@ -772,6 +809,7 @@ The following code shows a default Join transformation using field position keys
 <div data-lang="java" markdown="1">
 {% highlight java %}
 dataStream1.join(dataStream2)
+<<<<<<< HEAD
     .onWindow(windowing_params)
     .where(key_in_first)
     .equalTo(key_in_second);
@@ -786,6 +824,12 @@ dataStream1.join(dataStream2)
 {% endhighlight %}
 </div>
 </div>
+=======
+		.onWindow(windowing_params)
+		.where(key_in_first)
+		.equalTo(key_in_second);
+~~~
+>>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2
 
 The Cross transformation combines two DataStreams into one DataStream. It builds all pairwise combinations of the elements of both input DataStreams in the current window, i.e., it builds a temporal Cartesian product.
 
@@ -906,7 +950,11 @@ DataStream<Integer> odd = split.select("odd");
 {% endhighlight %}
 In the above example the data stream named “even” will only contain elements that are directed to the output named “even”. The user can of course further transform these new stream by for example squaring only the even elements.
 
+<<<<<<< HEAD
 Data streams only receive the elements directed to selected output names. The user can also select multiple output names by `splitStream.select(“output1”, “output2”, …)`. It is common that a stream listens to all the outputs, so `split.selectAll()` provides this functionality without having to select all names.
+=======
+Data streams only receive the elements directed to selected output names. The user can also select multiple output names by `splitStream.select(“output1”, “output2”…)`. It is common that a stream listens to all the outputs, by simply applying the transformation on the split data stream without select provides this functionality.
+>>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2
 
 The outputs of an operator are directed by implementing a selector function (implementing the `OutputSelector` interface):
 
@@ -920,7 +968,7 @@ For example to split even and odd numbers:
 
 {% highlight java %}
 @Override
-Iterable<String> select(Integer value) {
+Iterable<String> select(Integer value) {	
 
     List<String> outputs = new ArrayList<String>();
 
@@ -1099,10 +1147,15 @@ For a detailed Java 8 Guide please refer to the [Java 8 Programming Guide](java8
 <div data-lang="java8" markdown="1">
 {% highlight java %}
 SplitDataStream<Integer> split = someDataStream
+<<<<<<< HEAD
     .split(x -> Arrays.asList(String.valueOf(x % 2)));
 {% endhighlight %}
 </div>
 </div>
+=======
+					.split(x -> Arrays.asList(String.valueOf(x % 2)));
+~~~
+>>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2
 
 Operator Settings
 ----------------
@@ -1137,8 +1190,13 @@ env.genereateSequence(1,10).map(myMap).setBufferTimeout(timeoutMillis)
 </div>
 </div>
 
+<<<<<<< HEAD
 To maximise the throughput the user can call `setBufferTimeout(-1)` which will remove the timeout and buffers will only be flushed when they are full.
 To minimise latency, set the timeout to a value close to 0 (for example 5 or 10 ms). Theoretically a buffer timeout of 0 will cause all outputs to be flushed when produced, but this setting should be avoided because it can cause severe performance degradation.
+=======
+To maximise the throughput the user can call `.setBufferTimeout(-1)` which will remove the timeout and buffers will only be flushed when they are full.
+To minimise latency, set the timeout to a value close to 0 (fro example 5 or 10 ms). Theoretically a buffer timeout of 0 will cause all outputs to be flushed when produced, but this setting should be avoided because it can cause severe performance degradation.
+>>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2
 
 
 [Back to top](#top)
@@ -1162,7 +1220,13 @@ This connector provides access to data streams from [Apache Kafka](https://kafka
 * If the Kafka and Zookeeper servers are running on a remote machine, then the `advertised.host.name` setting in the `config/server.properties` file the  must be set to the machine's IP address.
 
 #### Kafka Source
+<<<<<<< HEAD
 The standard `KafkaSource` is a Kafka consumer providing an access to one topic.
+=======
+A class providing an interface for receiving data from Kafka.
+
+The followings have to be provided for the `KafkaSource(..)` constructor in order:
+>>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2
 
 The following parameters have to be provided for the `KafkaSource(...)` constructor:
 

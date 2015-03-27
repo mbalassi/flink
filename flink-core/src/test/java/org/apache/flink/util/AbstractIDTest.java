@@ -22,10 +22,16 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+<<<<<<< HEAD:flink-core/src/test/java/org/apache/flink/util/AbstractIDTest.java
 import org.apache.flink.core.testutils.CommonTestUtils;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
+=======
+import org.junit.Test;
+
+import org.apache.flink.runtime.testutils.CommonTestUtils;
+>>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2:flink-runtime/src/test/java/org/apache/flink/runtime/AbstractIDTest.java
 
 /**
  * This class contains tests for the {@link org.apache.flink.util.AbstractID} class.
@@ -49,6 +55,7 @@ public class AbstractIDTest {
 			fail(e.getMessage());
 		}
 	}
+<<<<<<< HEAD:flink-core/src/test/java/org/apache/flink/util/AbstractIDTest.java
 
 	@Test
 	public void testConvertToBytes() {
@@ -69,6 +76,9 @@ public class AbstractIDTest {
 		}
 	}
 
+=======
+	
+>>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2:flink-runtime/src/test/java/org/apache/flink/runtime/AbstractIDTest.java
 	@Test
 	public void testCompare() {
 		try {

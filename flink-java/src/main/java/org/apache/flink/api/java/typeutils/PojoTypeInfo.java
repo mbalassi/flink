@@ -39,21 +39,12 @@ import org.apache.flink.api.java.operators.Keys.ExpressionKeys;
 
 import com.google.common.base.Joiner;
 
+
 /**
- * TypeInformation for "Java Beans"-style types. Flink refers to them as POJOs,
- * since the conditions are slightly different from Java Beans.
- * A type is considered a FLink POJO type, if it fulfills the conditions below.
- * <ul>
- *   <li>It is a public class, and standalone (not a non-static inner class)</li>
- *   <li>It has a public no-argument constructor.</li>
- *   <li>All fields are either public, or have public getters and setters.</li>
- * </ul>
- * 
- * @param <T> The type represented by this type information.
+ * TypeInformation for arbitrary (they have to be java-beans-style) java objects (what we call POJO).
+ *
  */
 public class PojoTypeInfo<T> extends CompositeType<T> {
-	
-	private static final long serialVersionUID = 1L;
 
 	private final static String REGEX_FIELD = "[\\p{L}_\\$][\\p{L}\\p{Digit}_\\$]*";
 	private final static String REGEX_NESTED_FIELDS = "("+REGEX_FIELD+")(\\.(.+))?";
@@ -67,7 +58,7 @@ public class PojoTypeInfo<T> extends CompositeType<T> {
 	private final Class<T> typeClass;
 
 	private PojoField[] fields;
-	
+
 	private int totalFields;
 
 	public PojoTypeInfo(Class<T> typeClass, List<PojoField> fields) {
@@ -81,7 +72,7 @@ public class PojoTypeInfo<T> extends CompositeType<T> {
 			}
 		});
 		this.fields = tempFields.toArray(new PojoField[tempFields.size()]);
-		
+
 		// check if POJO is public
 		if(!Modifier.isPublic(typeClass.getModifiers())) {
 			throw new RuntimeException("POJO "+typeClass+" is not public");
@@ -106,7 +97,7 @@ public class PojoTypeInfo<T> extends CompositeType<T> {
 	public int getArity() {
 		return fields.length;
 	}
-	
+
 	@Override
 	public int getTotalFields() {
 		return totalFields;
@@ -121,7 +112,7 @@ public class PojoTypeInfo<T> extends CompositeType<T> {
 	public boolean isKeyType() {
 		return Comparable.class.isAssignableFrom(typeClass);
 	}
-	
+
 
 	@Override
 	public void getFlatFields(String fieldExpression, int offset, List<FlatFieldDescriptor> result) {

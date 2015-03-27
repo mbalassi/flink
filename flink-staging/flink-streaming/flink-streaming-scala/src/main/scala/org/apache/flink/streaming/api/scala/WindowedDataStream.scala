@@ -18,22 +18,27 @@
 
 package org.apache.flink.streaming.api.scala
 
+import org.apache.flink.api.java.typeutils.TupleTypeInfoBase
+
 import scala.Array.canBuildFrom
 import scala.collection.JavaConversions.iterableAsScalaIterable
 import scala.reflect.ClassTag
 
+<<<<<<< HEAD
 import org.apache.flink.api.common.functions.{FoldFunction, ReduceFunction}
+=======
+import org.apache.flink.api.common.functions.GroupReduceFunction
+import org.apache.flink.api.common.functions.ReduceFunction
+>>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.functions.KeySelector
-import org.apache.flink.api.java.typeutils.TupleTypeInfoBase
 import org.apache.flink.api.streaming.scala.ScalaStreamingAggregator
 import org.apache.flink.streaming.api.datastream.{WindowedDataStream => JavaWStream}
-import org.apache.flink.streaming.api.function.WindowMapFunction
 import org.apache.flink.streaming.api.function.aggregation.AggregationFunction.AggregationType
 import org.apache.flink.streaming.api.function.aggregation.SumFunction
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment.clean
-import org.apache.flink.streaming.api.windowing.StreamWindow
 import org.apache.flink.streaming.api.windowing.helper.WindowingHelper
+import org.apache.flink.streaming.api.windowing.helper._
 import org.apache.flink.util.Collector
 
 class WindowedDataStream[T](javaStream: JavaWStream[T]) {
@@ -43,13 +48,13 @@ class WindowedDataStream[T](javaStream: JavaWStream[T]) {
    * This controls how often the user defined function will be triggered on
    * the window.
    */
-  def every(windowingHelper: WindowingHelper[_]): WindowedDataStream[T] =
-    javaStream.every(windowingHelper)
+  def every(windowingHelper: WindowingHelper[_]*): WindowedDataStream[T] =
+    javaStream.every(windowingHelper: _*)
 
   /**
    * Groups the elements of the WindowedDataStream using the given
    * field positions. The window sizes (evictions) and slide sizes
-   * (triggers) will be calculated on the whole stream (in a global fashion),
+   * (triggers) will be calculated on the whole stream (in a central fashion),
    * but the user defined functions will be applied on a per group basis.
    * </br></br> To get windows and triggers on a per group basis apply the
    * DataStream.window(...) operator on an already grouped data stream.
@@ -60,7 +65,7 @@ class WindowedDataStream[T](javaStream: JavaWStream[T]) {
   /**
    * Groups the elements of the WindowedDataStream using the given
    * field expressions. The window sizes (evictions) and slide sizes
-   * (triggers) will be calculated on the whole stream (in a global fashion),
+   * (triggers) will be calculated on the whole stream (in a central fashion),
    * but the user defined functions will be applied on a per group basis.
    * </br></br> To get windows and triggers on a per group basis apply the
    * DataStream.window(...) operator on an already grouped data stream.
@@ -72,7 +77,7 @@ class WindowedDataStream[T](javaStream: JavaWStream[T]) {
   /**
    * Groups the elements of the WindowedDataStream using the given
    * KeySelector function. The window sizes (evictions) and slide sizes
-   * (triggers) will be calculated on the whole stream (in a global fashion),
+   * (triggers) will be calculated on the whole stream (in a central fashion),
    * but the user defined functions will be applied on a per group basis.
    * </br></br> To get windows and triggers on a per group basis apply the
    * DataStream.window(...) operator on an already grouped data stream.
@@ -86,35 +91,17 @@ class WindowedDataStream[T](javaStream: JavaWStream[T]) {
     }
     javaStream.groupBy(keyExtractor)
   }
-  
-  /**
-   * Sets the window discretisation local, meaning that windows will be
-   * created in parallel at environment parallelism.
-   * 
-   */
-  def local(): WindowedDataStream[T] = javaStream.local
- 
-  /**
-   * Flattens the result of a window transformation returning the stream of window
-   * contents elementwise.
-   */
-  def flatten(): DataStream[T] = javaStream.flatten()
-  
-  /**
-   * Returns the stream of StreamWindows created by the window tranformation
-   */
-  def getDiscretizedStream(): DataStream[StreamWindow[T]] = javaStream.getDiscretizedStream()
 
   /**
    * Applies a reduce transformation on the windowed data stream by reducing
    * the current window at every trigger.
    *
    */
-  def reduceWindow(reducer: ReduceFunction[T]): WindowedDataStream[T] = {
+  def reduce(reducer: ReduceFunction[T]): DataStream[T] = {
     if (reducer == null) {
       throw new NullPointerException("Reduce function must not be null.")
     }
-    javaStream.reduceWindow(reducer)
+    javaStream.reduce(reducer)
   }
 
   /**
@@ -122,7 +109,7 @@ class WindowedDataStream[T](javaStream: JavaWStream[T]) {
    * the current window at every trigger.
    *
    */
-  def reduceWindow(fun: (T, T) => T): WindowedDataStream[T] = {
+  def reduce(fun: (T, T) => T): DataStream[T] = {
     if (fun == null) {
       throw new NullPointerException("Reduce function must not be null.")
     }
@@ -130,10 +117,11 @@ class WindowedDataStream[T](javaStream: JavaWStream[T]) {
       val cleanFun = clean(fun)
       def reduce(v1: T, v2: T) = { cleanFun(v1, v2) }
     }
-    reduceWindow(reducer)
+    reduce(reducer)
   }
 
   /**
+<<<<<<< HEAD
    * Applies a fold transformation on the windowed data stream by reducing
    * the current window at every trigger.
    *
@@ -167,36 +155,41 @@ class WindowedDataStream[T](javaStream: JavaWStream[T]) {
    * Applies a mapWindow transformation on the windowed data stream by calling the mapWindow
    * method on current window at every trigger. In contrast with the simple binary reduce 
    * operator, mapWindow exposes the whole window through the Iterable interface.
+=======
+   * Applies a reduceGroup transformation on the windowed data stream by reducing
+   * the current window at every trigger. In contrast with the simple binary reduce operator,
+   * groupReduce exposes the whole window through the Iterable interface.
+>>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2
    * </br>
    * </br>
-   * Whenever possible try to use reduceWindow instead of mapWindow for increased efficiency
+   * Whenever possible try to use reduce instead of groupReduce for increased efficiency
    */
-  def mapWindow[R: ClassTag: TypeInformation](reducer: WindowMapFunction[T, R]):
-  WindowedDataStream[R] = {
+  def reduceGroup[R: ClassTag: TypeInformation](reducer: GroupReduceFunction[T, R]):
+  DataStream[R] = {
     if (reducer == null) {
       throw new NullPointerException("GroupReduce function must not be null.")
     }
-    javaStream.mapWindow(reducer, implicitly[TypeInformation[R]])
+    javaStream.reduceGroup(reducer, implicitly[TypeInformation[R]])
   }
 
   /**
-   * Applies a mapWindow transformation on the windowed data stream by calling the mapWindow
-   * method on current window at every trigger. In contrast with the simple binary reduce 
-   * operator, mapWindow exposes the whole window through the Iterable interface.
+   * Applies a reduceGroup transformation on the windowed data stream by reducing
+   * the current window at every trigger. In contrast with the simple binary reduce operator,
+   * groupReduce exposes the whole window through the Iterable interface.
    * </br>
    * </br>
-   * Whenever possible try to use reduceWindow instead of mapWindow for increased efficiency
+   * Whenever possible try to use reduce instead of groupReduce for increased efficiency
    */
-  def mapWindow[R: ClassTag: TypeInformation](fun: (Iterable[T], Collector[R]) => Unit):
-  WindowedDataStream[R] = {
+  def reduceGroup[R: ClassTag: TypeInformation](fun: (Iterable[T], Collector[R]) => Unit):
+  DataStream[R] = {
     if (fun == null) {
       throw new NullPointerException("GroupReduce function must not be null.")
     }
-    val reducer = new WindowMapFunction[T, R] {
+    val reducer = new GroupReduceFunction[T, R] {
       val cleanFun = clean(fun)
-      def mapWindow(in: java.lang.Iterable[T], out: Collector[R]) = { cleanFun(in, out) }
+      def reduce(in: java.lang.Iterable[T], out: Collector[R]) = { cleanFun(in, out) }
     }
-    mapWindow(reducer)
+    reduceGroup(reducer)
   }
 
   /**
@@ -204,47 +197,47 @@ class WindowedDataStream[T](javaStream: JavaWStream[T]) {
    * the given position.
    *
    */
-  def max(position: Int): WindowedDataStream[T] = aggregate(AggregationType.MAX, position)
+  def max(position: Int): DataStream[T] = aggregate(AggregationType.MAX, position)
   
   /**
    * Applies an aggregation that that gives the maximum of the elements in the window at
    * the given field.
    *
    */
-  def max(field: String): WindowedDataStream[T] = aggregate(AggregationType.MAX, field)
+  def max(field: String): DataStream[T] = aggregate(AggregationType.MAX, field)
 
   /**
    * Applies an aggregation that that gives the minimum of the elements in the window at
    * the given position.
    *
    */
-  def min(position: Int): WindowedDataStream[T] = aggregate(AggregationType.MIN, position)
+  def min(position: Int): DataStream[T] = aggregate(AggregationType.MIN, position)
   
   /**
    * Applies an aggregation that that gives the minimum of the elements in the window at
    * the given field.
    *
    */
-  def min(field: String): WindowedDataStream[T] = aggregate(AggregationType.MIN, field)
+  def min(field: String): DataStream[T] = aggregate(AggregationType.MIN, field)
 
   /**
    * Applies an aggregation that sums the elements in the window at the given position.
    *
    */
-  def sum(position: Int): WindowedDataStream[T] = aggregate(AggregationType.SUM, position)
+  def sum(position: Int): DataStream[T] = aggregate(AggregationType.SUM, position)
   
   /**
    * Applies an aggregation that sums the elements in the window at the given field.
    *
    */
-  def sum(field: String): WindowedDataStream[T] = aggregate(AggregationType.SUM, field)
+  def sum(field: String): DataStream[T] = aggregate(AggregationType.SUM, field)
 
   /**
    * Applies an aggregation that that gives the maximum element of the window by
    * the given position. When equality, returns the first.
    *
    */
-  def maxBy(position: Int): WindowedDataStream[T] = aggregate(AggregationType.MAXBY,
+  def maxBy(position: Int): DataStream[T] = aggregate(AggregationType.MAXBY,
     position)
     
   /**
@@ -252,7 +245,7 @@ class WindowedDataStream[T](javaStream: JavaWStream[T]) {
    * the given field. When equality, returns the first.
    *
    */
-  def maxBy(field: String): WindowedDataStream[T] = aggregate(AggregationType.MAXBY,
+  def maxBy(field: String): DataStream[T] = aggregate(AggregationType.MAXBY,
     field)
 
   /**
@@ -260,7 +253,7 @@ class WindowedDataStream[T](javaStream: JavaWStream[T]) {
    * the given position. When equality, returns the first.
    *
    */
-  def minBy(position: Int): WindowedDataStream[T] = aggregate(AggregationType.MINBY,
+  def minBy(position: Int): DataStream[T] = aggregate(AggregationType.MINBY,
     position)
     
    /**
@@ -268,23 +261,23 @@ class WindowedDataStream[T](javaStream: JavaWStream[T]) {
    * the given field. When equality, returns the first.
    *
    */
-  def minBy(field: String): WindowedDataStream[T] = aggregate(AggregationType.MINBY,
+  def minBy(field: String): DataStream[T] = aggregate(AggregationType.MINBY,
     field)
     
-  private def aggregate(aggregationType: AggregationType, field: String): 
-  WindowedDataStream[T] = {
+  private def aggregate(aggregationType: AggregationType, field: String): DataStream[T] = {
     val position = fieldNames2Indices(javaStream.getType(), Array(field))(0)
     aggregate(aggregationType, position)
   }  
 
   def aggregate(aggregationType: AggregationType, position: Int):
-  WindowedDataStream[T] = {
+  DataStream[T] = {
 
     val jStream = javaStream.asInstanceOf[JavaWStream[Product]]
     val outType = jStream.getType().asInstanceOf[TupleTypeInfoBase[_]]
 
     val agg = new ScalaStreamingAggregator[Product](
-      jStream.getType().createSerializer(javaStream.getExecutionConfig),
+      jStream.getType().createSerializer(
+        javaStream.getDataStream.getExecutionEnvironment.getConfig),
       position)
 
     val reducer = aggregationType match {
@@ -293,8 +286,7 @@ class WindowedDataStream[T](javaStream: JavaWStream[T]) {
       case _ => new agg.ProductComparableAggregator(aggregationType, true)
     }
 
-    new WindowedDataStream[Product](
-            jStream.reduceWindow(reducer)).asInstanceOf[WindowedDataStream[T]]
+    new DataStream[Product](jStream.reduce(reducer)).asInstanceOf[DataStream[T]]
   }
 
 }

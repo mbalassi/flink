@@ -361,6 +361,7 @@ class TaskManager(val connectionInfo: InstanceConnectionInfo,
       cleanupTaskManager()
 
       tryJobManagerRegistration()
+<<<<<<< HEAD
 
     case Disconnect(msg) =>
       log.info("Job manager {} wants {} to disconnect. Reason {}.", jobManagerAkkaURL,
@@ -403,6 +404,8 @@ class TaskManager(val connectionInfo: InstanceConnectionInfo,
   override def unhandled(message: Any): Unit = {
     // let the actor crash
     throw new RuntimeException("Received unknown message " + message)
+=======
+>>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2
   }
 
   /**
@@ -793,6 +796,7 @@ object TaskManager {
   val MAX_REGISTRATION_ATTEMPTS = 10
   val HEARTBEAT_INTERVAL = 5000 millisecond
 
+<<<<<<< HEAD
 
   // --------------------------------------------------------------------------
   //  TaskManager standalone entry point
@@ -819,6 +823,28 @@ object TaskManager {
         null
       }
     }
+=======
+  def main(args: Array[String]): Unit = {
+    EnvironmentInformation.logEnvironmentInfo(LOG, "TaskManager")
+    val (hostname, port, configuration) = parseArgs(args)
+
+    if(SecurityUtils.isSecurityEnabled) {
+      LOG.info("Security is enabled. Starting secure TaskManager.")
+      SecurityUtils.runSecured(new FlinkSecuredRunner[Unit] {
+        override def run(): Unit = {
+          startActor(hostname, port, configuration)
+        }
+      })
+    } else {
+      startActor(hostname, port, configuration)
+    }
+  }
+
+  def startActor(hostname: String, port: Int, configuration: Configuration) : Unit = {
+
+    val (taskManagerSystem, _) = startActorSystemAndActor(hostname, port, configuration,
+      localAkkaCommunication = false, localTaskManagerCommunication = false)
+>>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2
 
     // run the TaskManager (is requested in an authentication enabled context)
     try {
@@ -1064,6 +1090,7 @@ object TaskManager {
     }
   }
 
+<<<<<<< HEAD
   @throws(classOf[Exception])
   def startTaskManagerActor(configuration: Configuration,
                             actorSystem: ActorSystem,
@@ -1072,12 +1099,23 @@ object TaskManager {
                             localAkkaCommunication: Boolean,
                             localTaskManagerCommunication: Boolean,
                             taskManagerClass: Class[_ <: TaskManager]): ActorRef = {
+=======
+  def startActorSystemAndActor(hostname: String, port: Int, configuration: Configuration,
+                               localAkkaCommunication: Boolean,
+                               localTaskManagerCommunication: Boolean): (ActorSystem, ActorRef) = {
+    implicit val actorSystem = AkkaUtils.createActorSystem(configuration, Some((hostname, port)))
+>>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2
 
     val (tmConfig, netConfig, connectionInfo, jmAkkaURL) =  parseTaskManagerConfiguration(
       configuration, taskManagerHostname, localAkkaCommunication, localTaskManagerCommunication)
 
+<<<<<<< HEAD
     val tmProps = Props(taskManagerClass, connectionInfo, jmAkkaURL, tmConfig, netConfig)
     actorSystem.actorOf(tmProps, taskManagerActorName)
+=======
+    (actorSystem, startActor(connectionInfo, jobManagerURL, taskManagerConfig,
+      networkConfig))
+>>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2
   }
 
   /**
@@ -1171,6 +1209,7 @@ object TaskManager {
 
     val jobManagerActorURL = if (localAkkaCommunication) {
       // JobManager and TaskManager are in the same ActorSystem -> Use local Akka URL
+<<<<<<< HEAD
       JobManager.getLocalJobManagerAkkaURL
     }
     else {
@@ -1178,6 +1217,21 @@ object TaskManager {
       val (jobManagerHostname, jobManagerPort) = getAndCheckJobManagerAddress(configuration)
       val hostPort = new InetSocketAddress(jobManagerHostname, jobManagerPort)
       JobManager.getRemoteJobManagerAkkaURL(hostPort)
+=======
+      JobManager.getLocalAkkaURL
+    } else {
+      val jobManagerAddress = configuration.getString(ConfigConstants
+          .JOB_MANAGER_IPC_ADDRESS_KEY, null)
+      val jobManagerRPCPort = configuration.getInteger(ConfigConstants.JOB_MANAGER_IPC_PORT_KEY,
+          ConfigConstants.DEFAULT_JOB_MANAGER_IPC_PORT)
+
+      if (jobManagerAddress == null) {
+        throw new RuntimeException("JobManager address has not been specified in the " +
+          "configuration.")
+      }
+
+      JobManager.getRemoteAkkaURL(jobManagerAddress + ":" + jobManagerRPCPort)
+>>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2
     }
 
     // ----> memory / network stack (shuffles/broadcasts), task slots, temp directories
@@ -1303,6 +1357,7 @@ object TaskManager {
     (taskManagerConfig, networkConfig, connectionInfo, jobManagerActorURL)
   }
 
+<<<<<<< HEAD
   /**
    * Gets the hostname and port of the JobManager from the configuration. Also checks that
    * the hostname is not null and the port non-negative.
@@ -1329,6 +1384,29 @@ object TaskManager {
     }
 
     (hostname, port)
+=======
+  def startActor(connectionInfo: InstanceConnectionInfo, jobManagerURL: String,
+                 taskManagerConfig: TaskManagerConfiguration,
+                 networkConfig: NetworkEnvironmentConfiguration)
+                (implicit actorSystem: ActorSystem): ActorRef = {
+    startActor(Props(new TaskManager(connectionInfo, jobManagerURL, taskManagerConfig,
+      networkConfig)))
+  }
+
+  def startActor(props: Props)(implicit actorSystem: ActorSystem): ActorRef = {
+    actorSystem.actorOf(props, TASK_MANAGER_NAME)
+  }
+
+  def startActorWithConfiguration(hostname: String, configuration: Configuration,
+                                  localAkkaCommunication: Boolean,
+                                  localTaskManagerCommunication: Boolean)
+                                 (implicit system: ActorSystem) = {
+    val (connectionInfo, jobManagerURL, taskManagerConfig, networkConnectionConfiguration) =
+      parseConfiguration(hostname, configuration, localAkkaCommunication,
+        localTaskManagerCommunication)
+
+    startActor(connectionInfo, jobManagerURL, taskManagerConfig, networkConnectionConfiguration)
+>>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2
   }
 
   private def checkConfigParameter(condition: Boolean,

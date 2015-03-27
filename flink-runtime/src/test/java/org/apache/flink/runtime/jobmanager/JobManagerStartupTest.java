@@ -72,7 +72,7 @@ public class JobManagerStartupTest {
 		
 		try {
 			portNum = NetUtils.getAvailablePort();
-			portOccupier = new ServerSocket(portNum, 10, InetAddress.getByName("localhost"));
+			portOccupier = new ServerSocket(portNum, 10, InetAddress.getByName("127.0.0.1"));
 		}
 		catch (Throwable t) {
 			// could not find free port, or open a connection there
@@ -80,7 +80,12 @@ public class JobManagerStartupTest {
 		}
 		
 		try {
+<<<<<<< HEAD
 			JobManager.runJobManager(new Configuration(), JobManagerMode.CLUSTER, "localhost", portNum);
+=======
+			Tuple2<String, Object> connection = new Tuple2<String, Object>("\"127.0.0.1\"", portNum);
+			JobManager.runJobManager(new Configuration(), ExecutionMode.CLUSTER(), new Some<Tuple2<String, Object>>(connection));
+>>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2
 			fail("this should throw an exception");
 		}
 		catch (Exception e) {

@@ -57,12 +57,12 @@ public final class PojoSerializer<T> extends TypeSerializer<T> {
 
 	private int numFields;
 
-	private transient Map<Class<?>, TypeSerializer<?>> subclassSerializerCache;
+	private transient Map<Class<?>, TypeSerializer> subclassSerializerCache;
 	private transient ClassLoader cl;
 
 	private Map<Class<?>, Integer> registeredClasses;
 
-	private TypeSerializer<?>[] registeredSerializers;
+	private TypeSerializer[] registeredSerializers;
 
 	private final ExecutionConfig executionConfig;
 
@@ -86,7 +86,7 @@ public final class PojoSerializer<T> extends TypeSerializer<T> {
 
 		cl = Thread.currentThread().getContextClassLoader();
 
-		subclassSerializerCache = new HashMap<Class<?>, TypeSerializer<?>>();
+		subclassSerializerCache = new HashMap<Class<?>, TypeSerializer>();
 
 		// We only want those classes that are not our own class and are actually sub-classes.
 		List<Class<?>> cleanedTaggedClasses = new ArrayList<Class<?>>(registeredPojoTypes.size());
@@ -149,10 +149,10 @@ public final class PojoSerializer<T> extends TypeSerializer<T> {
 		}
 
 		cl = Thread.currentThread().getContextClassLoader();
-		subclassSerializerCache = new HashMap<Class<?>, TypeSerializer<?>>();
+		subclassSerializerCache = new HashMap<Class<?>, TypeSerializer>();
 	}
 
-	private TypeSerializer<?> getSubclassSerializer(Class<?> subclass) {
+	private TypeSerializer getSubclassSerializer(Class<?> subclass) {
 		TypeSerializer<?> result = subclassSerializerCache.get(subclass);
 		if (result == null) {
 
@@ -168,7 +168,6 @@ public final class PojoSerializer<T> extends TypeSerializer<T> {
 		return result;
 	}
 
-	@SuppressWarnings("unused")
 	private boolean hasField(Field f) {
 		for (Field field: fields) {
 			if (f.equals(field)) {
@@ -178,6 +177,7 @@ public final class PojoSerializer<T> extends TypeSerializer<T> {
 		return false;
 	}
 
+	@SuppressWarnings("unchecked")
 	private void copyBaseFieldOrder(PojoSerializer<?> baseSerializer) {
 		// do nothing for now, but in the future, adapt subclass serializer to have same
 		// ordering as base class serializer so that binary comparison on base class fields
@@ -192,7 +192,7 @@ public final class PojoSerializer<T> extends TypeSerializer<T> {
 	@Override
 	public PojoSerializer<T> duplicate() {
 		boolean stateful = false;
-		TypeSerializer<?>[] duplicateFieldSerializers = new TypeSerializer[fieldSerializers.length];
+		TypeSerializer[] duplicateFieldSerializers = new TypeSerializer[fieldSerializers.length];
 
 		for (int i = 0; i < fieldSerializers.length; i++) {
 			duplicateFieldSerializers[i] = fieldSerializers[i].duplicate();
@@ -236,7 +236,7 @@ public final class PojoSerializer<T> extends TypeSerializer<T> {
 	}
 
 	@Override
-	@SuppressWarnings({"unchecked", "rawtypes"})
+	@SuppressWarnings("unchecked")
 	public T copy(T from) {
 		if (from == null) {
 			return null;
@@ -276,7 +276,7 @@ public final class PojoSerializer<T> extends TypeSerializer<T> {
 	}
 	
 	@Override
-	@SuppressWarnings({"unchecked", "rawtypes"})
+	@SuppressWarnings("unchecked")
 	public T copy(T from, T reuse) {
 		if (from == null) {
 			return null;
@@ -318,7 +318,7 @@ public final class PojoSerializer<T> extends TypeSerializer<T> {
 
 
 	@Override
-	@SuppressWarnings({"unchecked", "rawtypes"})
+	@SuppressWarnings("unchecked")
 	public void serialize(T value, DataOutputView target) throws IOException {
 		int flags = 0;
 		// handle null values
@@ -377,7 +377,7 @@ public final class PojoSerializer<T> extends TypeSerializer<T> {
 	}
 
 	@Override
-	@SuppressWarnings({"unchecked", "rawtypes"})
+	@SuppressWarnings("unchecked")
 	public T deserialize(DataInputView source) throws IOException {
 		int flags = source.readByte();
 		if((flags & IS_NULL) != 0) {
@@ -435,7 +435,7 @@ public final class PojoSerializer<T> extends TypeSerializer<T> {
 	}
 	
 	@Override
-	@SuppressWarnings({"unchecked", "rawtypes"})
+	@SuppressWarnings("unchecked")
 	public T deserialize(T reuse, DataInputView source) throws IOException {
 
 		// handle null values

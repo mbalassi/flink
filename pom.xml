@@ -780,7 +780,7 @@ under the License.
 				</executions>
 				<configuration>
 					<forkCount>${flink.forkCount}</forkCount>
-					<reuseForks>false</reuseForks>
+					<reuseForks>${flink.reuseForks}</reuseForks>
 					<systemPropertyVariables>
 						<!-- we need the "0" in front here because for some reason
 						  the property is null when we have just the variable-->

@@ -18,10 +18,7 @@
 
 package org.apache.flink.yarn
 
-import java.net.InetSocketAddress
-
 import akka.actor._
-import akka.pattern.ask
 import org.apache.flink.configuration.GlobalConfiguration
 import org.apache.flink.runtime.ActorLogMessages
 import org.apache.flink.runtime.akka.AkkaUtils
@@ -62,25 +59,20 @@ class ApplicationClient extends Actor with ActorLogMessages with ActorLogging {
     }
 
     pollingTimer = None
-
-    // Terminate the whole actor system because there is only the application client running
-    context.system.shutdown()
   }
 
   override def receiveWithLogMessages: Receive = {
     // ----------------------------- Registration -> Status updates -> shutdown ----------------
-    case LocalRegisterClient(address: InetSocketAddress) =>
-      val jmAkkaUrl = JobManager.getRemoteJobManagerAkkaURL(address)
+    case LocalRegisterClient(address: String) =>
+      val jmAkkaUrl = JobManager.getRemoteAkkaURL(address)
 
-      val jobManagerFuture = AkkaUtils.getReference(jmAkkaUrl, system, timeout)
+      val jobManagerFuture = AkkaUtils.getReference(jmAkkaUrl)(system, timeout)
 
       jobManagerFuture.onComplete {
         case Success(jm) => self ! JobManagerActorRef(jm)
         case Failure(t) =>
           log.error(t, "Registration at JobManager/ApplicationMaster failed. Shutting " +
             "ApplicationClient down.")
-
-          // we could not connect to the job manager --> poison ourselves
           self ! PoisonPill
       }
 
@@ -90,11 +82,7 @@ class ApplicationClient extends Actor with ActorLogMessages with ActorLogging {
       // the message came from the FlinkYarnCluster. We send the message to the JobManager.
       // it is important not to forward the message because the JobManager is storing the
       // sender as the Application Client (this class).
-      (jm ? RegisterClient(self))(timeout).onFailure{
-        case t: Throwable =>
-          log.error(t, "Could not register at the job manager.")
-          self ! PoisonPill
-      }
+      jm ! RegisterClient
 
       // schedule a periodic status report from the JobManager
       // request the number of task managers and slots from the job manager
@@ -102,8 +90,13 @@ class ApplicationClient extends Actor with ActorLogMessages with ActorLogging {
         WAIT_FOR_YARN_INTERVAL, jm, PollYarnClusterStatus))
 
     case msg: StopYarnSession =>
+<<<<<<< HEAD
       log.info("Sending StopYarnSession request to ApplicationMaster.")
       stopMessageReceiver = Some(sender)
+=======
+      log.info("Stop yarn session.")
+      stopMessageReceiver = Some(sender())
+>>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2
       yarnJobManager foreach {
         _ forward msg
       }
@@ -114,8 +107,9 @@ class ApplicationClient extends Actor with ActorLogMessages with ActorLogging {
       stopMessageReceiver foreach {
         _ ! JobManagerStopped
       }
-      // poison ourselves
-      self ! PoisonPill
+      // stop ourselves
+      context.system.shutdown()
+
 
     // handle the responses from the PollYarnClusterStatus messages to the yarn job mgr
     case status: FlinkYarnClusterStatus =>
@@ -142,11 +136,4 @@ class ApplicationClient extends Actor with ActorLogMessages with ActorLogging {
       }
   }
 
-  /**
-   * Handle unmatched messages with an exception.
-   */
-  override def unhandled(message: Any): Unit = {
-    // let the actor crash
-    throw new RuntimeException("Received unknown message " + message)
-  }
 }

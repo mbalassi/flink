@@ -137,11 +137,14 @@ under the License.
 			<artifactId>scalatest_${scala.binary.version}</artifactId>
 			<scope>test</scope>
 		</dependency>
+<<<<<<< HEAD
 
 		<dependency>
 			<groupId>com.typesafe.akka</groupId>
 			<artifactId>akka-testkit_${scala.binary.version}</artifactId>
 		</dependency>
+=======
+>>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2
 		
 		<dependency>
 			<groupId>joda-time</groupId>
@@ -315,6 +318,7 @@ under the License.
 					<systemPropertyVariables>
 						<log.level>WARN</log.level>
 					</systemPropertyVariables>
+					<reuseForks>false</reuseForks>
 				</configuration>
 			</plugin>
 			

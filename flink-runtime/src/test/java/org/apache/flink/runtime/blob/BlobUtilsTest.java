@@ -21,16 +21,13 @@ package org.apache.flink.runtime.blob;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 
-import com.google.common.io.Files;
-
-import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
 
 import java.io.File;
 
 public class BlobUtilsTest {
 
+<<<<<<< HEAD
 	private final static String CANNOT_CREATE_THIS = "cannot-create-this";
 
 	private File blobUtilsTestDirectory;
@@ -51,15 +48,17 @@ public class BlobUtilsTest {
 		assertTrue(blobUtilsTestDirectory.delete());
 	}
 
+=======
+>>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2
 	@Test(expected = Exception.class)
 	public void testExceptionOnCreateStorageDirectoryFailure() {
 		// Should throw an Exception
-		BlobUtils.initStorageDirectory(new File(blobUtilsTestDirectory, CANNOT_CREATE_THIS).getAbsolutePath());
+		BlobUtils.initStorageDirectory("/cannot-create-this");
 	}
 
 	@Test(expected = Exception.class)
 	public void testExceptionOnCreateCacheDirectoryFailure() {
 		// Should throw an Exception
-		BlobUtils.getStorageLocation(new File(blobUtilsTestDirectory, CANNOT_CREATE_THIS), mock(BlobKey.class));
+		BlobUtils.getStorageLocation(new File("/cannot-create-this"), mock(BlobKey.class));
 	}
 }

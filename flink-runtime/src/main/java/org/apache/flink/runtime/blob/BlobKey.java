@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 
+
 package org.apache.flink.runtime.blob;
 
 import java.io.EOFException;
@@ -141,7 +142,7 @@ public final class BlobKey implements Serializable, Comparable<BlobKey> {
 		while (bytesRead < BlobKey.SIZE) {
 			final int read = inputStream.read(key, bytesRead, BlobKey.SIZE - bytesRead);
 			if (read < 0) {
-				throw new EOFException("Read an incomplete BLOB key");
+				throw new EOFException();
 			}
 			bytesRead += read;
 		}

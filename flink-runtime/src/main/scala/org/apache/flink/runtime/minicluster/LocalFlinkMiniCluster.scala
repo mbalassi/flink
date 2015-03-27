@@ -64,30 +64,33 @@ class LocalFlinkMiniCluster(userConfiguration: Configuration, singleActorSystem:
     config
   }
 
-  override def startJobManager(system: ActorSystem): ActorRef = {
+  override def startJobManager(implicit system: ActorSystem):
+  ActorRef = {
     val config = configuration.clone()
+<<<<<<< HEAD
     val (jobManager, archiver) = JobManager.startJobManagerActors(config, system)
     if (config.getBoolean(ConfigConstants.LOCAL_INSTANCE_MANAGER_START_WEBSERVER, false)) {
       val webServer = new WebInfoServer(configuration, jobManager, archiver)
       webServer.start()
     }
     jobManager
+=======
+    JobManager.startActor(config, system, false)
+>>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2
   }
 
   override def startTaskManager(index: Int, system: ActorSystem): ActorRef = {
     val config = configuration.clone()
 
-    val rpcPort = config.getInteger(
-      ConfigConstants.TASK_MANAGER_IPC_PORT_KEY,
-      ConfigConstants.DEFAULT_TASK_MANAGER_IPC_PORT)
-
-    val dataPort = config.getInteger(
-      ConfigConstants.TASK_MANAGER_DATA_PORT_KEY,
-      ConfigConstants.DEFAULT_TASK_MANAGER_DATA_PORT)
+    val rpcPort = config.getInteger(ConfigConstants.TASK_MANAGER_IPC_PORT_KEY, ConfigConstants
+      .DEFAULT_TASK_MANAGER_IPC_PORT)
+    val dataPort = config.getInteger(ConfigConstants.TASK_MANAGER_DATA_PORT_KEY, ConfigConstants
+      .DEFAULT_TASK_MANAGER_DATA_PORT)
 
     if (rpcPort > 0) {
       config.setInteger(ConfigConstants.TASK_MANAGER_IPC_PORT_KEY, rpcPort + index)
     }
+<<<<<<< HEAD
     if (dataPort > 0) {
       config.setInteger(ConfigConstants.TASK_MANAGER_DATA_PORT_KEY, dataPort + index)
     }
@@ -96,12 +99,28 @@ class LocalFlinkMiniCluster(userConfiguration: Configuration, singleActorSystem:
 
     val taskManagerActorName = if (singleActorSystem) {
       TaskManager.TASK_MANAGER_NAME + "_" + (index + 1)
-    } else {
-      TaskManager.TASK_MANAGER_NAME
+=======
+
+    if(dataPort > 0){
+      config.setInteger(ConfigConstants.TASK_MANAGER_DATA_PORT_KEY, dataPort + index)
     }
 
+    val localExecution = if(numTaskManagers == 1){
+      true
+>>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2
+    } else {
+      false
+    }
+
+<<<<<<< HEAD
     TaskManager.startTaskManagerActor(config, system, HOSTNAME, taskManagerActorName,
       singleActorSystem, localExecution, classOf[TaskManager])
+=======
+    TaskManager.startActorWithConfiguration(HOSTNAME,
+      config,
+      singleActorSystem,
+      localExecution)(system)
+>>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2
   }
 
   def getJobClient(): ActorRef = {
@@ -113,8 +132,13 @@ class LocalFlinkMiniCluster(userConfiguration: Configuration, singleActorSystem:
         config.setString(ConfigConstants.JOB_MANAGER_IPC_ADDRESS_KEY, HOSTNAME)
         config.setInteger(ConfigConstants.JOB_MANAGER_IPC_PORT_KEY, getJobManagerRPCPort)
 
+<<<<<<< HEAD
         val jc = JobClient.createJobClientFromConfig(config, singleActorSystem,
           jobClientActorSystem)
+=======
+        val jc = JobClient.startActorWithConfiguration(config,
+          singleActorSystem)(jobClientActorSystem)
+>>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2
         jobClient = Some(jc)
         jc
     }

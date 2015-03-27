@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 
+
 package org.apache.flink.types.parser;
 
 /**
@@ -39,6 +40,7 @@ public class StringParser extends FieldParser<String> {
 	public int parseField(byte[] bytes, int startPos, int limit, byte[] delimiter, String reusable) {
 
 		int i = startPos;
+		byte current;
 
 		final int delimLimit = limit-delimiter.length+1;
 

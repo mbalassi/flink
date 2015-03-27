@@ -70,10 +70,6 @@ public class TaskInputSplitProvider implements InputSplitProvider {
 
 			final Object result = Await.result(response, timeout);
 
-			if (result == null) {
-				return null;
-			}
-
 			if(!(result instanceof TaskManagerMessages.NextInputSplit)){
 				throw new RuntimeException("RequestNextInputSplit requires a response of type " +
 						"NextInputSplit. Instead response is of type " + result.getClass() + ".");

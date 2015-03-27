@@ -24,7 +24,6 @@ import org.apache.flink.configuration.Configuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.Closeable;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -41,7 +40,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public final class BlobCache implements BlobService {
 
-	/** The log object used for debugging. */
+	/**
+	 * The log object used for debugging.
+	 */
 	private static final Logger LOG = LoggerFactory.getLogger(BlobCache.class);
 
 	private final InetSocketAddress serverAddress;
@@ -53,9 +54,6 @@ public final class BlobCache implements BlobService {
 	/** Shutdown hook thread to ensure deletion of the storage directory. */
 	private final Thread shutdownHook;
 
-	/** The number of retries when the transfer fails */
-	private final int numFetchRetries;
-
 
 	public BlobCache(InetSocketAddress serverAddress, Configuration configuration) {
 		if (serverAddress == null || configuration == null) {
@@ -64,122 +62,80 @@ public final class BlobCache implements BlobService {
 
 		this.serverAddress = serverAddress;
 
-		// configure and create the storage directory
 		String storageDirectory = configuration.getString(ConfigConstants.BLOB_STORAGE_DIRECTORY_KEY, null);
 		this.storageDir = BlobUtils.initStorageDirectory(storageDirectory);
 		LOG.info("Created BLOB cache storage directory " + storageDir);
-
-		// configure the number of fetch retries
-		final int fetchRetries = configuration.getInteger(
-				ConfigConstants.BLOB_FETCH_RETRIES_KEY, ConfigConstants.DEFAULT_BLOB_FETCH_RETRIES);
-		if (fetchRetries >= 0) {
-			this.numFetchRetries = fetchRetries;
-		}
-		else {
-			LOG.warn("Invalid value for {}. System will attempt no retires on failed fetches of BLOBs.",
-					ConfigConstants.BLOB_FETCH_RETRIES_KEY);
-			this.numFetchRetries = 0;
-		}
 
 		// Add shutdown hook to delete storage directory
 		shutdownHook = BlobUtils.addShutdownHook(this, LOG);
 	}
 
 	/**
-	 * Returns the URL for the BLOB with the given key. The method will first attempt to serve
-	 * the BLOB from its local cache. If the BLOB is not in the cache, the method will try to download it
-	 * from this cache's BLOB server.
+	 * Returns the URL for the content-addressable BLOB with the given key. The method will first attempt to serve
+	 * the BLOB from its local cache. If one or more BLOB are not in the cache, the method will try to download them
+	 * from the BLOB server with the given address.
 	 * 
-	 * @param requiredBlob The key of the desired BLOB.
-	 * @return URL referring to the local storage location of the BLOB.
-	 * @throws IOException Thrown if an I/O error occurs while downloading the BLOBs from the BLOB server.
+	 * @param requiredBlob
+	 *        the key of the desired content-addressable BLOB
+	 * @return URL referring to the local storage location of the BLOB
+	 * @throws IOException
+	 *         thrown if an I/O error occurs while downloading the BLOBs from the BLOB server
 	 */
 	public URL getURL(final BlobKey requiredBlob) throws IOException {
 		if (requiredBlob == null) {
-			throw new IllegalArgumentException("BLOB key cannot be null.");
+			throw new IllegalArgumentException("Required BLOB cannot be null.");
 		}
 
-		final File localJarFile = BlobUtils.getStorageLocation(storageDir, requiredBlob);
+		BlobClient bc = null;
+		byte[] buf = null;
+		URL url = null;
 
-		if (!localJarFile.exists()) {
+		try {
+			final File localJarFile = BlobUtils.getStorageLocation(storageDir, requiredBlob);
 
-			final byte[] buf = new byte[BlobServerProtocol.BUFFER_SIZE];
+			if (!localJarFile.exists()) {
 
-			// loop over retries
-			int attempt = 0;
-			while (true) {
-
-				if (attempt == 0) {
-					LOG.info("Downloading {} from {}", requiredBlob, serverAddress);
-				} else {
-					LOG.info("Downloading {} from {} (retry {})", requiredBlob, serverAddress, attempt);
+				if (LOG.isDebugEnabled()) {
+					LOG.debug("Trying to download " + requiredBlob + " from " + serverAddress);
 				}
 
+				bc = new BlobClient(serverAddress);
+				buf = new byte[BlobServer.BUFFER_SIZE];
+
+				InputStream is = null;
+				OutputStream os = null;
 				try {
-					BlobClient bc = null;
-					InputStream is = null;
-					OutputStream os = null;
+					is = bc.get(requiredBlob);
+					os = new FileOutputStream(localJarFile);
 
-					try {
-						bc = new BlobClient(serverAddress);
-						is = bc.get(requiredBlob);
-						os = new FileOutputStream(localJarFile);
+					while (true) {
 
-						while (true) {
-							final int read = is.read(buf);
-							if (read < 0) {
-								break;
-							}
-							os.write(buf, 0, read);
+						final int read = is.read(buf);
+						if (read < 0) {
+							break;
 						}
 
-						// we do explicitly not use a finally block, because we want the closing
-						// in the regular case to throw exceptions and cause the writing to fail.
-						// But, the closing on exception should not throw further exceptions and
-						// let us keep the root exception
-						os.close();
-						os = null;
+						os.write(buf, 0, read);
+					}
+				} finally {
+					if (is != null) {
 						is.close();
-						is = null;
-						bc.close();
-						bc = null;
-
-						// success, we finished
-						break;
 					}
-					catch (Throwable t) {
-						// we use "catch (Throwable)" to keep the root exception. Otherwise that exception
-						// it would be replaced by any exception thrown in the finally block
-						closeSilently(os);
-						closeSilently(is);
-						closeSilently(bc);
-
-						if (t instanceof IOException) {
-							throw (IOException) t;
-						} else {
-							throw new IOException(t.getMessage(), t);
-						}
+					if (os != null) {
+						os.close();
 					}
 				}
-				catch (IOException e) {
-					String message = "Failed to fetch BLOB " + requiredBlob + "  from " + serverAddress + '.';
-					if (attempt < numFetchRetries) {
-						attempt++;
-						if (LOG.isDebugEnabled()) {
-							LOG.debug(message + " Retrying...", e);
-						} else {
-							LOG.error(message + " Retrying...");
-						}
-					}
-					else {
-						LOG.error(message + " No retries left.", e);
-						throw new IOException(message, e);
-					}
-				}
-			} // end loop over retries
+			}
+			url = localJarFile.toURI().toURL();
+
+
+		} finally {
+			if (bc != null) {
+				bc.close();
+			}
 		}
 
-		return localJarFile.toURI().toURL();
+		return url;
 	}
 
 	/**
@@ -189,8 +145,13 @@ public final class BlobCache implements BlobService {
 	public void delete(BlobKey key) throws IOException{
 		final File localFile = BlobUtils.getStorageLocation(storageDir, key);
 
+<<<<<<< HEAD
 		if (localFile.exists() && !localFile.delete()) {
 			LOG.warn("Failed to delete locally cached BLOB " + key + " at " + localFile.getAbsolutePath());
+=======
+		if(localFile.exists()) {
+			localFile.delete();
+>>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2
 		}
 	}
 
@@ -220,26 +181,6 @@ public final class BlobCache implements BlobService {
 				}
 				catch (Throwable t) {
 					LOG.warn("Exception while unregistering BLOB cache's cleanup shutdown hook.");
-				}
-			}
-		}
-	}
-
-	public File getStorageDir() {
-		return this.storageDir;
-	}
-
-	// ------------------------------------------------------------------------
-	//  Miscellaneous
-	// ------------------------------------------------------------------------
-
-	private void closeSilently(Closeable closeable) {
-		if (closeable != null) {
-			try {
-				closeable.close();
-			} catch (Throwable t) {
-				if (LOG.isDebugEnabled()) {
-					LOG.debug("Error while closing resource after BLOB transfer.", t);
 				}
 			}
 		}

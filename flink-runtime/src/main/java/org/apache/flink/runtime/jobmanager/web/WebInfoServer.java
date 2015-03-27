@@ -25,8 +25,11 @@ import java.io.IOException;
 import java.net.URL;
 
 import akka.actor.ActorRef;
+<<<<<<< HEAD
 import org.apache.flink.runtime.akka.AkkaUtils;
 import org.eclipse.jetty.server.Connector;
+=======
+>>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2
 import org.eclipse.jetty.server.handler.ResourceHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -80,16 +83,24 @@ public class WebInfoServer {
 	 * @throws IOException
 	 *         Thrown, if the server setup failed for an I/O related reason.
 	 */
-	public WebInfoServer(Configuration config, ActorRef jobmanager, ActorRef archive) throws IOException {
+	public WebInfoServer(Configuration config, ActorRef jobmanager,
+						ActorRef archive, FiniteDuration timeout) throws IOException {
+		
+		// if no explicit configuration is given, use the global configuration
 		if (config == null) {
 			throw new IllegalArgumentException("No Configuration has been passed to the web server");
 		}
+<<<<<<< HEAD
 		if (jobmanager == null || archive == null) {
 			throw new NullPointerException();
 		}
 
 		// if port == 0, jetty will assign an available port.
 		int port = config.getInteger(ConfigConstants.JOB_MANAGER_WEB_PORT_KEY,
+=======
+		
+		this.port = config.getInteger(ConfigConstants.JOB_MANAGER_WEB_PORT_KEY,
+>>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2
 				ConfigConstants.DEFAULT_JOB_MANAGER_WEB_FRONTEND_PORT);
 		if (port < 0) {
 			throw new IllegalArgumentException("Invalid port for the webserver: " + port);

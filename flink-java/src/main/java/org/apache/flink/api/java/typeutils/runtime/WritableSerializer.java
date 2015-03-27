@@ -98,8 +98,8 @@ public class WritableSerializer<T extends Writable> extends TypeSerializer<T> {
 	}
 	
 	@Override
-	public WritableSerializer<T> duplicate() {
-		return new WritableSerializer<T>(typeClass);
+	public WritableSerializer duplicate() {
+		return new WritableSerializer(typeClass);
 	}
 	
 	// --------------------------------------------------------------------------------------------

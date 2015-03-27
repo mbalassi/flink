@@ -66,10 +66,16 @@ public class CoStreamVertex<IN1, IN2, OUT> extends StreamVertex<IN1, OUT> {
 	}
 
 	@Override
+<<<<<<< HEAD
 	public void clearBuffers() throws IOException {
 		outputHandler.clearWriters();
 		coReader.clearBuffers();
 		coReader.cleanup();
+=======
+	protected void setInvokable() {
+		userInvokable = configuration.getUserInvokable(userClassLoader);
+		userInvokable.setup(this, getExecutionConfig());
+>>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2
 	}
 
 	protected void setConfigInputs() throws StreamVertexException {

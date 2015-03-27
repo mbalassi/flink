@@ -23,6 +23,8 @@ import java.util.NoSuchElementException;
 import org.apache.flink.api.common.io.InputFormat;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
+import org.apache.flink.api.common.typeutils.TypeSerializerFactory;
+import org.apache.flink.api.java.typeutils.runtime.RuntimeSerializerFactory;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.core.io.InputSplit;
 import org.apache.flink.runtime.jobgraph.tasks.InputSplitProvider;
@@ -36,13 +38,19 @@ public class FileSourceFunction extends RichParallelSourceFunction<String> {
 
 	private InputFormat<String, ?> inputFormat;
 
-	private TypeInformation<String> typeInfo;
+	private TypeSerializerFactory<String> serializerFactory;
 
 	private volatile boolean isRunning;
 
 	public FileSourceFunction(InputFormat<String, ?> format, TypeInformation<String> typeInfo) {
 		this.inputFormat = format;
-		this.typeInfo = typeInfo;
+		this.serializerFactory = createSerializer(typeInfo);
+	}
+
+	private TypeSerializerFactory<String> createSerializer(TypeInformation<String> typeInfo) {
+		TypeSerializer<String> serializer = typeInfo.createSerializer(getRuntimeContext().getExecutionConfig());
+
+		return new RuntimeSerializerFactory<String>(serializer, typeInfo.getTypeClass());
 	}
 
 	@Override
@@ -53,10 +61,15 @@ public class FileSourceFunction extends RichParallelSourceFunction<String> {
 	}
 
 	@Override
+<<<<<<< HEAD
 	public void run(Collector<String> collector) throws Exception {
 		isRunning = true;
 		final TypeSerializer<String> serializer = typeInfo.createSerializer(getRuntimeContext()
 				.getExecutionConfig());
+=======
+	public void invoke(Collector<String> collector) throws Exception {
+		final TypeSerializer<String> serializer = serializerFactory.getSerializer();
+>>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2
 		final Iterator<InputSplit> splitIterator = getInputSplits();
 		@SuppressWarnings("unchecked")
 		final InputFormat<String, InputSplit> format = (InputFormat<String, InputSplit>) this.inputFormat;

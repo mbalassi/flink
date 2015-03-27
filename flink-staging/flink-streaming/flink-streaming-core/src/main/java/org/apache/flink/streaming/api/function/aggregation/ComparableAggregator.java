@@ -21,7 +21,6 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.util.List;
 
-import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.typeinfo.BasicArrayTypeInfo;
 import org.apache.flink.api.common.typeinfo.PrimitiveArrayTypeInfo;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
@@ -66,10 +65,9 @@ public abstract class ComparableAggregator<T> extends AggregationFunction<T> {
 	}
 
 	public static <R> AggregationFunction<R> getAggregator(String field,
-			TypeInformation<R> typeInfo, AggregationType aggregationType, boolean first,
-			ExecutionConfig config) {
+			TypeInformation<R> typeInfo, AggregationType aggregationType, boolean first) {
 
-		return new PojoComparableAggregator<R>(field, typeInfo, aggregationType, first, config);
+		return new PojoComparableAggregator<R>(field, typeInfo, aggregationType, first);
 	}
 
 	private static class TupleComparableAggregator<T> extends ComparableAggregator<T> {
@@ -179,7 +177,7 @@ public abstract class ComparableAggregator<T> extends AggregationFunction<T> {
 		PojoComparator<T> pojoComparator;
 
 		public PojoComparableAggregator(String field, TypeInformation<?> typeInfo,
-				AggregationType aggregationType, boolean first, ExecutionConfig config) {
+				AggregationType aggregationType, boolean first) {
 			super(0, aggregationType, first);
 			if (!(typeInfo instanceof CompositeType<?>)) {
 				throw new IllegalArgumentException(
@@ -195,7 +193,7 @@ public abstract class ComparableAggregator<T> extends AggregationFunction<T> {
 
 			if (cType instanceof PojoTypeInfo) {
 				pojoComparator = (PojoComparator<T>) cType.createComparator(
-						new int[] { logicalKeyPosition }, new boolean[] { false }, 0, config);
+						new int[] { logicalKeyPosition }, new boolean[] { false }, 0, getRuntimeContext().getExecutionConfig());
 			} else {
 				throw new IllegalArgumentException(
 						"Key expressions are only supported on POJO types. "
@@ -227,8 +225,8 @@ public abstract class ComparableAggregator<T> extends AggregationFunction<T> {
 			} else {
 				if (c == 1) {
 					keyFields[0].set(value2, field1);
-				}
-
+				} 
+				
 				return value2;
 			}
 		}

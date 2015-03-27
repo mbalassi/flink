@@ -41,9 +41,13 @@ under the License.
 		<module>flink-streaming</module>
 		<module>flink-hbase</module>
 		<module>flink-gelly</module>
+<<<<<<< HEAD
 		<module>flink-hcatalog</module>
 		<module>flink-expressions</module>
 		<module>flink-ml</module>
+=======
+		<module>flink-linq</module>
+>>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2
 	</modules>
 	
 	<!-- See main pom.xml for explanation of profiles -->

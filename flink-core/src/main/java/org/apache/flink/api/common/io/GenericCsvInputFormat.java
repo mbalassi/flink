@@ -22,7 +22,6 @@ package org.apache.flink.api.common.io;
 import com.google.common.base.Charsets;
 import com.google.common.base.Preconditions;
 import com.google.common.primitives.Ints;
-
 import org.apache.flink.core.fs.FileInputSplit;
 import org.apache.flink.core.fs.Path;
 import org.apache.flink.types.parser.FieldParser;
@@ -320,6 +319,7 @@ public abstract class GenericCsvInputFormat<OT> extends DelimitedInputFormat<OT>
 		super.open(split);
 		
 		// instantiate the parsers
+		@SuppressWarnings("unchecked")
 		FieldParser<?>[] parsers = new FieldParser[fieldTypes.length];
 		
 		for (int i = 0; i < fieldTypes.length; i++) {
@@ -328,8 +328,10 @@ public abstract class GenericCsvInputFormat<OT> extends DelimitedInputFormat<OT>
 				if (parserType == null) {
 					throw new RuntimeException("No parser available for type '" + fieldTypes[i].getName() + "'.");
 				}
+				
 
-				FieldParser<?> p = InstantiationUtil.instantiate(parserType, FieldParser.class);
+				@SuppressWarnings("unchecked")
+				FieldParser<?> p = (FieldParser<?>) InstantiationUtil.instantiate(parserType, FieldParser.class);
 
 				if (this.quotedStringParsing) {
 					if (p instanceof StringParser) {
@@ -386,7 +388,6 @@ public abstract class GenericCsvInputFormat<OT> extends DelimitedInputFormat<OT>
 			
 			if (fieldIncluded[field]) {
 				// parse field
-				@SuppressWarnings("unchecked")
 				FieldParser<Object> parser = (FieldParser<Object>) this.fieldParsers[output];
 				Object reuse = holders[output];
 				startPos = parser.parseField(bytes, startPos, limit, this.fieldDelim, reuse);
@@ -437,6 +438,7 @@ public abstract class GenericCsvInputFormat<OT> extends DelimitedInputFormat<OT>
 	protected int skipFields(byte[] bytes, int startPos, int limit, byte[] delim) {
 
 		int i = startPos;
+		byte current;
 
 		final int delimLimit = limit - delim.length + 1;
 

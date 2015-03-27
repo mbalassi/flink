@@ -35,7 +35,6 @@ import scala.language.postfixOps
  * Convenience functions to test actor based components.
  */
 object TestingUtils {
-
   val testConfig = ConfigFactory.parseString(getDefaultTestingActorSystemConfigString)
 
   val TESTING_DURATION = 2 minute
@@ -55,9 +54,23 @@ object TestingUtils {
     """.stripMargin
   }
 
+<<<<<<< HEAD
   def getDefaultTestingActorSystemConfig = testConfig
 
   def startTestingJobManager(system: ActorSystem): ActorRef = {
+=======
+  def startTestingTaskManagerWithConfiguration(hostname: String, jobManagerURL: String,
+                                               config: Configuration)
+                                              (implicit system: ActorSystem) = {
+    val (connectionInfo, _, taskManagerConfig, networkConnectionConfig) =
+      TaskManager.parseConfiguration(hostname, config,
+        localAkkaCommunication = true, localTaskManagerCommunication = false)
+    system.actorOf(Props(new TaskManager(connectionInfo, jobManagerURL, taskManagerConfig,
+      networkConnectionConfig) with TestingTaskManager))
+  }
+
+  def startTestingJobManager(implicit system: ActorSystem): ActorRef = {
+>>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2
     val config = new Configuration()
 
     val (instanceManager, scheduler, libraryCacheManager, _, accumulatorManager, _ ,

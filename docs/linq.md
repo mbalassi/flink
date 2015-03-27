@@ -27,7 +27,11 @@ under the License.
 the Scala API**
 
 Flink provides an API that allows specifying operations using SQL-like expressions.
+<<<<<<< HEAD
 This Expression API can be enabled by importing
+=======
+This expression API can be enabled by importing
+>>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2
 `org.apache.flink.api.scala.expressions._`.  This enables implicit conversions that allow
 converting a `DataSet` or `DataStream` to an `ExpressionOperation` on which relational queries
 can be specified. This example shows how a `DataSet` can be converted, how expression operations
@@ -63,6 +67,7 @@ val joined = input1.join(input2).where('b == 'a && 'd > 42).select('a, 'd).as[My
 Notice, how a `DataSet` can be converted to an expression operation by using `as` and specifying new
 names for the fields. This can also be used to disambiguate fields before a join operation.
 
+<<<<<<< HEAD
 The Expression API can be used with the Streaming API, since we also have implicit conversions to
 and from `DataStream`.
 
@@ -78,3 +83,10 @@ The following dependency must be added to your project when using the Expression
 
 Please refer to the scaladoc for a full list of supported operations and a description of the
 expression syntax. 
+=======
+The expression API can be used with the Streaming API, since we also have implicit conversions to
+and from `DataStream`.
+
+Please refer to the scaladoc for a full list of supported operations and a description of the
+expression syntax. 
+>>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2

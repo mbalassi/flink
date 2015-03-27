@@ -40,63 +40,23 @@ public class StreamingProgram {
 
 		DataStream<String> text = env.fromElements(WordCountData.TEXT);
 
-		DataStream<Word> counts =
-				text.flatMap(new Tokenizer()).groupBy("word").sum("frequency");
+		DataStream<Tuple2<String, Integer>> counts =
+				text.flatMap(new FlatMapFunction<String, Tuple2<String, Integer>>() {
+					@Override
+					public void flatMap(String value, Collector<Tuple2<String, Integer>> out) throws Exception {
+						StringTokenizer tokenizer = new StringTokenizer(value);
+						while (tokenizer.hasMoreTokens()){
+							out.collect(new Tuple2<String, Integer>(tokenizer.nextToken(), 1));
+						}
+					}
+				}).groupBy(0).sum(1);
 
-		counts.addSink(new NoOpSink());
+		counts.addSink(new SinkFunction<Tuple2<String, Integer>>() {
+			@Override
+			public void invoke(Tuple2<String, Integer> value) throws Exception {
+			}
+		});
 
 		env.execute();
-	}
-	// --------------------------------------------------------------------------------------------
-
-	public static class Word {
-
-		private String word;
-		private Integer frequency;
-
-		public Word() {
-		}
-
-		public Word(String word, int i) {
-			this.word = word;
-			this.frequency = i;
-		}
-
-		public String getWord() {
-			return word;
-		}
-
-		public void setWord(String word) {
-			this.word = word;
-		}
-
-		public Integer getFrequency() {
-			return frequency;
-		}
-
-		public void setFrequency(Integer frequency) {
-			this.frequency = frequency;
-		}
-
-		@Override
-		public String toString() {
-			return "(" + word + ", " + frequency + ")";
-		}
-	}
-
-	public static class Tokenizer implements FlatMapFunction<String, Word>{
-		@Override
-		public void flatMap(String value, Collector<Word> out) throws Exception {
-			StringTokenizer tokenizer = new StringTokenizer(value);
-			while (tokenizer.hasMoreTokens()){
-				out.collect(new Word(tokenizer.nextToken(), 1));
-			}
-		}
-	}
-
-	public static class NoOpSink implements SinkFunction<Word>{
-		@Override
-		public void invoke(Word value) throws Exception {
-		}
 	}
 }

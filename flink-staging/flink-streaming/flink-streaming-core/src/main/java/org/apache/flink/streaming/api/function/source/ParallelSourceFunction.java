@@ -13,6 +13,7 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+<<<<<<< HEAD
  */
 
 package org.apache.flink.streaming.api.function.source;
@@ -32,3 +33,16 @@ package org.apache.flink.streaming.api.function.source;
  */
 public interface ParallelSourceFunction<OUT> extends SourceFunction<OUT> {
 }
+=======
+ */
+
+package org.apache.flink.streaming.api.function.source;
+
+import org.apache.flink.util.Collector;
+
+public interface ParallelSourceFunction<OUT> extends SourceFunction<OUT> {
+
+	public void invoke(Collector<OUT> collector) throws Exception;
+		
+}
+>>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2

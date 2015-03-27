@@ -49,10 +49,9 @@ object TopSpeedWindowing {
       .window(Time.of(evictionSec, SECONDS))
       .every(Delta.of[CarEvent](triggerMeters,
           (oldSp,newSp) => newSp.distance-oldSp.distance, CarEvent(0,0,0,0)))
-      .local    
       .maxBy("speed")
 
-    cars.flatten print
+    cars print
 
     StreamExecutionEnvironment.getExecutionEnvironment.execute("TopSpeedWindowing")
 

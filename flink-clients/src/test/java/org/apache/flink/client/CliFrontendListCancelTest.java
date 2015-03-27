@@ -20,8 +20,12 @@ package org.apache.flink.client;
 
 import akka.actor.*;
 import akka.testkit.JavaTestKit;
+<<<<<<< HEAD
 
 import org.apache.flink.client.cli.CommandLineOptions;
+=======
+import org.apache.commons.cli.CommandLine;
+>>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2
 import org.apache.flink.runtime.jobgraph.JobID;
 import org.apache.flink.runtime.messages.JobManagerMessages;
 import org.junit.AfterClass;
@@ -108,6 +112,8 @@ public class CliFrontendListCancelTest {
 	@Test
 	public void testList() {
 		try {
+			final ActorRef jm = actorSystem.actorOf(Props.create(CliJobManager.class, (Object)null));
+
 			// test unrecognized option
 			{
 				String[] parameters = {"-v", "-k"};
@@ -116,9 +122,16 @@ public class CliFrontendListCancelTest {
 				assertTrue(retCode != 0);
 			}
 			
+			// test missing flags
+			{
+				String[] parameters = {};
+				CliFrontend testFrontend = new CliFrontendTestUtils.TestingCliFrontend();
+				int retCode = testFrontend.list(parameters);
+				assertTrue(retCode != 0);
+			}
+			
 			// test list properly
 			{
-				final ActorRef jm = actorSystem.actorOf(Props.create(CliJobManager.class, (Object)null));
 				String[] parameters = {"-r", "-s"};
 				InfoListTestCliFrontend testFrontend = new InfoListTestCliFrontend(jm);
 				int retCode = testFrontend.list(parameters);
@@ -145,7 +158,11 @@ public class CliFrontendListCancelTest {
 		}
 
 		@Override
+<<<<<<< HEAD
 		public ActorRef getJobManager(CommandLineOptions options) {
+=======
+		public ActorRef getJobManager(CommandLine line){
+>>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2
 			return jobmanager;
 		}
 	}
@@ -159,11 +176,11 @@ public class CliFrontendListCancelTest {
 
 		@Override
 		public void onReceive(Object message) throws Exception {
-			if (message instanceof JobManagerMessages.RequestTotalNumberOfSlots$) {
+			if(message instanceof JobManagerMessages.RequestTotalNumberOfSlots$){
 				getSender().tell(1, getSelf());
-			}
-			else if (message instanceof JobManagerMessages.CancelJob) {
+			}else if(message instanceof JobManagerMessages.CancelJob){
 				JobManagerMessages.CancelJob cancelJob = (JobManagerMessages.CancelJob) message;
+<<<<<<< HEAD
 
 				if (jobID != null && jobID.equals(cancelJob.jobID())) {
 					getSender().tell(new Status.Success(new Object()), getSelf());
@@ -174,6 +191,13 @@ public class CliFrontendListCancelTest {
 			}
 			else if (message instanceof JobManagerMessages.RequestRunningJobsStatus$) {
 				getSender().tell(new JobManagerMessages.RunningJobsStatus(), getSelf());
+=======
+				assertEquals(jobID, cancelJob.jobID());
+				getSender().tell(new Status.Success(new Object()), getSelf());
+			}else if(message instanceof  JobManagerMessages.RequestRunningJobs$){
+				getSender().tell(new JobManagerMessages.RunningJobs(),
+						getSelf());
+>>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2
 			}
 		}
 	}

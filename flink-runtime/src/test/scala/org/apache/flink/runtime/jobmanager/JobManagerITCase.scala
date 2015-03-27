@@ -78,6 +78,7 @@ WordSpecLike with Matchers with BeforeAndAfterAll {
           jobGraph.getJobID should equal(success.status)
         }
 
+<<<<<<< HEAD
         within(2 second) {
           val response = expectMsgType[Failure]
           val exception = response.cause
@@ -87,6 +88,9 @@ WordSpecLike with Matchers with BeforeAndAfterAll {
               new NoResourceAvailableException(1,1,0) should equal(e.getCause)
             case e => fail(s"Received wrong exception of type $e.")
           }
+=======
+          expectNoMsg()
+>>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2
         }
 
         jm ! NotifyWhenJobRemoved(jobGraph.getJobID)

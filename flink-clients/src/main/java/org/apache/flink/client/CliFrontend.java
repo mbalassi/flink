@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 
+
 package org.apache.flink.client;
 
 import java.io.File;
@@ -74,11 +75,14 @@ import org.apache.flink.runtime.messages.JobManagerMessages.RunningJobsStatus;
 import org.apache.flink.runtime.yarn.AbstractFlinkYarnCluster;
 import org.apache.flink.runtime.yarn.FlinkYarnClusterStatus;
 import org.apache.flink.util.StringUtils;
+<<<<<<< HEAD
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import scala.Some;
+=======
+>>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2
 import scala.concurrent.Await;
 import scala.concurrent.Future;
 import scala.concurrent.duration.FiniteDuration;
@@ -94,6 +98,41 @@ public class CliFrontend {
 	private static final String ACTION_LIST = "list";
 	private static final String ACTION_CANCEL = "cancel";
 
+<<<<<<< HEAD
+=======
+	// general options
+	private static final Option HELP_OPTION = new Option("h", "help", false, "Show the help message for the CLI Frontend or the action.");
+
+	// program (jar file) specific options
+	private static final Option JAR_OPTION = new Option("j", "jarfile", true, "Flink program JAR file.");
+	private static final Option CLASS_OPTION = new Option("c", "class", true, "Class with the program entry point (\"main\" method or \"getPlan()\" method. Only needed if the JAR file does not specify the class in its manifest.");
+	private static final Option PARALLELISM_OPTION = new Option("p", "parallelism", true, "The parallelism with which to run the program. Optional flag to override the default value specified in the configuration.");
+	private static final Option ARGS_OPTION = new Option("a", "arguments", true, "Program arguments. Arguments can also be added without -a, simply as trailing parameters.");
+
+	private static final Option ADDRESS_OPTION = new Option("m", "jobmanager", true, "Address of the JobManager (master) to which to connect. Specify '"+YARN_DEPLOY_JOBMANAGER+"' as the JobManager to deploy a YARN cluster for the job. Use this flag to connect to a different JobManager than the one specified in the configuration.");
+
+	// info specific options
+
+	// list specific options
+	private static final Option RUNNING_OPTION = new Option("r", "running", false, "Show only running programs and their JobIDs");
+	private static final Option SCHEDULED_OPTION = new Option("s", "scheduled", false, "Show only scheduled prorgrams and their JobIDs");
+
+	// canceling options
+
+	static {
+		initOptions();
+	}
+	
+	// general options
+	private static final Options GENERAL_OPTIONS = createGeneralOptions();
+	
+	// action options all include the general options
+	private static final Options RUN_OPTIONS = getRunOptions(createGeneralOptions());
+	private static final Options INFO_OPTIONS = getInfoOptions(createGeneralOptions());
+	private static final Options LIST_OPTIONS = getListOptions(createGeneralOptions());
+	private static final Options CANCEL_OPTIONS = getCancelOptions(createGeneralOptions());
+	
+>>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2
 	// config dir parameters
 	private static final String ENV_CONFIG_DIRECTORY = "FLINK_CONF_DIR";
 	private static final String CONFIG_DIRECTORY_FALLBACK_1 = "../conf";
@@ -105,6 +144,7 @@ public class CliFrontend {
 	public static final String YARN_PROPERTIES_PARALLELISM = "parallelism";
 	public static final String YARN_PROPERTIES_DYNAMIC_PROPERTIES_STRING = "dynamicPropertiesString";
 
+<<<<<<< HEAD
 	public static final String YARN_DYNAMIC_PROPERTIES_SEPARATOR = "@@"; // this has to be a regex for String.split()
 
 	/**
@@ -112,6 +152,15 @@ public class CliFrontend {
 	 * if this string is specified as the JobManager address
  	 */
 	public static final String YARN_DEPLOY_JOBMANAGER = "yarn-cluster";
+=======
+	private CommandLineParser parser;
+	
+	private boolean printHelp;
+	
+	private boolean globalConfigurationLoaded;
+	
+	private boolean yarnPropertiesLoaded = false;
+>>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2
 	
 
 	// --------------------------------------------------------------------------------------------
@@ -402,12 +451,20 @@ public class CliFrontend {
 		}
 		
 		try {
+<<<<<<< HEAD
 			ActorRef jobManager = getJobManager(options);
+=======
+			ActorRef jobManager = getJobManager(line);
+			if (jobManager == null) {
+				return 1;
+			}
+>>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2
 
 			LOG.info("Connecting to JobManager to retrieve list of jobs");
 			Future<Object> response = Patterns.ask(jobManager,
 					JobManagerMessages.getRequestRunningJobsStatus(), new Timeout(askTimeout));
 
+<<<<<<< HEAD
 			Object result;
 			try {
 				result = Await.result(response, askTimeout);
@@ -420,6 +477,22 @@ public class CliFrontend {
 				LOG.info("Successfully retrieved list of jobs");
 
 				List<JobStatusMessage> jobs = ((RunningJobsStatus) result).getStatusMessages();
+=======
+			Object result = null;
+
+			try{
+				result = Await.result(response, getAkkaTimeout());
+			} catch (Exception exception) {
+				throw new IOException("Could not retrieve running jobs from job manager.",
+						exception);
+			}
+
+			if(!(result instanceof RunningJobs)){
+				throw new RuntimeException("ReqeustRunningJobs requires a response of type " +
+						"RunningJobs. Instead the response is of type " + result.getClass() + ".");
+			} else {
+				Iterable<ExecutionGraph> jobs = ((RunningJobs) result).asJavaIterable();
+>>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2
 
 				ArrayList<JobStatusMessage> runningJobs = null;
 				ArrayList<JobStatusMessage> scheduledJobs = null;
@@ -535,8 +608,19 @@ public class CliFrontend {
 		}
 		
 		try {
+<<<<<<< HEAD
 			ActorRef jobManager = getJobManager(options);
 			Future<Object> response = Patterns.ask(jobManager, new CancelJob(jobId), new Timeout(askTimeout));
+=======
+			ActorRef jobManager = getJobManager(line);
+
+			if (jobManager == null) {
+				return 1;
+			}
+
+			final Future<Object> response = Patterns.ask(jobManager, new CancelJob(jobId),
+					new Timeout(getAkkaTimeout()));
+>>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2
 
 			try {
 				Await.result(response, askTimeout);
@@ -589,6 +673,7 @@ public class CliFrontend {
 	 * @return A PackagedProgram (upon success)
 	 * @throws java.io.FileNotFoundException, org.apache.flink.client.program.ProgramInvocationException, java.lang.Throwable
 	 */
+<<<<<<< HEAD
 	protected PackagedProgram buildProgram(ProgramOptions options)
 			throws FileNotFoundException, ProgramInvocationException
 	{
@@ -597,6 +682,24 @@ public class CliFrontend {
 
 		if (jarFilePath == null) {
 			throw new IllegalArgumentException("The program JAR file was not specified.");
+=======
+	protected PackagedProgram buildProgram(CommandLine line) throws FileNotFoundException, ProgramInvocationException {
+		String[] programArgs = line.hasOption(ARGS_OPTION.getOpt()) ?
+				line.getOptionValues(ARGS_OPTION.getOpt()) :
+				line.getArgs();
+	
+		// take the jar file from the option, or as the first trailing parameter (if available)
+		String jarFilePath = null;
+		if (line.hasOption(JAR_OPTION.getOpt())) {
+			jarFilePath = line.getOptionValue(JAR_OPTION.getOpt());
+		}
+		else if (programArgs.length > 0) {
+			jarFilePath = programArgs[0];
+			programArgs = Arrays.copyOfRange(programArgs, 1, programArgs.length);
+		}
+		else {
+			throw new FileNotFoundException("Error: Jar file was not specified.");
+>>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2
 		}
 
 		File jarFile = new File(jarFilePath);
@@ -649,17 +752,52 @@ public class CliFrontend {
 				throw new Exception("Found no configuration in the config directory '" + configDirectory
 						+ "' that specifies the JobManager port.");
 			}
+<<<<<<< HEAD
 
 			jobManagerAddress = new InetSocketAddress(jobManagerHost, jobManagerPort);
 		}
 
 		return jobManagerAddress;
+=======
+		}
+	}
+	
+	protected ActorRef getJobManager(CommandLine line) throws IOException {
+		//TODO: Get ActorRef from YarnCluster if we are in YARN mode.
+		String jobManagerAddressStr = getJobManagerAddressString(line);
+		if (jobManagerAddressStr == null) {
+			return null;
+		}
+
+		InetSocketAddress address = RemoteExecutor.getInetFromHostport(jobManagerAddressStr);
+
+		Future<ActorRef> jobManagerFuture = JobManager.getJobManager(
+				address,
+				ActorSystem.create("CliFrontendActorSystem", AkkaUtils.getDefaultAkkaConfig()),
+				getAkkaTimeout());
+
+		try{
+			return Await.result(jobManagerFuture, getAkkaTimeout());
+		} catch (Exception exception) {
+			throw new IOException("Could not find job manager at address " +
+					JobManager.getRemoteAkkaURL(address) + ".");
+		}
+>>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2
 	}
 	
 	protected ActorRef getJobManager(CommandLineOptions options) throws Exception {
 		//TODO: Get ActorRef from YarnCluster if we are in YARN mode.
 
+<<<<<<< HEAD
 		InetSocketAddress address = getJobManagerAddress(options);
+=======
+	public String getConfigurationDirectory() {
+		if(configurationDirectory == null) {
+			configurationDirectory = getConfigurationDirectoryFromEnv();
+		}
+		return configurationDirectory;
+	}
+>>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2
 
 		// start an actor system if needed
 		if (this.actorSystem == null) {
@@ -675,6 +813,7 @@ public class CliFrontend {
 
 			LOG.info("Actor system successfully started");
 		}
+<<<<<<< HEAD
 
 		LOG.info("Trying to lookup JobManager");
 		ActorRef jmActor = JobManager.getJobManagerRemoteReference(address, actorSystem, lookupTimeout);
@@ -683,6 +822,64 @@ public class CliFrontend {
 	}
 	
 
+=======
+		return GlobalConfiguration.getConfiguration();
+	}
+	public static String getConfigurationDirectoryFromEnv() {
+		String location = null;
+		if (System.getenv(ENV_CONFIG_DIRECTORY) != null) {
+			location = System.getenv(ENV_CONFIG_DIRECTORY);
+		} else if (new File(CONFIG_DIRECTORY_FALLBACK_1).exists()) {
+			location = CONFIG_DIRECTORY_FALLBACK_1;
+		} else if (new File(CONFIG_DIRECTORY_FALLBACK_2).exists()) {
+			location = CONFIG_DIRECTORY_FALLBACK_2;
+		} else {
+			throw new RuntimeException("The configuration directory was not found. Please configure the '" +
+					ENV_CONFIG_DIRECTORY + "' environment variable properly.");
+		}
+		return location;
+	}
+
+	protected FiniteDuration getAkkaTimeout(){
+		Configuration config = getGlobalConfiguration();
+
+		return AkkaUtils.getTimeout(config);
+	}
+	
+	public static List<Tuple2<String, String>> getDynamicProperties(String dynamicPropertiesEncoded) {
+		List<Tuple2<String, String>> ret = new ArrayList<Tuple2<String, String>>();
+		if(dynamicPropertiesEncoded != null && dynamicPropertiesEncoded.length() > 0) {
+			String[] propertyLines = dynamicPropertiesEncoded.split(CliFrontend.YARN_DYNAMIC_PROPERTIES_SEPARATOR);
+			for(String propLine : propertyLines) {
+				if(propLine == null) {
+					continue;
+				}
+				String[] kv = propLine.split("=");
+				if(kv != null && kv[0] != null && kv[1] != null && kv[0].length() > 0) {
+					ret.add(new Tuple2<String, String>(kv[0], kv[1]));
+				}
+			}
+		}
+		return ret;
+	}
+	
+	protected Properties getYarnProperties() throws IOException {
+		if(!yarnPropertiesLoaded) {
+			String loc = getConfigurationDirectory();
+			File propertiesFile = new File(loc + '/' + YARN_PROPERTIES_FILE);
+			if (propertiesFile.exists()) {
+				Properties props = new Properties();
+				InputStream is = new FileInputStream( propertiesFile );
+				props.load(is);
+				yarnProperties = props;
+				is.close();
+			} else {
+				yarnProperties = null;
+			}
+		}
+		return yarnProperties;
+	}
+>>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2
 	
 	protected Client getClient(CommandLineOptions options, ClassLoader classLoader, String programName) throws Exception {
 

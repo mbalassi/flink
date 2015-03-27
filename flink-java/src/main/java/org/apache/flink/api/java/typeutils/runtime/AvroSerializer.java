@@ -87,8 +87,8 @@ public final class AvroSerializer<T> extends TypeSerializer<T> {
 	}
 
 	@Override
-	public AvroSerializer<T> duplicate() {
-		return new AvroSerializer<T>(type, typeToInstantiate);
+	public AvroSerializer duplicate() {
+		return new AvroSerializer(type, typeToInstantiate);
 	}
 	
 	@Override

@@ -47,7 +47,7 @@ class TestingCluster(userConfiguration: Configuration, singleActorSystem: Boolea
     cfg
   }
 
-  override def startJobManager(actorSystem: ActorSystem): ActorRef = {
+  override def startJobManager(implicit actorSystem: ActorSystem): ActorRef = {
 
     val (instanceManager, scheduler, libraryCacheManager, _, accumulatorManager, _,
     executionRetries, delayBetweenRetries,
@@ -65,7 +65,13 @@ class TestingCluster(userConfiguration: Configuration, singleActorSystem: Boolea
 
   override def startTaskManager(index: Int, system: ActorSystem) = {
 
+<<<<<<< HEAD
     val tmActorName = TaskManager.TASK_MANAGER_NAME + "_" + (index + 1)
+=======
+    system.actorOf(Props(new TaskManager(connectionInfo, jobManagerURL, taskManagerConfig,
+      networkConnectionConfig) with TestingTaskManager), TaskManager.TASK_MANAGER_NAME + index)
+  }
+>>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2
 
     TaskManager.startTaskManagerActor(configuration, system, HOSTNAME, tmActorName,
       singleActorSystem, numTaskManagers == 1, classOf[TestingTaskManager])

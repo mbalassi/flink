@@ -24,13 +24,12 @@ import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.api.common.typeutils.record.RecordSerializer;
 import org.apache.flink.types.Record;
 
+
 /**
- * Type information for the {@link Record} data type.
+ * Type information for the record API.
  */
 public class RecordTypeInfo extends TypeInformation<Record> {
 
-	private static final long serialVersionUID = 1L;
-	
 	@Override
 	public boolean isBasicType() {
 		return false;

@@ -43,7 +43,11 @@ public class StreamReduceInvokable<IN> extends ChainableInvokable<IN, IN> {
 	protected void callUserFunction() throws Exception {
 
 		if (currentValue != null) {
+<<<<<<< HEAD
 			currentValue = reducer.reduce(copy(currentValue), nextObject);
+=======
+			currentValue = reducer.reduce(currentValue, nextValue);
+>>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2
 		} else {
 			currentValue = nextObject;
 

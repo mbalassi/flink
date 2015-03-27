@@ -23,11 +23,17 @@ import java.security.PrivilegedAction
 
 import akka.actor._
 import org.apache.flink.client.CliFrontend
+<<<<<<< HEAD
 import org.apache.flink.configuration.{GlobalConfiguration, Configuration, ConfigConstants}
 import org.apache.flink.runtime.akka.AkkaUtils
 import org.apache.flink.runtime.jobmanager.JobManager
 import org.apache.flink.runtime.jobmanager.web.WebInfoServer
 import org.apache.flink.runtime.util.EnvironmentInformation
+=======
+import org.apache.flink.configuration.ConfigConstants
+import org.apache.flink.runtime.akka.AkkaUtils
+import org.apache.flink.runtime.jobmanager.{WithWebServer, JobManager}
+>>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2
 import org.apache.flink.yarn.Messages.StartYarnSession
 import org.apache.hadoop.security.UserGroupInformation
 import org.apache.hadoop.yarn.api.ApplicationConstants.Environment
@@ -62,16 +68,15 @@ object ApplicationMaster {
 
     ugi.doAs(new PrivilegedAction[Object] {
       override def run(): Object = {
-
         var actorSystem: ActorSystem = null
-        var webserver: WebInfoServer = null
+        var jobManager: ActorRef = ActorRef.noSender
 
         try {
           val conf = new YarnConfiguration()
 
           val env = System.getenv()
 
-          if (LOG.isDebugEnabled) {
+          if(LOG.isDebugEnabled) {
             LOG.debug("All environment variables: " + env.toString)
           }
 
@@ -81,22 +86,31 @@ object ApplicationMaster {
           val logDirs = env.get(Environment.LOG_DIRS.key())
 
           // Note that we use the "ownHostname" given by YARN here, to make sure
-          // we use the hostnames given by YARN consistently throughout akka.
+          // we use the hostnames given by YARN consitently throuout akka.
           // for akka "localhost" and "localhost.localdomain" are different actors.
           val ownHostname = env.get(Environment.NM_HOST.key())
-          require(ownHostname != null, "Own hostname in YARN not set.")
+          require(ownHostname != null, s"Own hostname not set.")
 
           val taskManagerCount = env.get(FlinkYarnClient.ENV_TM_COUNT).toInt
           val slots = env.get(FlinkYarnClient.ENV_SLOTS).toInt
           val dynamicPropertiesEncodedString = env.get(FlinkYarnClient.ENV_DYNAMIC_PROPERTIES)
 
+<<<<<<< HEAD
           val (config, system, jobManager, archiver) = startJobManager(currDir, ownHostname,
                                                       dynamicPropertiesEncodedString)
+=======
+          val jobManagerWebPort = 0 // automatic assignment.
+
+          val (system, actor) = startJobManager(currDir, ownHostname,dynamicPropertiesEncodedString,
+            jobManagerWebPort, logDirs)
+>>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2
 
           actorSystem = system
+          jobManager = actor
           val extActor = system.asInstanceOf[ExtendedActorSystem]
           val jobManagerPort = extActor.provider.getDefaultAddress.port.get
 
+<<<<<<< HEAD
           // start the web info server
           if (config.getInteger(ConfigConstants.JOB_MANAGER_WEB_PORT_KEY, 0) != -1) {
             LOG.info("Starting Job Manger web frontend.")
@@ -111,32 +125,30 @@ object ApplicationMaster {
             -1
           } else webserver.getServerPort
 
+=======
+>>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2
           // generate configuration file for TaskManagers
           generateConfigurationFile(s"$currDir/$MODIFIED_CONF_FILE", currDir, ownHostname,
             jobManagerPort, jobManagerWebPort, logDirs, slots, taskManagerCount,
             dynamicPropertiesEncodedString)
 
-          // send "start yarn session" message to YarnJobManager.
-          LOG.info("Starting YARN session on Job Manager.")
-          jobManager ! StartYarnSession(conf, jobManagerPort, jobManagerWebPort)
 
-          LOG.info("Application Master properly initiated. Awaiting termination of actor system.")
+          // send "start yarn session" message to YarnJobManager.
+          LOG.info("Start yarn session on job manager.")
+          jobManager ! StartYarnSession(conf, jobManagerPort)
+
+          LOG.info("Application Master properly initiated. Await termination of actor system.")
           actorSystem.awaitTermination()
-        }
-        catch {
+        }catch{
           case t: Throwable =>
             LOG.error("Error while running the application master.", t)
 
-            if (actorSystem != null) {
+            if(actorSystem != null){
               actorSystem.shutdown()
               actorSystem.awaitTermination()
+
+              actorSystem = null
             }
-        }
-        finally {
-          if (webserver != null) {
-            LOG.debug("Stopping Job Manager web frontend.")
-            webserver.stop()
-          }
         }
 
         null
@@ -188,6 +200,7 @@ object ApplicationMaster {
     output.close()
   }
 
+<<<<<<< HEAD
   /**
    * Starts the JobManager and all its components.
    *
@@ -207,6 +220,13 @@ object ApplicationMaster {
 
     GlobalConfiguration.loadConfiguration(currDir)
     val configuration = GlobalConfiguration.getConfiguration()
+=======
+  def startJobManager(currDir: String, hostname: String, dynamicPropertiesEncodedString: String,
+                       jobManagerWebPort: Int, logDirs: String): (ActorSystem, ActorRef) = {
+
+    LOG.info("Start job manager for yarn")
+    val args = Array[String]("--configDir", currDir)
+>>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2
 
     configuration.setString(ConfigConstants.FLINK_BASE_DIR_PATH_KEY, currDir)
 
@@ -216,13 +236,15 @@ object ApplicationMaster {
     for(property <- dynamicProperties.asScala){
       configuration.setString(property.f0, property.f1)
     }
+    configuration.setInteger(ConfigConstants.JOB_MANAGER_WEB_PORT_KEY, jobManagerWebPort)
+    configuration.setString(ConfigConstants.JOB_MANAGER_WEB_LOG_PATH_KEY, logDirs)
 
     // set port to 0 to let Akka automatically determine the port.
-    LOG.debug("Starting JobManager actor system")
     val jobManagerSystem = AkkaUtils.createActorSystem(configuration, Some((hostname, 0)))
 
+    LOG.info("Start job manager actor");
+
     // start all the components inside the job manager
-    LOG.debug("Starting JobManager components")
     val (instanceManager, scheduler, libraryCacheManager, archiveProps, accumulatorManager,
                    profilerProps, executionRetries, delayBetweenRetries,
                    timeout, _) = JobManager.createJobManagerComponents(configuration)
@@ -236,11 +258,14 @@ object ApplicationMaster {
 
     val jobManagerProps = Props(new JobManager(configuration, instanceManager, scheduler,
       libraryCacheManager, archiver, accumulatorManager, profiler, executionRetries,
+<<<<<<< HEAD
       delayBetweenRetries, timeout) with ApplicationMasterActor)
+=======
+      delayBetweenRetries, timeout) with WithWebServer with YarnJobManager)
+>>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2
 
-    LOG.debug("Starting JobManager actor")
     val jobManager = JobManager.startActor(jobManagerProps, jobManagerSystem)
 
-    (configuration, jobManagerSystem, jobManager, archiver)
+    (jobManagerSystem, jobManager)
   }
 }

@@ -35,7 +35,6 @@ import org.slf4j.LoggerFactory;
 /**
  * Lightweight configuration object which can store key/value pairs.
  */
-@SuppressWarnings("EqualsBetweenInconvertibleTypes")
 public class Configuration implements IOReadableWritable, java.io.Serializable, Cloneable {
 
 	private static final long serialVersionUID = 1L;
@@ -585,7 +584,6 @@ public class Configuration implements IOReadableWritable, java.io.Serializable, 
 		return hash;
 	}
 
-	@SuppressWarnings("EqualsBetweenInconvertibleTypes")
 	@Override
 	public boolean equals(Object obj) {
 		if (this == obj) {
@@ -598,11 +596,11 @@ public class Configuration implements IOReadableWritable, java.io.Serializable, 
 				Object thisVal = e.getValue();
 				Object otherVal = otherConf.get(e.getKey());
 				
-				if (!thisVal.getClass().equals(byte[].class)) {
+				if (thisVal.getClass() != byte[].class) {
 					if (!thisVal.equals(otherVal)) {
 						return false;
 					}
-				} else if (otherVal.getClass().equals(byte[].class)) {
+				} else if (otherVal.getClass() == byte[].class) {
 					if (!Arrays.equals((byte[]) thisVal, (byte[]) otherVal)) {
 						return false;
 					}

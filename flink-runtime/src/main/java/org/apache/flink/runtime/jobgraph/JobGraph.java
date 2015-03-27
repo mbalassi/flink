@@ -397,6 +397,7 @@ public class JobGraph implements Serializable {
 	}
 
 	/**
+<<<<<<< HEAD
 	 * Adds the BLOB referenced by the key to the JobGraph's dependencies.
 	 *
 	 * @param key
@@ -422,6 +423,8 @@ public class JobGraph implements Serializable {
 	}
 
 	/**
+=======
+>>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2
 	 * Returns a set of BLOB keys referring to the JAR files required to run this job.
 	 *
 	 * @return set of BLOB keys referring to the JAR files required to run this job

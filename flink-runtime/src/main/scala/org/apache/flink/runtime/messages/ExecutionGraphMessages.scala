@@ -66,10 +66,10 @@ object ExecutionGraphMessages {
    * @param jobID identifying the correspong job
    * @param newJobStatus
    * @param timestamp
-   * @param error
+   * @param optionalMessage
    */
   case class JobStatusChanged(jobID: JobID, newJobStatus: JobStatus, timestamp: Long,
-                              error: Throwable){
+                              optionalMessage: String){
     override def toString: String = {
       s"${timestampToString(timestamp)}\tJob execution switched to status $newJobStatus."
     }

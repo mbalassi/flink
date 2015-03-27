@@ -18,11 +18,19 @@
 
 package org.apache.flink.runtime.akka
 
+<<<<<<< HEAD
 import java.net.InetAddress
 import java.util.concurrent.{TimeUnit, Callable}
 
 import akka.actor._
 import akka.pattern.{ask => akkaAsk}
+=======
+import java.io.IOException
+import java.util.concurrent.{TimeUnit, Callable}
+
+import akka.actor.{ActorSelection, ActorRef, ActorSystem}
+import akka.pattern.{Patterns, ask => akkaAsk}
+>>>>>>> 3846301d4e945da56acb6e0f5828401c6047c6c2
 import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.flink.configuration.{ConfigConstants, Configuration}
 import org.slf4j.LoggerFactory
@@ -92,12 +100,9 @@ object AkkaUtils {
     val defaultConfig = getBasicAkkaConfig(configuration)
 
     listeningAddress match {
-
       case Some((hostname, port)) =>
-        val ipAddress = "\"" + InetAddress.getByName(hostname).getHostAddress() + "\""
-        val remoteConfig = getRemoteAkkaConfig(configuration, ipAddress, port)
+        val remoteConfig = getRemoteAkkaConfig(configuration, hostname, port)
         remoteConfig.withFallback(defaultConfig)
-
       case None =>
         defaultConfig
     }
@@ -175,48 +180,32 @@ object AkkaUtils {
    */
   private def getRemoteAkkaConfig(configuration: Configuration,
                                   hostname: String, port: Int): Config = {
-    val akkaAskTimeout = Duration(configuration.getString(
-      ConfigConstants.AKKA_ASK_TIMEOUT,
+    val akkaAskTimeout = Duration(configuration.getString(ConfigConstants.AKKA_ASK_TIMEOUT,
       ConfigConstants.DEFAULT_AKKA_ASK_TIMEOUT))
 
-    val startupTimeout = configuration.getString(
-      ConfigConstants.AKKA_STARTUP_TIMEOUT,
+    val startupTimeout = configuration.getString(ConfigConstants.AKKA_STARTUP_TIMEOUT,
       akkaAskTimeout.toString)
-
-    val transportHeartbeatInterval = configuration.getString(
-      ConfigConstants.AKKA_TRANSPORT_HEARTBEAT_INTERVAL,
+    val transportHeartbeatInterval = configuration.getString(ConfigConstants.
+      AKKA_TRANSPORT_HEARTBEAT_INTERVAL,
       ConfigConstants.DEFAULT_AKKA_TRANSPORT_HEARTBEAT_INTERVAL)
-
-    val transportHeartbeatPause = configuration.getString(
-      ConfigConstants.AKKA_TRANSPORT_HEARTBEAT_PAUSE,
+    val transportHeartbeatPause = configuration.getString(ConfigConstants.
+      AKKA_TRANSPORT_HEARTBEAT_PAUSE,
       ConfigConstants.DEFAULT_AKKA_TRANSPORT_HEARTBEAT_PAUSE)
-
-    val transportThreshold = configuration.getDouble(
-      ConfigConstants.AKKA_TRANSPORT_THRESHOLD,
+    val transportThreshold = configuration.getDouble(ConfigConstants.AKKA_TRANSPORT_THRESHOLD,
       ConfigConstants.DEFAULT_AKKA_TRANSPORT_THRESHOLD)
-
-    val watchHeartbeatInterval = configuration.getString(
-      ConfigConstants.AKKA_WATCH_HEARTBEAT_INTERVAL,
-      (akkaAskTimeout/10).toString)
-
-    val watchHeartbeatPause = configuration.getString(
-      ConfigConstants.AKKA_WATCH_HEARTBEAT_PAUSE,
+    val watchHeartbeatInterval = configuration.getString(ConfigConstants
+      .AKKA_WATCH_HEARTBEAT_INTERVAL, (akkaAskTimeout/10).toString)
+    val watchHeartbeatPause = configuration.getString(ConfigConstants.AKKA_WATCH_HEARTBEAT_PAUSE,
       akkaAskTimeout.toString)
-
-    val watchThreshold = configuration.getDouble(
-      ConfigConstants.AKKA_WATCH_THRESHOLD,
+    val watchThreshold = configuration.getDouble(ConfigConstants.AKKA_WATCH_THRESHOLD,
       ConfigConstants.DEFAULT_AKKA_WATCH_THRESHOLD)
-
-    val akkaTCPTimeout = configuration.getString(
-      ConfigConstants.AKKA_TCP_TIMEOUT,
+    val akkaTCPTimeout = configuration.getString(ConfigConstants.AKKA_TCP_TIMEOUT,
       akkaAskTimeout.toString)
-
-    val akkaFramesize = configuration.getString(
-      ConfigConstants.AKKA_FRAMESIZE,
+    val akkaFramesize = configuration.getString(ConfigConstants.AKKA_FRAMESIZE,
       ConfigConstants.DEFAULT_AKKA_FRAMESIZE)
-
-    val lifecycleEvents = configuration.getBoolean(
-      ConfigConstants.AKKA_LOG_LIFECYCLE_EVENTS,
+    val akkaThroughput = configuration.getInteger(ConfigConstants.AKKA_DISPATCHER_THROUGHPUT,
+      ConfigConstants.DEFAULT_AKKA_DISPATCHER_THROUGHPUT)
+    val lifecycleEvents = configuration.getBoolean(ConfigConstants.AKKA_LOG_LIFECYCLE_EVENTS,
       ConfigConstants.DEFAULT_AKKA_LOG_LIFECYCLE_EVENTS)
 
     val logLifecycleEvents = if (lifecycleEvents) "on" else "off"
@@ -280,41 +269,34 @@ object AkkaUtils {
   }
 
   def getLogLevel: String = {
-    if (LOG.isTraceEnabled) {
-      "TRACE"
+    if(LOG.isDebugEnabled) {
+      "DEBUG"
     } else {
-      if (LOG.isDebugEnabled) {
-        "DEBUG"
+      if (LOG.isInfoEnabled) {
+        "INFO"
       } else {
-        if (LOG.isInfoEnabled) {
-          "INFO"
+        if(LOG.isWarnEnabled){
+          "WARNING"
         } else {
-          if (LOG.isWarnEnabled) {
-            "WARNING"
+          if (LOG.isErrorEnabled) {
+            "ERROR"
           } else {
-            if (LOG.isErrorEnabled) {
-              "ERROR"
-            } else {
-              "OFF"
-            }
+            "OFF"
           }
         }
       }
     }
   }
 
-  def getChild(parent: ActorRef, child: String,
-               system: ActorSystem,
-               timeout: FiniteDuration): Future[ActorRef] = {
+  def getChild(parent: ActorRef, child: String)(implicit system: ActorSystem, timeout:
+  FiniteDuration): Future[ActorRef] = {
     system.actorSelection(parent.path / child).resolveOne()(timeout)
   }
 
-  def getReference(path: String, system:
-                   ActorSystem,
-                   timeout: FiniteDuration): Future[ActorRef] = {
+  def getReference(path: String)(implicit system: ActorSystem, timeout: FiniteDuration):
+  Future[ActorRef] = {
     system.actorSelection(path).resolveOne()(timeout)
   }
-
 
   /**
    * Utility function to construct a future which tries multiple times to execute itself if it
@@ -385,19 +367,6 @@ object AkkaUtils {
   def getDefaultTimeout: FiniteDuration = {
     val duration = Duration(ConfigConstants.DEFAULT_AKKA_ASK_TIMEOUT)
 
-    new FiniteDuration(duration.toMillis, TimeUnit.MILLISECONDS)
-  }
-
-  def getLookupTimeout(config: Configuration): FiniteDuration = {
-    val duration = Duration(config.getString(
-      ConfigConstants.AKKA_LOOKUP_TIMEOUT,
-      ConfigConstants.DEFAULT_AKKA_LOOKUP_TIMEOUT))
-
-    new FiniteDuration(duration.toMillis, TimeUnit.MILLISECONDS)
-  }
-
-  def getDefaultLookupTimeout: FiniteDuration = {
-    val duration = Duration(ConfigConstants.DEFAULT_AKKA_LOOKUP_TIMEOUT)
     new FiniteDuration(duration.toMillis, TimeUnit.MILLISECONDS)
   }
 }

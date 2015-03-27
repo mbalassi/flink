@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 
+
 package org.apache.flink.types.parser;
 
 import org.apache.flink.types.StringValue;
@@ -44,6 +45,7 @@ public class StringValueParser extends FieldParser<StringValue> {
 
 		this.result = reusable;
 		int i = startPos;
+		byte current;
 
 		final int delimLimit = limit-delimiter.length+1;
 
