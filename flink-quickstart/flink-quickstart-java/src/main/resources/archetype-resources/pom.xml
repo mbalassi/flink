@@ -48,22 +48,28 @@ under the License.
 	
 	<!-- 
 		
-		Execute
-			mvn clean install -Pbuild-jar
+		Execute "mvn clean package -Pbuild-jar"
 		to build a jar file out of this project!
 
-
 		How to use the Flink Quickstart pom:
+
 		a) Adding new dependencies:
 			You can add dependencies to the list below.
-			Please check if the maven-shade-plugin below is filtering out your dependency and remove the exclude from there.
+			Please check if the maven-shade-plugin below is filtering out your dependency
+			and remove the exclude from there.
 
 		b) Build a jar for running on the cluster:
 			There are two options for creating a jar from this project
-			b.1) "mvn clean install" -> this will create a fat jar which contains all dependencies necessary for running the jar created by this pom in a cluster. The "maven-shade-plugin" excludes everything that is provided on a running Flink cluster.
-			b.2) "mvn clean install -Pbuild-jar" -> This will also create a fat-jar, but with much nicer dependency exclusion handling. This approach is preferred and leads to much cleaner jar files.
 
+			b.1) "mvn clean package" -> this will create a fat jar which contains all
+					dependencies necessary for running the jar created by this pom in a cluster.
+					The "maven-shade-plugin" excludes everything that is provided on a running Flink cluster.
+
+			b.2) "mvn clean package -Pbuild-jar" -> This will also create a fat-jar, but with much
+					nicer dependency exclusion handling. This approach is preferred and leads to
+					much cleaner jar files.
 	-->
+
 	<dependencies>
 		<dependency>
 			<groupId>org.apache.flink</groupId>
@@ -110,12 +116,14 @@ under the License.
 									<exclude>org.apache.flink:flink-scala</exclude>
 									<exclude>org.apache.flink:flink-runtime</exclude>
 									<exclude>org.apache.flink:flink-optimizer</exclude>
+									<exclude>org.apache.flink:flink-clients</exclude>
 									<exclude>org.apache.flink:flink-spargel</exclude>
 									<exclude>org.apache.flink:flink-avro</exclude>
 									<exclude>org.apache.flink:flink-java-examples</exclude>
 									<exclude>org.apache.flink:flink-scala-examples</exclude>
 									<exclude>org.apache.flink:flink-streaming-examples</exclude>
 									<exclude>org.apache.flink:flink-streaming-core</exclude>
+
 									<!-- Also exclude very big transitive dependencies of Flink
 
 									WARNING: You have to remove these excludes if your code relies on other
@@ -123,12 +131,14 @@ under the License.
 
 									-->
 									<exclude>org.scala-lang:scala-library</exclude>
+									<exclude>org.scala-lang:scala-compiler</exclude>
+									<exclude>org.scala-lang:scala-reflect</exclude>
 									<exclude>com.amazonaws:aws-java-sdk</exclude>
+									<exclude>com.typesafe.akka:akka-actor_*</exclude>
+									<exclude>com.typesafe.akka:akka-remote_*</exclude>
+									<exclude>com.typesafe.akka:akka-slf4j_*</exclude>
 									<exclude>io.netty:netty-all</exclude>
-									<exclude>com.typesafe.akka:akka-actor_${scala.binary.version}</exclude>
-									<exclude>com.typesafe.akka:akka-remote_${scala.binary.version}</exclude>
 									<exclude>io.netty:netty</exclude>
-									<exclude>com.typesafe.akka:akka-slf4j_${scala.binary.version}</exclude>
 									<exclude>org.eclipse.jetty:jetty-server</exclude>
 									<exclude>org.eclipse.jetty:jetty-continuation</exclude>
 									<exclude>org.eclipse.jetty:jetty-http</exclude>
@@ -148,12 +158,12 @@ under the License.
 									<exclude>com.esotericsoftware.kryo:kryo</exclude>
 									<exclude>com.esotericsoftware.minlog:minlog</exclude>
 									<exclude>org.objenesis:objenesis</exclude>
-									<exclude>com.twitter:chill_${scala.binary.version}</exclude>
+									<exclude>com.twitter:chill_*</exclude>
 									<exclude>com.twitter:chill-java</exclude>
-									<exclude>com.twitter:chill-avro_${scala.binary.version}</exclude>
-									<exclude>com.twitter:chill-bijection_${scala.binary.version}</exclude>
-									<exclude>com.twitter:bijection-core_${scala.binary.version}</exclude>
-									<exclude>com.twitter:bijection-avro_${scala.binary.version}</exclude>
+									<exclude>com.twitter:chill-avro_*</exclude>
+									<exclude>com.twitter:chill-bijection_*</exclude>
+									<exclude>com.twitter:bijection-core_*</exclude>
+									<exclude>com.twitter:bijection-avro_*</exclude>
 									<exclude>com.twitter:chill-protobuf</exclude>
 									<exclude>com.google.protobuf:protobuf-java</exclude>
 									<exclude>com.twitter:chill-thrift</exclude>
@@ -179,7 +189,7 @@ under the License.
 									<exclude>stax:stax-api</exclude>
 									<exclude>com.typesafe:config</exclude>
 									<exclude>org.uncommons.maths:uncommons-maths</exclude>
-									<exclude>com.github.scopt:scopt_${scala.binary.version}</exclude>
+									<exclude>com.github.scopt:scopt_*</exclude>
 									<exclude>org.mortbay.jetty:servlet-api</exclude>
 									<exclude>commons-io:commons-io</exclude>
 									<exclude>commons-cli:commons-cli</exclude>
@@ -200,6 +210,7 @@ under the License.
 									<mainClass>${package}.Job</mainClass>
 								</transformer>
 							</transformers>
+							<createDependencyReducedPom>false</createDependencyReducedPom>
 						</configuration>
 					</execution>
 				</executions>

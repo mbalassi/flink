@@ -386,10 +386,10 @@ public abstract class StreamExecutionEnvironment {
 	 *            The interval of file watching in milliseconds.
 	 * @param watchType
 	 *            The watch type of file stream. When watchType is
-	 *            {@link WatchType.ONLY_NEW_FILES}, the system processes only
-	 *            new files. {@link WatchType.REPROCESS_WITH_APPENDED} means
+	 *            {@link WatchType#ONLY_NEW_FILES}, the system processes only
+	 *            new files. {@link WatchType#REPROCESS_WITH_APPENDED} means
 	 *            that the system re-processes all contents of appended file.
-	 *            {@link WatchType.PROCESS_ONLY_APPENDED} means that the system
+	 *            {@link WatchType#PROCESS_ONLY_APPENDED} means that the system
 	 *            processes only appended contents of files.
 	 * 
 	 * @return The DataStream containing the given directory.
