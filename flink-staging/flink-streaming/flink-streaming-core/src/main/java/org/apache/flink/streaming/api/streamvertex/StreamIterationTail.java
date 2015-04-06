@@ -33,8 +33,7 @@ public class StreamIterationTail<IN> extends StreamVertex<IN, IN> {
 	private InputHandler<IN> inputHandler;
 
 	private Integer iterationId;
-	@SuppressWarnings("rawtypes")
-	private BlockingQueue<StreamRecord> dataChannel;
+	private BlockingQueue<RecordOrEvent> dataChannel;
 	private long iterationWaitTime;
 	private boolean shouldWait;
 
@@ -49,8 +48,8 @@ public class StreamIterationTail<IN> extends StreamVertex<IN, IN> {
 			iterationId = configuration.getIterationId();
 			iterationWaitTime = configuration.getIterationWaitTime();
 			shouldWait = iterationWaitTime > 0;
-			dataChannel = BlockingQueueBroker.instance().get(iterationId.toString()+"-"
-					+getEnvironment().getIndexInSubtaskGroup());
+			dataChannel = BlockingQueueBroker.instance().get(
+					iterationId.toString() + "-" + getEnvironment().getIndexInSubtaskGroup());
 		} catch (Exception e) {
 			throw new StreamVertexException(String.format(
 					"Cannot register inputs of StreamIterationSink %s", iterationId), e);
@@ -83,19 +82,19 @@ public class StreamIterationTail<IN> extends StreamVertex<IN, IN> {
 	protected void forwardRecords() throws Exception {
 		StreamRecord<IN> reuse = inputHandler.getInputSerializer().createInstance();
 		while ((reuse = inputHandler.getInputIter().next(reuse)) != null) {
-			if (!pushToQueue(reuse)) {
+			if (!pushToQueue(new RecordOrEvent(reuse))) {
 				break;
 			}
 			reuse = inputHandler.getInputSerializer().createInstance();
 		}
 	}
 
-	private boolean pushToQueue(StreamRecord<IN> record) throws InterruptedException {
+	private boolean pushToQueue(RecordOrEvent recordOrEvent) throws InterruptedException {
 		try {
 			if (shouldWait) {
-				return dataChannel.offer(record, iterationWaitTime, TimeUnit.MILLISECONDS);
+				return dataChannel.offer(recordOrEvent, iterationWaitTime, TimeUnit.MILLISECONDS);
 			} else {
-				dataChannel.put(record);
+				dataChannel.put(recordOrEvent);
 				return true;
 			}
 		} catch (InterruptedException e) {
@@ -105,6 +104,16 @@ public class StreamIterationTail<IN> extends StreamVertex<IN, IN> {
 				throw e;
 			}
 			return false;
+		}
+	}
+
+	@Override
+	protected synchronized void actOnBarrier(long id) {
+		super.actOnBarrier(id);
+		try {
+			pushToQueue(new RecordOrEvent(new StreamingSuperstep(id)));
+		} catch (InterruptedException e) {
+			throw new RuntimeException();
 		}
 	}
 

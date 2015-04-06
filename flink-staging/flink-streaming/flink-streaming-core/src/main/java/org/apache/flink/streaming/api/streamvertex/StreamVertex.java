@@ -288,7 +288,7 @@ public class StreamVertex<IN, OUT> extends AbstractInvokable implements StreamTa
 	 * 
 	 * @param id
 	 */
-	private synchronized void actOnBarrier(long id) {
+	protected synchronized void actOnBarrier(long id) {
 		if (this.isRunning) {
 			try {
 				outputHandler.broadcastBarrier(id);

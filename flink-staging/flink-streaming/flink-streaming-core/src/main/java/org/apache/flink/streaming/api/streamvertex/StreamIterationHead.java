@@ -23,7 +23,6 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.flink.streaming.api.collector.StreamOutput;
-import org.apache.flink.streaming.api.streamrecord.StreamRecord;
 import org.apache.flink.streaming.io.BlockingQueueBroker;
 import org.apache.flink.util.StringUtils;
 import org.slf4j.Logger;
@@ -37,16 +36,14 @@ public class StreamIterationHead<OUT> extends StreamVertex<OUT, OUT> {
 
 	private static int numSources;
 	private Integer iterationId;
-	@SuppressWarnings("rawtypes")
-	private BlockingQueue<StreamRecord> dataChannel;
+	private BlockingQueue<RecordOrEvent> dataChannel;
 	private long iterationWaitTime;
 	private boolean shouldWait;
 
-	@SuppressWarnings("rawtypes")
 	public StreamIterationHead() {
 		numSources = newVertex();
 		instanceID = numSources;
-		dataChannel = new ArrayBlockingQueue<StreamRecord>(1);
+		dataChannel = new ArrayBlockingQueue<RecordOrEvent>(1);
 	}
 
 	@Override
@@ -59,8 +56,9 @@ public class StreamIterationHead<OUT> extends StreamVertex<OUT, OUT> {
 		shouldWait = iterationWaitTime > 0;
 
 		try {
-			BlockingQueueBroker.instance().handIn(iterationId.toString()+"-" 
-					+getEnvironment().getIndexInSubtaskGroup(), dataChannel);
+			BlockingQueueBroker.instance().handIn(
+					iterationId.toString() + "-" + getEnvironment().getIndexInSubtaskGroup(),
+					dataChannel);
 		} catch (Exception e) {
 			throw new RuntimeException(e);
 		}
@@ -75,19 +73,28 @@ public class StreamIterationHead<OUT> extends StreamVertex<OUT, OUT> {
 		}
 
 		try {
-			StreamRecord<OUT> nextRecord;
+			RecordOrEvent nextRecordOrEvent;
 
 			while (true) {
 				if (shouldWait) {
-					nextRecord = dataChannel.poll(iterationWaitTime, TimeUnit.MILLISECONDS);
+					nextRecordOrEvent = dataChannel.poll(iterationWaitTime, TimeUnit.MILLISECONDS);
 				} else {
-					nextRecord = dataChannel.take();
+					nextRecordOrEvent = dataChannel.take();
 				}
-				if (nextRecord == null) {
+				if (nextRecordOrEvent == null) {
 					break;
 				}
-				for (StreamOutput<?> output : outputs) {
-					((StreamOutput<OUT>) output).collect(nextRecord.getObject());
+				if (nextRecordOrEvent.isRecord()) {
+					for (StreamOutput<?> output : outputs) {
+						((StreamOutput<OUT>) output).collect((OUT) nextRecordOrEvent.getRecord()
+								.getObject());
+					}
+				} else if (nextRecordOrEvent.isEvent()) {
+					for (StreamOutput<?> output : outputs) {
+						((StreamOutput<OUT>) output).broadcastEvent(nextRecordOrEvent.getEvent());
+					}
+				} else {
+					throw new RuntimeException("Error in record passing logic");
 				}
 			}
 

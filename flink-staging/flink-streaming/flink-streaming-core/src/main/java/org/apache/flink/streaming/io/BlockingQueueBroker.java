@@ -20,10 +20,9 @@ package org.apache.flink.streaming.io;
 import java.util.concurrent.BlockingQueue;
 
 import org.apache.flink.runtime.iterative.concurrent.Broker;
-import org.apache.flink.streaming.api.streamrecord.StreamRecord;
+import org.apache.flink.streaming.api.streamvertex.RecordOrEvent;
 
-@SuppressWarnings("rawtypes")
-public class BlockingQueueBroker extends Broker<BlockingQueue<StreamRecord>> {
+public class BlockingQueueBroker extends Broker<BlockingQueue<RecordOrEvent>> {
 	/**
 	 * Singleton instance
 	 */
@@ -35,7 +34,7 @@ public class BlockingQueueBroker extends Broker<BlockingQueue<StreamRecord>> {
 	/**
 	 * retrieve singleton instance
 	 */
-	public static Broker<BlockingQueue<StreamRecord>> instance() {
+	public static Broker<BlockingQueue<RecordOrEvent>> instance() {
 		return INSTANCE;
 	}
 }
