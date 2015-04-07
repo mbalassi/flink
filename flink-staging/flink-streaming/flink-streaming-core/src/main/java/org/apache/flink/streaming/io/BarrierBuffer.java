@@ -21,6 +21,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Queue;
 import java.util.Set;
 
@@ -28,6 +29,7 @@ import org.apache.flink.runtime.io.network.api.EndOfPartitionEvent;
 import org.apache.flink.runtime.io.network.api.reader.AbstractReader;
 import org.apache.flink.runtime.io.network.partition.consumer.BufferOrEvent;
 import org.apache.flink.runtime.io.network.partition.consumer.InputGate;
+import org.apache.flink.runtime.state.OperatorState;
 import org.apache.flink.streaming.api.streamvertex.StreamingSuperstep;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -64,14 +66,37 @@ public class BarrierBuffer {
 	private boolean inputFinished = false;
 
 	private BufferOrEvent endOfStreamEvent = null;
+	private OperatorState<List<BufferOrEvent>> downStreamBackup;
+
+	private Set<Integer> feedbackEdges;
+	private Set<Integer> normalEdges;
 
 	public BarrierBuffer(InputGate inputGate, AbstractReader reader) {
 		this.inputGate = inputGate;
 		totalNumberOfInputChannels = inputGate.getNumberOfInputChannels();
 		this.reader = reader;
+
+		// TODO: Set these from constructor
+		this.downStreamBackup = new OperatorState<List<BufferOrEvent>>(
+				new LinkedList<BufferOrEvent>());
+		this.feedbackEdges = new HashSet<Integer>();
+		this.normalEdges = new HashSet<Integer>();
+
+		for (Integer i = 0; i < totalNumberOfInputChannels; i++) {
+			if (!feedbackEdges.contains(i)) {
+				normalEdges.add(i);
+			}
+		}
+
 		try {
 			this.bufferSpiller = new BufferSpiller();
 			this.spillReader = new SpillReader();
+
+			for (BufferOrEvent boe : downStreamBackup.getState()) {
+				nonprocessed.add(new SpillingBufferOrEvent(boe, bufferSpiller, spillReader));
+			}
+
+			downStreamBackup.getState().clear();
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}
@@ -105,6 +130,8 @@ public class BarrierBuffer {
 			BufferOrEvent boe = nextNonprocessed.getBufferOrEvent();
 			if (isBlocked(boe.getChannelIndex())) {
 				blockedNonprocessed.add(new SpillingBufferOrEvent(boe, bufferSpiller, spillReader));
+			} else if (isAllNormalInputBlokced()) {
+				processBlockedFeedbackBoE(boe);
 			} else {
 				return boe;
 			}
@@ -129,6 +156,15 @@ public class BarrierBuffer {
 	 */
 	protected boolean isAllBlocked() {
 		return blockedChannels.size() == totalNumberOfInputChannels;
+	}
+
+	protected boolean isAllNormalInputBlokced() {
+		for (Integer input : normalEdges) {
+			if (!isBlocked(input)) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 	/**
@@ -164,6 +200,8 @@ public class BarrierBuffer {
 							// If channel blocked we just store it
 							blockedNonprocessed.add(new SpillingBufferOrEvent(bufferOrEvent,
 									bufferSpiller, spillReader));
+						} else if (isAllNormalInputBlokced()) {
+							processBlockedFeedbackBoE(bufferOrEvent);
 						} else {
 							return bufferOrEvent;
 						}
@@ -173,6 +211,14 @@ public class BarrierBuffer {
 					return getNextNonBlocked();
 				}
 			}
+		}
+	}
+
+	private void processBlockedFeedbackBoE(BufferOrEvent bufferOrEvent) {
+		if (bufferOrEvent.isEvent() && bufferOrEvent.getEvent() instanceof StreamingSuperstep) {
+			blockChannel(bufferOrEvent.getChannelIndex());
+		} else {
+			downStreamBackup.getState().add(bufferOrEvent);
 		}
 	}
 
