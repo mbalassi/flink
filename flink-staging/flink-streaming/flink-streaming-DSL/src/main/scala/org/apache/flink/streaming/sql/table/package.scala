@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.flink.api
+package org.apache.flink.streaming.sql
 
 /**
  * == Table API ==
@@ -31,7 +31,4 @@ package org.apache.flink.api
  * the language specific part of the API. Refer to these packages for documentation on how
  * the Table API can be used in Java and Scala.
  */
-package object table {
-  object ReflectionLock
-
-}
+package object table

@@ -1,0 +1,40 @@
+Flink provides an API that allows specifying operations using SQL-like expressions.
+
+This expression API can be enabled by importing 
+
+org.apache.flink.api.scala.expressions._
+
+This enables implicit conversions that allow :
+- converting:                DataSet/ DataStream <---->  ExpressionOperation
+on which relational queries can be specified. 
+
+import org.apache.flink.api.scala.
+import org.apache.flink.api.scala.expressions.
+
+
+--------EXAMPLE--------------------------------------------------------------------------------------------------
+case class WC(word: String, count: Int)
+val input = env.fromElements(WC(“hello”, 1), WC(“hello”, 1), WC(“ciao”, 1))
+val expr = input.toExpression
+val result = expr.groupBy(‘word).select(‘word, ‘count.sum).as[WC]
+------------------------------------------------------------------------------------------------------------------
+
+
+The expression DSL uses Scala symbols to refer to field names and we use code generation to
+transform expressions to efficient runtime code. 
+
+****Please not that the conversion to and from expression operations ONLY works when using Scala case classes or Flink POJOs
+
+
+--------EXAMPLE------------------------------------------------------------------
+case class MyResult(a: String, b: Int)
+
+val input1 = env.fromElements(…).as(‘a, ‘b)
+val input2 = env.fromElements(…).as(‘c, ‘d)
+val joined = input1.join(input2).where(‘b == ‘a && ‘d > 42).select(‘a, ‘d).as[MyResult]
+-----------------------------------------------------------------------------------
+
+
+
+The expression API can be used with the Streaming API, since we also have implicit conversions to
+and from DataStream

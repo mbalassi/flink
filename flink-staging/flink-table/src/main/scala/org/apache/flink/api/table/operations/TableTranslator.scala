@@ -91,9 +91,9 @@ abstract class TableTranslator {
    * when a user renames fields and assumes a certain ordering.
    */
   def createTable[A](
-      repr: Representation[A],
-      fields: Array[Expression],
-      checkDeterministicFields: Boolean = true): Table[this.type] = {
+    repr: Representation[A],
+    fields: Array[Expression],
+    checkDeterministicFields: Boolean = true): Table[this.type] = {
 
     // shortcut for DataSet[Row] or DataStream[Row]
     repr.getType() match {

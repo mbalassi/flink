@@ -15,23 +15,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.flink.api
+package org.apache.flink.streaming.sql
 
-/**
- * == Table API ==
- *
- * This package contains the generic part of the Table API. It can be used with Flink Streaming
- * and Flink Batch. From Scala as well as from Java.
- *
- * When using the Table API, as user creates a [[org.apache.flink.api.table.Table]] from
- * a DataSet or DataStream. On this relational operations can be performed. A table can also
- * be converted back to a DataSet or DataStream.
- *
- * Packages [[org.apache.flink.api.scala.table]] and [[org.apache.flink.api.java.table]] contain
- * the language specific part of the API. Refer to these packages for documentation on how
- * the Table API can be used in Java and Scala.
- */
-package object table {
-  object ReflectionLock
+import org.apache.flink.streaming.api.scala._
 
+class SQLContext (val streamExeEnv: StreamExecutionEnvironment) {
 }
