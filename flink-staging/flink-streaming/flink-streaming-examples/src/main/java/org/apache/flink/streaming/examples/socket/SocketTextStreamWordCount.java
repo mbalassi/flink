@@ -58,7 +58,8 @@ public class SocketTextStreamWordCount {
 		// set up the execution environment
 		final StreamExecutionEnvironment env = StreamExecutionEnvironment
 				.getExecutionEnvironment();
-
+		env.enableCheckpointing(5000);
+		
 		// get input data
 		DataStream<String> text = env.socketTextStream(hostName, port, '\n', 0);
 

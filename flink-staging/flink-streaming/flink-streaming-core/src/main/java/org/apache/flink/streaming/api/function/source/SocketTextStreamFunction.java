@@ -17,6 +17,17 @@
 
 package org.apache.flink.streaming.api.function.source;
 
+import org.apache.flink.configuration.Configuration;
+import org.apache.flink.runtime.state.OperatorState;
+import org.apache.flink.runtime.state.StateHandle;
+import org.apache.flink.streaming.api.streamvertex.StreamingRuntimeContext;
+import org.apache.flink.util.Collector;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import scala.concurrent.Await;
+import scala.concurrent.Future;
+import scala.concurrent.duration.Duration;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -24,11 +35,7 @@ import java.net.ConnectException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketException;
-
-import org.apache.flink.configuration.Configuration;
-import org.apache.flink.util.Collector;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.util.concurrent.TimeUnit;
 
 public class SocketTextStreamFunction extends RichSourceFunction<String> {
 
@@ -73,7 +80,8 @@ public class SocketTextStreamFunction extends RichSourceFunction<String> {
 			StringBuffer buffer = new StringBuffer();
 			BufferedReader reader = new BufferedReader(new InputStreamReader(
 					socket.getInputStream()));
-
+			((StreamingRuntimeContext) getRuntimeContext()).registerState("foo",
+					new OperatorState<String>("START"));
 			while (isRunning) {
 				int data;
 				try {
@@ -117,6 +125,19 @@ public class SocketTextStreamFunction extends RichSourceFunction<String> {
 				}
 
 				if (data == delimiter) {
+					StateHandle res = null;
+					if ("test".equals(buffer.toString())) {
+						Future ft = ((StreamingRuntimeContext)
+								getRuntimeContext()).getCheckpointedState();
+						res = (StateHandle)
+								Await.result(ft, Duration.apply(5000, TimeUnit.MILLISECONDS));
+						LOG.error("CHECKPOINTED STATE IS : " + res.getState(getRuntimeContext()
+								.getUserCodeClassLoader()).get("foo"));
+						((StreamingRuntimeContext) getRuntimeContext()).getState("foo")
+								.update("bar");
+					}
+					((StreamingRuntimeContext) getRuntimeContext()).getState("foo")
+							.update(buffer.toString());
 					collector.collect(buffer.toString());
 					buffer = new StringBuffer();
 				} else if (data != '\r') { // ignore carriage return

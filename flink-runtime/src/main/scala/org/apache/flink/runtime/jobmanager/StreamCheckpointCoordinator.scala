@@ -21,13 +21,15 @@ package org.apache.flink.runtime.jobmanager
 import java.lang.{Long => JLong}
 
 import akka.actor._
+import com.google.common.collect.Maps
+import org.apache.flink.api.common.JobID
 import org.apache.flink.runtime.ActorLogMessages
 import org.apache.flink.runtime.execution.ExecutionState
 import org.apache.flink.runtime.executiongraph.{ExecutionGraph, ExecutionVertex}
 import org.apache.flink.runtime.jobgraph.JobStatus._
 import org.apache.flink.runtime.jobgraph.JobVertexID
 import org.apache.flink.runtime.messages.CheckpointingMessages._
-import org.apache.flink.runtime.state.StateHandle
+import org.apache.flink.runtime.state.{LocalStateHandle,StateHandle}
 
 import scala.collection.JavaConversions._
 import scala.collection.immutable.TreeMap
@@ -78,17 +80,17 @@ extends Actor with ActorLogMessages with ActorLogging {
     case InitBarrierScheduler =>
       context.system.scheduler.schedule(interval,interval,self,BarrierTimeout)
       context.system.scheduler.schedule(2 * interval,2 * interval,self,CompactAndUpdate)
-      log.info("Started Stream State Monitor for job {}{}",
+      log.error("Started Stream State Monitor for job {}{}",
         executionGraph.getJobID,executionGraph.getJobName)
       
     case BarrierTimeout =>
       executionGraph.getState match {
         case FAILED | CANCELED | FINISHED =>
-          log.info("Stopping monitor for terminated job {}", executionGraph.getJobID)
+          log.error("Stopping monitor for terminated job {}", executionGraph.getJobID)
           self ! PoisonPill
         case RUNNING =>
           curId += 1
-          log.debug("Sending Barrier to vertices of Job " + executionGraph.getJobName)
+          log.error("Sending Barrier to vertices of Job " + executionGraph.getJobName)
           vertices.filter(v => v.getJobVertex.getJobVertex.isInputVertex &&
                   v.getExecutionState == ExecutionState.RUNNING).foreach(vertex
           => vertex.getCurrentAssignedResource.getInstance.getTaskManager
@@ -99,6 +101,7 @@ extends Actor with ActorLogMessages with ActorLogging {
       }
       
     case StateBarrierAck(jobID, jobVertexID, instanceID, checkpointID, opState) =>
+      log.error("Got new state for checkpointID {} : {}", checkpointID,opState)
       states += (jobVertexID, instanceID, checkpointID) -> opState
       self ! BarrierAck(jobID, jobVertexID, instanceID, checkpointID)
       
@@ -118,8 +121,17 @@ extends Actor with ActorLogMessages with ActorLogging {
       ackId = if(keysToKeep.nonEmpty) keysToKeep.max else ackId
       acks.keys.foreach(x => acks = acks.updated(x,acks(x).filter(_ >= ackId)))
       states = states.filterKeys(_._3 >= ackId)
-      log.debug("[FT-MONITOR] Last global barrier is " + ackId)
+      log.error("[FT-MONITOR] Last global barrier is " + ackId)
       executionGraph.loadOperatorStates(states)
+
+    case msg: CheckpointedStateRequest =>
+      states.get(msg.vertexID, msg.subtaskID, ackId) match {
+        case Some(stateHandle) =>
+          log.error("Returning: ACKID: {}, CURID: {}", ackId, curId);
+          sender ! stateHandle
+        case None =>
+          sender ! new LocalStateHandle(Maps.newHashMap()) 
+      }
       
   }
 }
@@ -143,6 +155,8 @@ object StreamCheckpointCoordinator {
     yield execVertex
   }
 }
+
+case class CheckpointedStateRequest(jobID: JobID, vertexID: JobVertexID, subtaskID: Integer)
 
 case class BarrierTimeout()
 
