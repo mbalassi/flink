@@ -346,6 +346,13 @@ class JobManager(val flinkConfiguration: Configuration,
         case None =>
       }
 
+    case msg: CheckpointedStateRequest => 
+      currentJobs.get(msg.jobID) match {
+        case Some(jobExecution) =>
+          jobExecution._1.getStateCheckpointerActor forward  msg
+        case None =>
+      }
+      
     case ScheduleOrUpdateConsumers(jobId, partitionId) =>
       currentJobs.get(jobId) match {
         case Some((executionGraph, _)) =>

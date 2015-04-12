@@ -21,13 +21,15 @@ package org.apache.flink.runtime.jobmanager
 import java.lang.{Long => JLong}
 
 import akka.actor._
+import com.google.common.collect.Maps
+import org.apache.flink.api.common.JobID
 import org.apache.flink.runtime.ActorLogMessages
 import org.apache.flink.runtime.execution.ExecutionState
 import org.apache.flink.runtime.executiongraph.{ExecutionGraph, ExecutionVertex}
 import org.apache.flink.runtime.jobgraph.JobStatus._
 import org.apache.flink.runtime.jobgraph.JobVertexID
 import org.apache.flink.runtime.messages.CheckpointingMessages._
-import org.apache.flink.runtime.state.StateHandle
+import org.apache.flink.runtime.state.{LocalStateHandle,StateHandle}
 
 import scala.collection.JavaConversions._
 import scala.collection.immutable.TreeMap
@@ -120,6 +122,14 @@ extends Actor with ActorLogMessages with ActorLogging {
       states = states.filterKeys(_._3 >= ackId)
       log.debug("[FT-MONITOR] Last global barrier is " + ackId)
       executionGraph.loadOperatorStates(states)
+
+    case msg: CheckpointedStateRequest => 
+      states.get(msg.vertexID, msg.subtaskID, ackId) match {
+        case Some(stateHandle) =>
+          sender ! stateHandle
+        case None =>
+          sender ! new LocalStateHandle(Maps.newHashMap())
+      }
       
   }
 }
@@ -143,6 +153,8 @@ object StreamCheckpointCoordinator {
     yield execVertex
   }
 }
+
+case class CheckpointedStateRequest(jobID: JobID, vertexID: JobVertexID, subtaskID: Integer)
 
 case class BarrierTimeout()
 

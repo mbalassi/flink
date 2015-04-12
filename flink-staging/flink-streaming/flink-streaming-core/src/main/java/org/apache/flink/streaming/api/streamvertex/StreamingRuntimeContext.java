@@ -20,6 +20,7 @@ package org.apache.flink.streaming.api.streamvertex;
 
 import java.util.Map;
 
+import akka.pattern.Patterns;
 import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.functions.RichFunction;
 import org.apache.flink.api.common.functions.RuntimeContext;
@@ -27,8 +28,10 @@ import org.apache.flink.api.common.functions.util.RuntimeUDFContext;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.runtime.execution.Environment;
 import org.apache.flink.runtime.jobgraph.tasks.InputSplitProvider;
+import org.apache.flink.runtime.jobmanager.CheckpointedStateRequest;
 import org.apache.flink.runtime.operators.util.TaskConfig;
 import org.apache.flink.runtime.state.OperatorState;
+import scala.concurrent.Future;
 
 /**
  * Implementation of the {@link RuntimeContext}, created by runtime stream UDF
@@ -115,6 +118,13 @@ public class StreamingRuntimeContext extends RuntimeUDFContext {
 	 */
 	public Configuration getTaskStubParameters() {
 		return new TaskConfig(env.getTaskConfiguration()).getStubParameters();
+	}
+
+	//FIXME: get a configured akka timeout from the config
+	public Future getCheckpointedState() {
+		return Patterns.ask(env.getJobManager(), 
+				new CheckpointedStateRequest(env.getJobID(), env.getJobVertexId(),
+						+env.getIndexInSubtaskGroup()), 5000);
 	}
 
 }

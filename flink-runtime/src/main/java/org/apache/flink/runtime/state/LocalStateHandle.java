@@ -30,12 +30,16 @@ import java.util.Map;
  * State is kept in a byte[] because it may contain userclasses, which akka is not able to handle.
  */
 public class LocalStateHandle implements StateHandle{
-	
+
+	/**
+	 * FIXME: Avoid using transient fields for akka messaging. Transient is a flag for the 
+	 * Java Serializer. NOT every serializer respects it
+	 */
 	transient private Map<String, OperatorState<?>> stateMap;
 	private final byte[] state;
 
 	public LocalStateHandle(Map<String,OperatorState<?>> state) throws IOException {
-		this.stateMap = state;
+//		this.stateMap = state;
 		this.state = InstantiationUtil.serializeObject(state);
 	}
 
