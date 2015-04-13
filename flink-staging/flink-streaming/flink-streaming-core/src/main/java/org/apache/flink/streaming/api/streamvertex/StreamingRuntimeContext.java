@@ -19,6 +19,9 @@
 package org.apache.flink.streaming.api.streamvertex;
 
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import akka.pattern.Patterns;
 import org.apache.flink.api.common.ExecutionConfig;
@@ -30,8 +33,11 @@ import org.apache.flink.runtime.execution.Environment;
 import org.apache.flink.runtime.jobgraph.tasks.InputSplitProvider;
 import org.apache.flink.runtime.jobmanager.CheckpointedStateRequest;
 import org.apache.flink.runtime.operators.util.TaskConfig;
+import org.apache.flink.runtime.state.LocalStateHandle;
 import org.apache.flink.runtime.state.OperatorState;
+import scala.concurrent.Await;
 import scala.concurrent.Future;
+import scala.concurrent.duration.Duration;
 
 /**
  * Implementation of the {@link RuntimeContext}, created by runtime stream UDF
@@ -121,10 +127,57 @@ public class StreamingRuntimeContext extends RuntimeUDFContext {
 	}
 
 	//FIXME: get a configured akka timeout from the config
-	public Future getCheckpointedState() {
-		return Patterns.ask(env.getJobManager(), 
-				new CheckpointedStateRequest(env.getJobID(), env.getJobVertexId(),
-						+env.getIndexInSubtaskGroup()), 5000);
+	private Future getCheckpointedStates() {
+		return Patterns.ask(env.getJobManager(),
+				new CheckpointedStateRequest(env.getJobID(), env.getJobVertexId(), env.getIndexInSubtaskGroup()), 5000);
+	}
+
+	@SuppressWarnings("uncecked")
+	public java.util.concurrent.Future<OperatorState<?>> getCheckpointedState(String name){
+
+		return new StateFuture(getCheckpointedStates(), name);
+	}
+
+	private class StateFuture implements java.util.concurrent.Future<OperatorState<?>>{
+
+		Future future;
+		String stateId;
+
+		StateFuture(Future future, String stateId){
+			this.future = future;
+			this.stateId = stateId;
+		}
+
+		@Override
+		public boolean cancel(boolean mayInterruptIfRunning) {
+			return false;
+		}
+
+		@Override
+		public boolean isCancelled() {
+			return false;
+		}
+
+		@Override
+		public boolean isDone() {
+			return future.isCompleted();
+		}
+
+		@Override
+		public OperatorState get() throws InterruptedException, ExecutionException {
+			try {
+				Map<String, OperatorState<?>> stateMap = ((LocalStateHandle) Await.result(future, Duration.apply(5000, TimeUnit.MILLISECONDS)))
+						.getState(env.getUserClassLoader());
+				return stateMap != null ? stateMap.get(stateId) : new OperatorState(null);
+			} catch (Exception e) {
+				throw new RuntimeException(e);
+			}
+		}
+
+		@Override
+		public OperatorState get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
+			return null;
+		}
 	}
 
 }
