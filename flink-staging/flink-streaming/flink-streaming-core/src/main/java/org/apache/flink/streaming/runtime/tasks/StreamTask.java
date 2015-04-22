@@ -145,8 +145,7 @@ public class StreamTask<IN, OUT> extends AbstractInvokable implements StreamTask
 		return instanceID;
 	}
 
-	public StreamingRuntimeContext createRuntimeContext(String taskName,
-	                                                    Map<String,OperatorState<?>> states) {
+	public StreamingRuntimeContext createRuntimeContext(String taskName, Map<String,OperatorState<?>> states) {
 		Environment env = getEnvironment();
 		return new StreamingRuntimeContext(taskName, env, getUserCodeClassLoader(),
 				getExecutionConfig(), states);
