@@ -17,22 +17,26 @@
 
 package org.apache.flink.streaming.api;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Queue;
 
+import org.apache.flink.api.common.functions.JoinFunction;
 import org.apache.flink.api.common.typeinfo.BasicTypeInfo;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.functions.KeySelector;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.typeutils.TupleTypeInfo;
 import org.apache.flink.streaming.api.datastream.DataStream;
+import org.apache.flink.streaming.api.datastream.temporal.StreamJoinOperator.DefaultJoinFunction;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.apache.flink.streaming.api.function.co.CoFlatMapFunction;
-import org.apache.flink.streaming.api.invokable.operator.windowing.StreamDiscretizer;
+import org.apache.flink.streaming.api.functions.co.CoFlatMapFunction;
+import org.apache.flink.streaming.api.operators.windowing.StreamDiscretizer;
 import org.apache.flink.streaming.api.windowing.WindowEvent;
 import org.apache.flink.streaming.api.windowing.policy.CountEvictionPolicy;
 import org.apache.flink.streaming.api.windowing.policy.CountTriggerPolicy;
@@ -60,6 +64,16 @@ public class StreamJoinNew {
 		input2.add(new Tuple2<String, Integer>("c", -1));
 		input2.add(new Tuple2<String, Integer>("d", -2));
 
+		KeySelector<Tuple2<String, Integer>, String> key = new KeySelector<Tuple2<String, Integer>, String>() {
+
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			public String getKey(Tuple2<String, Integer> value) throws Exception {
+				return value.f0;
+			}
+		};
+
 		DataStream<Tuple2<String, Integer>> source1 = env.fromCollection(input1);
 		DataStream<Tuple2<String, Integer>> source2 = env.fromCollection(input2);
 
@@ -76,8 +90,16 @@ public class StreamJoinNew {
 						new CountTriggerPolicy<Tuple2<String, Integer>>(1),
 						new CountEvictionPolicy<Tuple2<String, Integer>>(2)));
 
-		DataStream<Tuple2<Integer, Integer>> joined = d1.groupBy(0).connect(d2.groupBy(0))
-				.flatMap(new JoinCoFunc());
+		DataStream<Tuple2<Integer, Integer>> joined = d1
+				.groupBy(0)
+				.connect(d2.groupBy(0))
+				.flatMap(
+						new JoinCoFunc(
+								new DefaultJoinFunction<Tuple2<Integer, Integer>, Tuple2<Integer, Integer>>(),
+								key, key))
+				.returns("Tuple2<Tuple2<String,Integer>,Tuple2<String,Integer>>");
+
+		System.out.println(joined.getType());
 
 		joined.print();
 
@@ -86,92 +108,85 @@ public class StreamJoinNew {
 
 	}
 
-	public static class JoinCoFunc
-			implements
-			CoFlatMapFunction<WindowEvent<Tuple2<String, Integer>>, WindowEvent<Tuple2<String, Integer>>, Tuple2<Integer, Integer>> {
+	public static class JoinCoFunc<IN1, IN2, OUT> implements
+			CoFlatMapFunction<WindowEvent<IN1>, WindowEvent<IN2>, OUT> {
 
 		private static final long serialVersionUID = 1L;
-		Map<Object, List<Tuple2<String, Integer>>> map1 = new HashMap<Object, List<Tuple2<String, Integer>>>();
-		Queue<Tuple2<String, Integer>> elements1 = new LinkedList<Tuple2<String, Integer>>();
+		private JoinBuffer<IN1> buffer1;
+		private JoinBuffer<IN2> buffer2;
+		private JoinFunction<IN1, IN2, OUT> joinFunction;
 
-		Map<Object, List<Tuple2<String, Integer>>> map2 = new HashMap<Object, List<Tuple2<String, Integer>>>();
-		Queue<Tuple2<String, Integer>> elements2 = new LinkedList<Tuple2<String, Integer>>();
-
-		KeySelector<Tuple2<String, Integer>, String> key = new KeySelector<Tuple2<String, Integer>, String>() {
-
-			private static final long serialVersionUID = 1L;
-
-			@Override
-			public String getKey(Tuple2<String, Integer> value) throws Exception {
-				return value.f0;
-			}
-		};
-
-		@Override
-		public void flatMap1(WindowEvent<Tuple2<String, Integer>> value,
-				Collector<Tuple2<Integer, Integer>> out) throws Exception {
-
-			if (value.isElement()) {
-				Object ckey = key.getKey(value.getElement());
-				elements1.add(value.getElement());
-				List<Tuple2<String, Integer>> current = map1.get(ckey);
-				if (current == null) {
-					current = new LinkedList<Tuple2<String, Integer>>();
-					map1.put(ckey, current);
-				}
-				current.add(value.getElement());
-
-				// Do the join on the other map
-				List<Tuple2<String, Integer>> matching = map2.get(ckey);
-				if (matching != null) {
-					for (Tuple2<String, Integer> match : matching) {
-						out.collect(new Tuple2<Integer, Integer>(value.getElement().f1, match.f1));
-					}
-				}
-
-			} else if (value.isEviction()) {
-				for (int i = 0; i < value.getEviction(); i++) {
-					Tuple2<String, Integer> toRemove = elements1.remove();
-					Object ckey = key.getKey(toRemove);
-					List<Tuple2<String, Integer>> current = map1.get(ckey);
-					current.remove(toRemove);
-					if (current.isEmpty()) {
-						map1.remove(ckey);
-					}
-				}
-			}
-
+		public JoinCoFunc(JoinFunction<IN1, IN2, OUT> joinFunction, KeySelector<IN1, ?> key1,
+				KeySelector<IN2, ?> key2) {
+			this.joinFunction = joinFunction;
+			this.buffer1 = new JoinBuffer<IN1>(key1);
+			this.buffer2 = new JoinBuffer<IN2>(key2);
 		}
 
 		@Override
-		public void flatMap2(WindowEvent<Tuple2<String, Integer>> value,
-				Collector<Tuple2<Integer, Integer>> out) throws Exception {
+		public void flatMap1(WindowEvent<IN1> value, Collector<OUT> out) throws Exception {
 			if (value.isElement()) {
-				Object ckey = key.getKey(value.getElement());
-				elements2.add(value.getElement());
-				List<Tuple2<String, Integer>> current = map2.get(ckey);
-				if (current == null) {
-					current = new LinkedList<Tuple2<String, Integer>>();
-					map2.put(ckey, current);
-				}
-				current.add(value.getElement());
+				buffer1.addElement(value.getElement());
+			} else if (value.isEviction()) {
+				buffer1.evict(value.getEviction());
+			} else if (value.isTrigger()) {
+				joinBuffers(out);
+			}
+		}
 
-				// Do the join on the other map
-				List<Tuple2<String, Integer>> matching = map1.get(ckey);
-				if (matching != null) {
-					for (Tuple2<String, Integer> match : matching) {
-						out.collect(new Tuple2<Integer, Integer>(match.f1, value.getElement().f1));
+		@Override
+		public void flatMap2(WindowEvent<IN2> value, Collector<OUT> out) throws Exception {
+			if (value.isElement()) {
+				buffer2.addElement(value.getElement());
+			} else if (value.isEviction()) {
+				buffer2.evict(value.getEviction());
+			} else if (value.isTrigger()) {
+				joinBuffers(out);
+			}
+		}
+
+		private void joinBuffers(Collector<OUT> out) throws Exception {
+			for (Entry<Object, List<IN1>> entry : buffer1.joinMap.entrySet()) {
+				if (buffer2.joinMap.containsKey(entry.getKey())) {
+					for (IN1 first : entry.getValue()) {
+						for (IN2 second : buffer2.joinMap.get(entry.getKey())) {
+							out.collect(joinFunction.join(first, second));
+						}
 					}
 				}
+			}
+		}
 
-			} else if (value.isEviction()) {
-				for (int i = 0; i < value.getEviction(); i++) {
-					Tuple2<String, Integer> toRemove = elements2.remove();
+		private class JoinBuffer<T> implements Serializable {
+			private static final long serialVersionUID = 1L;
+
+			private Map<Object, List<T>> joinMap = new HashMap<Object, List<T>>();
+			private Queue<T> elements = new LinkedList<T>();
+			private KeySelector<T, ?> key;
+
+			public JoinBuffer(KeySelector<T, ?> key) {
+				this.key = key;
+			}
+
+			public void addElement(T element) throws Exception {
+				Object ckey = key.getKey(element);
+				elements.add(element);
+				List<T> current = joinMap.get(ckey);
+				if (current == null) {
+					current = new LinkedList<T>();
+					joinMap.put(ckey, current);
+				}
+				current.add(element);
+			}
+
+			public void evict(int toEvict) throws Exception {
+				for (int i = 0; i < toEvict; i++) {
+					T toRemove = elements.remove();
 					Object ckey = key.getKey(toRemove);
-					List<Tuple2<String, Integer>> current = map2.get(ckey);
+					List<T> current = joinMap.get(ckey);
 					current.remove(toRemove);
 					if (current.isEmpty()) {
-						map2.remove(ckey);
+						joinMap.remove(ckey);
 					}
 				}
 			}
