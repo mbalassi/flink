@@ -115,7 +115,7 @@ public abstract class SlidingGroupedPreReducer<T> extends SlidingPreReducer<T> {
 		return reduced;
 	}
 
-	protected void updateCurrent(T element) throws Exception {
+	protected void addToPreReduced(T element) throws Exception {
 		if (currentReducedMap == null) {
 			currentReducedMap = new HashMap<Object, T>();
 			currentReducedMap.put(key.getKey(element), element);
@@ -136,17 +136,17 @@ public abstract class SlidingGroupedPreReducer<T> extends SlidingPreReducer<T> {
 	}
 
 	@Override
-	protected void addCurrentToBuffer(T element) throws Exception {
+	protected void addPreReducedToBuffer() throws Exception {
 		reducedMap.add(currentReducedMap);
 	}
 
 	@Override
-	protected void resetCurrent() {
+	protected void startNewPreReduce() {
 		currentReducedMap = null;
 	}
 
 	@Override
-	protected boolean currentNotEmpty() {
+	protected boolean preReduceNotEmpty() {
 		return currentReducedMap != null;
 	}
 }

@@ -60,7 +60,7 @@ public class SlidingCountGroupedPreReducer<T> extends SlidingGroupedPreReducer<T
 	}
 
 	@Override
-	protected boolean currentEligible(T next) {
+	protected boolean isEndOfPreReduce(T next) {
 		if (index <= slideSize) {
 			return true;
 		} else {

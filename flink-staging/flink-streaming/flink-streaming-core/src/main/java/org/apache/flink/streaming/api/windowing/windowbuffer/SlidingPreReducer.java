@@ -55,7 +55,7 @@ public abstract class SlidingPreReducer<T> extends WindowBuffer<T> implements Pr
 		try {
 			if (addFinalAggregate(currentWindow) || emitEmpty) {
 				collector.collect(currentWindow);
-			} 
+			}
 			afterEmit();
 		} catch (Exception e) {
 			throw new RuntimeException(e);
@@ -94,7 +94,7 @@ public abstract class SlidingPreReducer<T> extends WindowBuffer<T> implements Pr
 	}
 
 	public void store(T element) throws Exception {
-		addToBufferIfEligible(element);
+		preReduceAndStore(element);
 		afterStore();
 	}
 
@@ -102,27 +102,34 @@ public abstract class SlidingPreReducer<T> extends WindowBuffer<T> implements Pr
 		// Do nothing by default
 	}
 
-	protected void addToBufferIfEligible(T element) throws Exception {
-		if (currentEligible(element) && currentNotEmpty()) {
-			addCurrentToBuffer(element);
+	protected void preReduceAndStore(T element) throws Exception {
+		// Check whether we are at the end of a pre-reduce, the isEndOfPreReduce
+		// method is overriden for count and time
+		if (isEndOfPreReduce(element) && preReduceNotEmpty()) {
+			// We add the current pre-reduced to the list of prereduced elements
+			addPreReducedToBuffer();
+			// We also keep the number of pre-reduced elements/ pre-reduce
 			elementsPerPreAggregate.add(elementsSinceLastPreAggregate);
 			elementsSinceLastPreAggregate = 0;
-			resetCurrent();
+			// We reset the current pre-reduced to start the next one
+			startNewPreReduce();
 		}
-		updateCurrent(element);
+		// This method actually calls the reduce function on the current
+		// pre-reduce and the incoming element
+		addToPreReduced(element);
 
 		elementsSinceLastPreAggregate++;
 	}
 
-	protected void resetCurrent() {
+	protected void startNewPreReduce() {
 		currentReduced = null;
 	}
 
-	protected boolean currentNotEmpty() {
+	protected boolean preReduceNotEmpty() {
 		return currentReduced != null;
 	}
 
-	protected void updateCurrent(T element) throws Exception {
+	protected void addToPreReduced(T element) throws Exception {
 		if (currentReduced == null) {
 			currentReduced = element;
 		} else {
@@ -130,11 +137,11 @@ public abstract class SlidingPreReducer<T> extends WindowBuffer<T> implements Pr
 		}
 	}
 
-	protected void addCurrentToBuffer(T element) throws Exception {
+	protected void addPreReducedToBuffer() throws Exception {
 		reduced.add(currentReduced);
 	}
 
-	protected abstract boolean currentEligible(T next);
+	protected abstract boolean isEndOfPreReduce(T next);
 
 	public void evict(int n) {
 		toRemove += n;

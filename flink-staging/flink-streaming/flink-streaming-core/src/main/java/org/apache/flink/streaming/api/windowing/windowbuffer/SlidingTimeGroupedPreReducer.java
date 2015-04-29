@@ -87,13 +87,13 @@ public class SlidingTimeGroupedPreReducer<T> extends SlidingGroupedPreReducer<T>
 		}
 
 		if (toRemove > 0 && lastPreAggregateSize == null) {
-			resetCurrent();
+			startNewPreReduce();
 			toRemove = 0;
 		}
 	}
 
 	@Override
-	protected boolean currentEligible(T next) {
+	protected boolean isEndOfPreReduce(T next) {
 		return windowStartTime == timestampWrapper.getStartTime()
 				|| timestampWrapper.getTimestamp(next) - windowStartTime >= slideSize;
 	}

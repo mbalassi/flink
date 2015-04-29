@@ -92,7 +92,7 @@ public class SlidingTimePreReducer<T> extends SlidingPreReducer<T> {
 	}
 
 	@Override
-	protected boolean currentEligible(T next) {
+	protected boolean isEndOfPreReduce(T next) {
 		return windowStartTime == timestampWrapper.getStartTime()
 				|| timestampWrapper.getTimestamp(next) - windowStartTime >= slideSize;
 	}
