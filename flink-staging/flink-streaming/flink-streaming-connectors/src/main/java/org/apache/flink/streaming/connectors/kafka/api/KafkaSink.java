@@ -17,16 +17,19 @@
 
 package org.apache.flink.streaming.connectors.kafka.api;
 
+import java.util.Map;
 import java.util.Properties;
 
 import org.apache.flink.api.java.ClosureCleaner;
 import org.apache.flink.configuration.Configuration;
-import org.apache.flink.streaming.api.function.sink.RichSinkFunction;
+import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
 import org.apache.flink.streaming.connectors.kafka.api.config.PartitionerWrapper;
 import org.apache.flink.streaming.connectors.kafka.api.simple.KafkaTopicUtils;
 import org.apache.flink.streaming.connectors.kafka.partitioner.SerializableKafkaPartitioner;
 import org.apache.flink.streaming.util.serialization.SerializationSchema;
 import org.apache.flink.util.NetUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Preconditions;
 
@@ -34,7 +37,6 @@ import kafka.javaapi.producer.Producer;
 import kafka.producer.KeyedMessage;
 import kafka.producer.ProducerConfig;
 import kafka.serializer.DefaultEncoder;
-import kafka.serializer.StringEncoder;
 
 /**
  * Sink that emits its inputs to a Kafka topic.
@@ -46,8 +48,10 @@ public class KafkaSink<IN> extends RichSinkFunction<IN> {
 
 	private static final long serialVersionUID = 1L;
 
+	private static final Logger LOG = LoggerFactory.getLogger(KafkaSink.class);
+
 	private Producer<IN, byte[]> producer;
-	private Properties props;
+	private Properties userDefinedProperties;
 	private String topicId;
 	private String zookeeperAddress;
 	private SerializationSchema<IN, byte[]> schema;
@@ -55,8 +59,8 @@ public class KafkaSink<IN> extends RichSinkFunction<IN> {
 	private Class<? extends SerializableKafkaPartitioner> partitionerClass = null;
 
 	/**
-	 * Creates a KafkaSink for a given topic. The partitioner distributes the
-	 * messages between the partitions of the topics.
+	 * Creates a KafkaSink for a given topic. The sink produces its input to
+	 * the topic.
 	 *
 	 * @param zookeeperAddress
 	 * 		Address of the Zookeeper host (with port number).
@@ -65,14 +69,40 @@ public class KafkaSink<IN> extends RichSinkFunction<IN> {
 	 * @param serializationSchema
 	 * 		User defined serialization schema.
 	 */
-	@SuppressWarnings({ "rawtypes", "unchecked" })
 	public KafkaSink(String zookeeperAddress, String topicId,
 			SerializationSchema<IN, byte[]> serializationSchema) {
-		this(zookeeperAddress, topicId, serializationSchema, (Class) null);
+		this(zookeeperAddress, topicId, new Properties(), serializationSchema);
 	}
 
 	/**
-	 * Creates a KafkaSink for a given topic. The sink produces its input into
+	 * Creates a KafkaSink for a given topic with custom Producer configuration.
+	 * If you use this constructor, the broker should be set with the "metadata.broker.list"
+	 * configuration.
+	 *
+	 * @param zookeeperAddress
+	 * 		Address of the Zookeeper host (with port number).
+	 * @param topicId
+	 * 		ID of the Kafka topic.
+	 * @param producerConfig
+	 * 		Configurations of the Kafka producer
+	 * @param serializationSchema
+	 * 		User defined serialization schema.
+	 */
+	public KafkaSink(String zookeeperAddress, String topicId, Properties producerConfig,
+			SerializationSchema<IN, byte[]> serializationSchema) {
+		NetUtils.ensureCorrectHostnamePort(zookeeperAddress);
+		Preconditions.checkNotNull(topicId, "TopicID not set");
+		ClosureCleaner.ensureSerializable(partitioner);
+
+		this.zookeeperAddress = zookeeperAddress;
+		this.topicId = topicId;
+		this.schema = serializationSchema;
+		this.partitionerClass = null;
+		this.userDefinedProperties = producerConfig;
+	}
+
+	/**
+	 * Creates a KafkaSink for a given topic. The sink produces its input to
 	 * the topic.
 	 *
 	 * @param zookeeperAddress
@@ -86,25 +116,13 @@ public class KafkaSink<IN> extends RichSinkFunction<IN> {
 	 */
 	public KafkaSink(String zookeeperAddress, String topicId,
 			SerializationSchema<IN, byte[]> serializationSchema, SerializableKafkaPartitioner partitioner) {
-		NetUtils.ensureCorrectHostnamePort(zookeeperAddress);
-		Preconditions.checkNotNull(topicId, "TopicID not set");
-		ClosureCleaner.ensureSerializable(partitioner);
-
-		this.zookeeperAddress = zookeeperAddress;
-		this.topicId = topicId;
-		this.schema = serializationSchema;
+		this(zookeeperAddress, topicId, serializationSchema);
 		this.partitioner = partitioner;
 	}
 
 	public KafkaSink(String zookeeperAddress, String topicId,
 			SerializationSchema<IN, byte[]> serializationSchema, Class<? extends SerializableKafkaPartitioner> partitioner) {
-		NetUtils.ensureCorrectHostnamePort(zookeeperAddress);
-		Preconditions.checkNotNull(topicId, "TopicID not set");
-		ClosureCleaner.ensureSerializable(partitioner);
-
-		this.zookeeperAddress = zookeeperAddress;
-		this.topicId = topicId;
-		this.schema = serializationSchema;
+		this(zookeeperAddress, topicId, serializationSchema);
 		this.partitionerClass = partitioner;
 	}
 
@@ -115,31 +133,42 @@ public class KafkaSink<IN> extends RichSinkFunction<IN> {
 	public void open(Configuration configuration) {
 
 		KafkaTopicUtils kafkaTopicUtils = new KafkaTopicUtils(zookeeperAddress);
-		String brokerAddress = kafkaTopicUtils.getLeaderBrokerAddressForTopic(topicId);
+		String listOfBrokers = kafkaTopicUtils.getBrokerList(topicId);
 
-		props = new Properties();
+		if (LOG.isInfoEnabled()) {
+			LOG.info("Broker list: {}", listOfBrokers);
+		}
 
-		props.put("metadata.broker.list", brokerAddress);
-		props.put("request.required.acks", "1");
+		Properties properties = new Properties();
 
-		props.put("serializer.class", DefaultEncoder.class.getCanonicalName());
-		props.put("key.serializer.class", StringEncoder.class.getCanonicalName());
+		properties.put("metadata.broker.list", listOfBrokers);
+		properties.put("request.required.acks", "-1");
+		properties.put("message.send.max.retries", "10");
+
+		properties.put("serializer.class", DefaultEncoder.class.getCanonicalName());
+
+		// this will not be used as the key will not be serialized
+		properties.put("key.serializer.class", DefaultEncoder.class.getCanonicalName());
+
+		for (Map.Entry<Object, Object> propertiesEntry : userDefinedProperties.entrySet()) {
+			properties.put(propertiesEntry.getKey(), propertiesEntry.getValue());
+		}
 
 		if (partitioner != null) {
-			props.put("partitioner.class", PartitionerWrapper.class.getCanonicalName());
+			properties.put("partitioner.class", PartitionerWrapper.class.getCanonicalName());
 			// java serialization will do the rest.
-			props.put(PartitionerWrapper.SERIALIZED_WRAPPER_NAME, partitioner);
+			properties.put(PartitionerWrapper.SERIALIZED_WRAPPER_NAME, partitioner);
 		}
 		if (partitionerClass != null) {
-			props.put("partitioner.class", partitionerClass);
+			properties.put("partitioner.class", partitionerClass);
 		}
 
-		ProducerConfig config = new ProducerConfig(props);
+		ProducerConfig config = new ProducerConfig(properties);
 
 		try {
 			producer = new Producer<IN, byte[]>(config);
 		} catch (NullPointerException e) {
-			throw new RuntimeException("Cannot connect to Kafka broker " + brokerAddress, e);
+			throw new RuntimeException("Cannot connect to Kafka broker " + listOfBrokers, e);
 		}
 	}
 
@@ -152,7 +181,9 @@ public class KafkaSink<IN> extends RichSinkFunction<IN> {
 	@Override
 	public void invoke(IN next) {
 		byte[] serialized = schema.serialize(next);
-		producer.send(new KeyedMessage<IN, byte[]>(topicId, next, serialized));
+
+		// Sending message without serializable key.
+		producer.send(new KeyedMessage<IN, byte[]>(topicId, null, next, serialized));
 	}
 
 	@Override

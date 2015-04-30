@@ -24,6 +24,8 @@ import org.apache.flink.configuration.Configuration
 import org.apache.flink.ml.math.Vector
 import org.apache.flink.ml.common._
 
+import org.apache.flink.ml.math.vector2Array
+
 import org.apache.flink.api.scala._
 
 import com.github.fommil.netlib.BLAS.{ getInstance => blas }
@@ -84,7 +86,8 @@ import com.github.fommil.netlib.BLAS.{ getInstance => blas }
   *  Threshold for relative change of sum of squared residuals until convergence.
   *
   */
-class MultipleLinearRegression extends Learner[LabeledVector, MultipleLinearRegressionModel]
+class 
+MultipleLinearRegression extends Learner[LabeledVector, MultipleLinearRegressionModel]
 with Serializable {
   import MultipleLinearRegression._
 
@@ -103,9 +106,9 @@ with Serializable {
     this
   }
 
-  override def fit(input: DataSet[LabeledVector], parameters: ParameterMap):
+  override def fit(input: DataSet[LabeledVector], fitParameters: ParameterMap):
   MultipleLinearRegressionModel = {
-    val map = this.parameters ++ parameters
+    val map = this.parameters ++ fitParameters
 
     // retrieve parameters of the algorithm
     val numberOfIterations = map(Iterations)
@@ -283,14 +286,14 @@ private class SquaredResiduals extends RichMapFunction[LabeledVector, Double] {
   }
 
   override def map(value: LabeledVector): Double = {
-    val vector = value.vector
+    val array = vector2Array(value.vector)
     val label = value.label
 
-    val dotProduct = blas.ddot(weightVector.length, weightVector, 1, vector, 1)
+    val dotProduct = blas.ddot(weightVector.length, weightVector, 1, array, 1)
 
     val residual = dotProduct + weight0 - label
 
-    residual*residual
+    residual * residual
   }
 }
 
@@ -322,7 +325,7 @@ RichMapFunction[LabeledVector, (Array[Double], Double, Int)] {
   }
 
   override def map(value: LabeledVector): (Array[Double], Double, Int) = {
-    val x = value.vector
+    val x = vector2Array(value.vector)
     val label = value.label
 
     val dotProduct = blas.ddot(weightVector.length, weightVector, 1, x, 1)
@@ -398,9 +401,10 @@ RichMapFunction[(Array[Double], Double, Int), (Array[Double], Double)] {
   *
   * @param weights DataSet containing the calculated weight vector
   */
-class MultipleLinearRegressionModel private[regression]
-(val weights: DataSet[(Array[Double], Double)]) extends
-Transformer[ Vector, LabeledVector ] {
+class MultipleLinearRegressionModel private[regression](
+    val weights: DataSet[(Array[Double], Double)])
+  extends Transformer[ Vector, LabeledVector ]
+  with Serializable {
 
   import MultipleLinearRegression.WEIGHTVECTOR_BROADCAST
 
@@ -435,11 +439,11 @@ Transformer[ Vector, LabeledVector ] {
     }
 
     override def map(value: Vector): LabeledVector = {
-      val dotProduct = blas.ddot(weights.length, weights, 1, value, 1)
+      val dotProduct = blas.ddot(weights.length, weights, 1, vector2Array(value), 1)
 
       val prediction = dotProduct + weight0
 
-      LabeledVector(value, prediction)
+      LabeledVector(prediction, value)
     }
   }
 }

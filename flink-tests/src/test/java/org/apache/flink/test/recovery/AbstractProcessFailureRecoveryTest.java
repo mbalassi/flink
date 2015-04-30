@@ -112,10 +112,10 @@ public abstract class AbstractProcessFailureRecoveryTest {
 			Tuple2<String, Object> localAddress = new Tuple2<String, Object>("localhost", jobManagerPort);
 
 			Configuration jmConfig = new Configuration();
-			jmConfig.setString(ConfigConstants.AKKA_WATCH_HEARTBEAT_INTERVAL, "500 ms");
-			jmConfig.setString(ConfigConstants.AKKA_WATCH_HEARTBEAT_PAUSE, "2 s");
-			jmConfig.setInteger(ConfigConstants.AKKA_WATCH_THRESHOLD, 2);
-			jmConfig.setString(ConfigConstants.DEFAULT_EXECUTION_RETRY_DELAY_KEY, "2 s");
+			jmConfig.setString(ConfigConstants.AKKA_WATCH_HEARTBEAT_INTERVAL, "1000 ms");
+			jmConfig.setString(ConfigConstants.AKKA_WATCH_HEARTBEAT_PAUSE, "6 s");
+			jmConfig.setInteger(ConfigConstants.AKKA_WATCH_THRESHOLD, 9);
+			jmConfig.setString(ConfigConstants.DEFAULT_EXECUTION_RETRY_DELAY_KEY, "4 s");
 
 			jmActorSystem = AkkaUtils.createActorSystem(jmConfig, new Some<Tuple2<String, Object>>(localAddress));
 			ActorRef jmActor = JobManager.startJobManagerActors(jmConfig, jmActorSystem)._1();
@@ -139,7 +139,7 @@ public abstract class AbstractProcessFailureRecoveryTest {
 
 			// we wait for the JobManager to have the two TaskManagers available
 			// wait for at most 20 seconds
-			waitUntilNumTaskManagersAreRegistered(jmActor, 2, 20000);
+			waitUntilNumTaskManagersAreRegistered(jmActor, 2, 30000);
 
 			// the program will set a marker file in each of its parallel tasks once they are ready, so that
 			// this coordinating code is aware of this.
@@ -174,7 +174,7 @@ public abstract class AbstractProcessFailureRecoveryTest {
 			new PipeForwarder(taskManagerProcess3.getErrorStream(), processOutput3);
 
 			// we wait for the third TaskManager to register (20 seconds max)
-			waitUntilNumTaskManagersAreRegistered(jmActor, 3, 20000);
+			waitUntilNumTaskManagersAreRegistered(jmActor, 3, 30000);
 
 			// kill one of the previous TaskManagers, triggering a failure and recovery
 			taskManagerProcess1.destroy();
@@ -369,7 +369,7 @@ public abstract class AbstractProcessFailureRecoveryTest {
 				cfg.setInteger(ConfigConstants.TASK_MANAGER_NETWORK_NUM_BUFFERS_KEY, 100);
 				cfg.setInteger(ConfigConstants.TASK_MANAGER_NUM_TASK_SLOTS, 2);
 
-				TaskManager.runTaskManager(cfg, TaskManager.class);
+				TaskManager.selectNetworkInterfaceAndRunTaskManager(cfg, TaskManager.class);
 
 				// wait forever
 				Object lock = new Object();

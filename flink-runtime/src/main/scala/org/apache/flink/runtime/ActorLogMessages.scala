@@ -19,13 +19,12 @@
 package org.apache.flink.runtime
 
 import _root_.akka.actor.Actor
-import _root_.akka.event.LoggingAdapter
 
 /**
  * Mixin to add debug message logging
  */
 trait ActorLogMessages {
-  that: Actor =>
+  that: Actor with ActorSynchronousLogging =>
 
   override def receive: Receive = new Actor.Receive {
     private val _receiveWithLogMessages = receiveWithLogMessages
@@ -37,19 +36,17 @@ trait ActorLogMessages {
         _receiveWithLogMessages(x)
       }
       else {
-        log.debug(s"Received message $x at ${that.self.path} from ${that.sender}.")
+        log.debug(s"Received message $x at ${that.self.path} from ${that.sender()}.")
 
         val start = System.nanoTime()
 
         _receiveWithLogMessages(x)
 
         val duration = (System.nanoTime() - start) / 1000000
-        log.debug(s"Handled message $x in $duration ms from ${that.sender}.")
+        log.debug(s"Handled message $x in $duration ms from ${that.sender()}.")
       }
     }
   }
 
   def receiveWithLogMessages: Receive
-
-  protected def log: LoggingAdapter
 }

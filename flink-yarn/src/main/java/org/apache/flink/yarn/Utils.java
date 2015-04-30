@@ -28,7 +28,6 @@ import org.apache.hadoop.mapreduce.security.TokenCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.flink.configuration.ConfigConstants;
-import org.apache.flink.configuration.GlobalConfiguration;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
@@ -52,33 +51,32 @@ public class Utils {
 	
 	private static final Logger LOG = LoggerFactory.getLogger(Utils.class);
 
-	private static final int DEFAULT_HEAP_LIMIT_CAP = 700;
-	private static final float DEFAULT_YARN_HEAP_CUTOFF_RATIO = 0.8f;
 
 	/**
-	 * Calculate the heap size for the JVMs to start in the containers.
-	 * Since JVMs are allocating more than just the heap space, and YARN is very
-	 * fast at killing processes that use memory beyond their limit, we have to come
-	 * up with a good heapsize.
-	 * This code takes 85% of the given amount of memory (in MB). If the amount we removed by these 85%
-	 * more than 500MB (the current HEAP_LIMIT_CAP), we'll just subtract 500 MB.
-	 * 
+	 * See documentation
 	 */
-	public static int calculateHeapSize(int memory) {
-		float memoryCutoffRatio = GlobalConfiguration.getFloat(ConfigConstants.YARN_HEAP_CUTOFF_RATIO, DEFAULT_YARN_HEAP_CUTOFF_RATIO);
-		int heapLimitCap = GlobalConfiguration.getInteger(ConfigConstants.YARN_HEAP_LIMIT_CAP, DEFAULT_HEAP_LIMIT_CAP);
+	public static int calculateHeapSize(int memory, org.apache.flink.configuration.Configuration conf) {
+		float memoryCutoffRatio = conf.getFloat(ConfigConstants.YARN_HEAP_CUTOFF_RATIO, ConfigConstants.DEFAULT_YARN_HEAP_CUTOFF_RATIO);
+		int minCutoff = conf.getInteger(ConfigConstants.YARN_HEAP_CUTOFF_MIN, ConfigConstants.DEFAULT_YARN_MIN_HEAP_CUTOFF);
+
+		if (memoryCutoffRatio > 1 || memoryCutoffRatio < 0) {
+			throw new IllegalArgumentException("The configuration value '"+ConfigConstants.YARN_HEAP_CUTOFF_RATIO+"' must be between 0 and 1. Value given="+memoryCutoffRatio);
+		}
+		if (minCutoff > memory) {
+			throw new IllegalArgumentException("The configuration value '"+ConfigConstants.YARN_HEAP_CUTOFF_MIN +"' is higher ("+minCutoff+") than the requested amount of memory "+memory);
+		}
 
 		int heapLimit = (int)((float)memory * memoryCutoffRatio);
-		if( (memory - heapLimit) > heapLimitCap) {
-			heapLimit = memory-heapLimitCap;
+		if (heapLimit < minCutoff) {
+			heapLimit = minCutoff;
 		}
-		return heapLimit;
+		return memory - heapLimit;
 	}
 
 	
 	public static void setupEnv(Configuration conf, Map<String, String> appMasterEnv) {
 		addToEnvironment(appMasterEnv, Environment.CLASSPATH.name(), Environment.PWD.$() + File.separator + "*");
-		for (String c : conf.getStrings(YarnConfiguration.YARN_APPLICATION_CLASSPATH,YarnConfiguration.DEFAULT_YARN_APPLICATION_CLASSPATH)) {
+		for (String c: conf.getStrings(YarnConfiguration.YARN_APPLICATION_CLASSPATH,YarnConfiguration.DEFAULT_YARN_APPLICATION_CLASSPATH)) {
 			addToEnvironment(appMasterEnv, Environment.CLASSPATH.name(), c.trim());
 		}
 	}

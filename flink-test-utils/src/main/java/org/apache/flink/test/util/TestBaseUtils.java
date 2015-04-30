@@ -58,6 +58,8 @@ import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class TestBaseUtils {
 
@@ -276,6 +278,27 @@ public class TestBaseUtils {
 		Assert.assertArrayEquals(expected, result);
 	}
 
+	public void checkLinesAgainstRegexp(String resultPath, String regexp){
+		Pattern pattern = Pattern.compile(regexp);
+		Matcher matcher = pattern.matcher("");
+
+		ArrayList<String> list = new ArrayList<String>();
+		try {
+			readAllResultLines(list, resultPath, new String[]{}, false);
+		} catch (IOException e1) {
+			Assert.fail("Error reading the result");
+		}
+
+		for (String line : list){
+			matcher.reset(line);
+			if (!matcher.find()){
+				String msg = "Line is not well-formed: " + line;
+				Assert.fail(msg);
+			}
+		}
+
+	}
+
 	public void compareKeyValueParisWithDelta(String expectedLines, String resultPath,
 											String delimiter, double maxDelta) throws Exception {
 		compareKeyValueParisWithDelta(expectedLines, resultPath, new String[]{}, delimiter, maxDelta);
@@ -350,6 +373,8 @@ public class TestBaseUtils {
 				throw new IllegalArgumentException("This path does not denote a local file.");
 			}
 		} catch (URISyntaxException e) {
+			throw new IllegalArgumentException("This path does not describe a valid local file URI.");
+		} catch (NullPointerException e) {
 			throw new IllegalArgumentException("This path does not describe a valid local file URI.");
 		}
 	}

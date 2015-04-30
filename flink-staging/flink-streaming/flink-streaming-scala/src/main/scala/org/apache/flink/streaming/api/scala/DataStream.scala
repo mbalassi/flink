@@ -23,31 +23,40 @@ import org.apache.flink.streaming.api.collector.selector.OutputSelector
 import org.apache.flink.streaming.api.datastream.{DataStream => JavaStream,
   SingleOutputStreamOperator, GroupedDataStream}
 import org.apache.flink.streaming.util.serialization.SerializationSchema
+
 import scala.collection.JavaConverters._
 import scala.reflect.ClassTag
+
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.common.functions.MapFunction
-import org.apache.flink.streaming.api.invokable.operator._
 import org.apache.flink.util.Collector
 import org.apache.flink.api.common.functions.FlatMapFunction
 import org.apache.flink.api.common.functions.ReduceFunction
-import org.apache.flink.streaming.api.invokable.StreamInvokable
 import org.apache.flink.api.common.functions.ReduceFunction
 import org.apache.flink.api.common.functions.FoldFunction
 import org.apache.flink.api.java.functions.KeySelector
 import org.apache.flink.api.common.functions.FilterFunction
-import org.apache.flink.streaming.api.function.sink.SinkFunction
+import org.apache.flink.streaming.api.functions.sink.SinkFunction
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment.clean
 import org.apache.flink.streaming.api.windowing.helper.WindowingHelper
 import org.apache.flink.streaming.api.windowing.policy.{ EvictionPolicy, TriggerPolicy }
+
 import scala.collection.JavaConversions._
+
 import java.util.HashMap
-import org.apache.flink.streaming.api.function.aggregation.SumFunction
-import org.apache.flink.streaming.api.function.aggregation.AggregationFunction
-import org.apache.flink.streaming.api.function.aggregation.AggregationFunction.AggregationType
+
+import org.apache.flink.streaming.api.functions.aggregation.SumFunction
+import org.apache.flink.streaming.api.functions.aggregation.AggregationFunction
+import org.apache.flink.streaming.api.functions.aggregation.AggregationFunction.AggregationType
 import org.apache.flink.api.scala.typeutils.CaseClassTypeInfo
 import org.apache.flink.api.streaming.scala.ScalaStreamingAggregator
-import org.apache.flink.streaming.api.invokable.StreamInvokable.ChainingStrategy
+import org.apache.flink.streaming.api.operators.StreamOperator.ChainingStrategy;
+import org.apache.flink.streaming.api.operators.StreamReduce
+import org.apache.flink.streaming.api.operators.StreamGroupedReduce
+import org.apache.flink.streaming.api.operators.StreamFlatMap
+import org.apache.flink.streaming.api.operators.StreamGroupedFold
+import org.apache.flink.streaming.api.operators.StreamMap
+import org.apache.flink.streaming.api.operators.StreamFold
 
 class DataStream[T](javaStream: JavaStream[T]) {
 
@@ -86,9 +95,67 @@ class DataStream[T](javaStream: JavaStream[T]) {
         "parallelism.")
   }
   
-  def setChainingStrategy(strategy: ChainingStrategy): DataStream[T] = {
+  /**
+   * Turns off chaining for this operator so thread co-location will not be
+   * used as an optimization. </p> Chaining can be turned off for the whole
+   * job by {@link StreamExecutionEnvironment#disableOperatorChaning()}
+   * however it is not advised for performance considerations.
+   * 
+   */
+  def disableChaining(): DataStream[T] = {
     javaStream match {
-      case ds: SingleOutputStreamOperator[_, _] => ds.setChainingStrategy(strategy)
+      case ds: SingleOutputStreamOperator[_, _] => ds.disableChaining();
+      case _ =>
+        throw new UnsupportedOperationException("Only supported for operators.")
+    }
+    this
+  }
+  
+  /**
+   * Starts a new task chain beginning at this operator. This operator will
+   * not be chained (thread co-located for increased performance) to any
+   * previous tasks even if possible.
+   * 
+   */
+  def startNewChain(): DataStream[T] = {
+    javaStream match {
+      case ds: SingleOutputStreamOperator[_, _] => ds.startNewChain();
+      case _ =>
+        throw new UnsupportedOperationException("Only supported for operators.")
+    }
+    this
+  }
+  
+  /**
+   * Isolates the operator in its own resource group. This will cause the
+   * operator to grab as many task slots as its degree of parallelism. If
+   * there are no free resources available, the job will fail to start.
+   * All subsequent operators are assigned to the default resource group.
+   * 
+   */
+  def isolateResources(): DataStream[T] = {
+    javaStream match {
+      case ds: SingleOutputStreamOperator[_, _] => ds.isolateResources();
+      case _ =>
+        throw new UnsupportedOperationException("Only supported for operators.")
+    }
+    this
+  }
+  
+  /**
+   * By default all operators in a streaming job share the same resource
+   * group. Each resource group takes as many task manager slots as the
+   * maximum parallelism operator in that group. By calling this method, this
+   * operators starts a new resource group and all subsequent operators will
+   * be added to this group unless specified otherwise. Please note that
+   * local executions have by default as many available task slots as the
+   * environment parallelism, so in order to start a new resource group the
+   * degree of parallelism for the operators must be decreased from the
+   * default.
+   */
+  def startNewResourceGroup(): DataStream[T] = {
+    javaStream match {
+      case ds: SingleOutputStreamOperator[_, _] => ds.startNewResourceGroup();
       case _ =>
         throw new UnsupportedOperationException("Only supported for operators.")
     }
@@ -329,9 +396,9 @@ class DataStream[T](javaStream: JavaStream[T]) {
     }
 
     val invokable = jStream match {
-      case groupedStream: GroupedDataStream[_] => new GroupedReduceInvokable(reducer,
+      case groupedStream: GroupedDataStream[_] => new StreamGroupedReduce(reducer,
         groupedStream.getKeySelector())
-      case _ => new StreamReduceInvokable(reducer)
+      case _ => new StreamReduce(reducer)
     }
     new DataStream[Product](jStream.transform("aggregation", jStream.getType(),
       invokable)).asInstanceOf[DataStream[T]]
@@ -356,8 +423,8 @@ class DataStream[T](javaStream: JavaStream[T]) {
       val cleanFun = clean(fun)
       def map(in: T): R = cleanFun(in)
     }
-
-    javaStream.transform("map", implicitly[TypeInformation[R]], new MapInvokable[T, R](mapper))
+    
+    map(mapper)
   }
 
   /**
@@ -368,7 +435,8 @@ class DataStream[T](javaStream: JavaStream[T]) {
       throw new NullPointerException("Map function must not be null.")
     }
 
-    javaStream.transform("map", implicitly[TypeInformation[R]], new MapInvokable[T, R](mapper))
+    val outType : TypeInformation[R] = implicitly[TypeInformation[R]]
+    javaStream.map(mapper).returns(outType).asInstanceOf[JavaStream[R]]
   }
 
   /**
@@ -379,8 +447,9 @@ class DataStream[T](javaStream: JavaStream[T]) {
     if (flatMapper == null) {
       throw new NullPointerException("FlatMap function must not be null.")
     }
-   javaStream.transform("flatMap", implicitly[TypeInformation[R]], 
-       new FlatMapInvokable[T, R](flatMapper))
+    
+    val outType : TypeInformation[R] = implicitly[TypeInformation[R]]
+    javaStream.flatMap(flatMapper).returns(outType).asInstanceOf[JavaStream[R]]
   }
 
   /**
@@ -421,12 +490,8 @@ class DataStream[T](javaStream: JavaStream[T]) {
     if (reducer == null) {
       throw new NullPointerException("Reduce function must not be null.")
     }
-    javaStream match {
-      case ds: GroupedDataStream[_] => javaStream.transform("reduce",
-        javaStream.getType(), new GroupedReduceInvokable[T](reducer, ds.getKeySelector()))
-      case _ => javaStream.transform("reduce", javaStream.getType(),
-        new StreamReduceInvokable[T](reducer))
-    }
+ 
+    javaStream.reduce(reducer)
   }
 
   /**
@@ -453,13 +518,9 @@ class DataStream[T](javaStream: JavaStream[T]) {
     if (folder == null) {
       throw new NullPointerException("Fold function must not be null.")
     }
-    javaStream match {
-      case ds: GroupedDataStream[_] => javaStream.transform("fold",
-        implicitly[TypeInformation[R]], new GroupedFoldInvokable[T,R](folder, ds.getKeySelector(), 
-            initialValue, implicitly[TypeInformation[R]]))
-      case _ => javaStream.transform("fold", implicitly[TypeInformation[R]],
-        new StreamFoldInvokable[T,R](folder, initialValue, implicitly[TypeInformation[R]]))
-    }
+    
+    val outType : TypeInformation[R] = implicitly[TypeInformation[R]]
+    javaStream.fold(initialValue, folder).returns(outType).asInstanceOf[JavaStream[R]]
   }
 
   /**
@@ -527,6 +588,13 @@ class DataStream[T](javaStream: JavaStream[T]) {
    */
   def window(trigger: TriggerPolicy[T], eviction: EvictionPolicy[T]):
     WindowedDataStream[T] = javaStream.window(trigger, eviction)
+    
+  /**
+   * Create a WindowedDataStream based on the full stream history to perform periodic
+   * aggregations.
+   */  
+  def every(windowingHelper: WindowingHelper[_]): WindowedDataStream[T] = 
+    javaStream.every(windowingHelper)
 
   /**
    *

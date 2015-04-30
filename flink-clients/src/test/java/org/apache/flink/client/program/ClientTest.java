@@ -23,7 +23,7 @@ import akka.actor.Props;
 import akka.actor.Status;
 import akka.actor.UntypedActor;
 import org.apache.flink.api.common.InvalidProgramException;
-import org.apache.flink.api.common.JobExecutionResult;
+import org.apache.flink.api.common.JobSubmissionResult;
 import org.apache.flink.api.common.Plan;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.optimizer.DataStatistics;
@@ -35,8 +35,9 @@ import org.apache.flink.configuration.ConfigConstants;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.runtime.akka.AkkaUtils;
 import org.apache.flink.runtime.jobgraph.JobGraph;
-import org.apache.flink.runtime.jobgraph.JobID;
+import org.apache.flink.api.common.JobID;
 import org.apache.flink.runtime.jobmanager.JobManager;
+import org.apache.flink.runtime.messages.JobManagerMessages;
 import org.apache.flink.runtime.net.NetUtils;
 import org.junit.After;
 
@@ -101,7 +102,7 @@ public class ClientTest {
 		when(program.getPlanWithJars()).thenReturn(planWithJarsMock);
 		when(planWithJarsMock.getPlan()).thenReturn(planMock);
 
-		whenNew(Optimizer.class).withArguments(any(DataStatistics.class), any(CostEstimator.class)).thenReturn(this.compilerMock);
+		whenNew(Optimizer.class).withArguments(any(DataStatistics.class), any(CostEstimator.class), any(Configuration.class)).thenReturn(this.compilerMock);
 		when(compilerMock.compile(planMock)).thenReturn(optimizedPlanMock);
 
 		whenNew(JobGraphGenerator.class).withNoArguments().thenReturn(generatorMock);
@@ -139,11 +140,9 @@ public class ClientTest {
 			jobManagerSystem.actorOf(Props.create(SuccessReturningActor.class), JobManager.JOB_MANAGER_NAME());
 
 			Client out = new Client(config, getClass().getClassLoader());
-			JobExecutionResult result = out.run(program.getPlanWithJars(), -1, false);
+			JobSubmissionResult result = out.run(program.getPlanWithJars(), -1, false);
 
 			assertNotNull(result);
-			assertEquals(-1, result.getNetRuntime());
-			assertNull(result.getAllAccumulatorResults());
 
 			program.deleteExtractedLibraries();
 
@@ -225,7 +224,13 @@ public class ClientTest {
 
 		@Override
 		public void onReceive(Object message) throws Exception {
-			getSender().tell(new Status.Success(new JobID()), getSelf());
+			if (message instanceof JobManagerMessages.SubmitJob) {
+				JobID jid = ((JobManagerMessages.SubmitJob) message).jobGraph().getJobID();
+				getSender().tell(new Status.Success(jid), getSelf());
+			}
+			else {
+				getSender().tell(new Status.Failure(new Exception("Unknown message " + message)), getSelf());
+			}
 		}
 	}
 

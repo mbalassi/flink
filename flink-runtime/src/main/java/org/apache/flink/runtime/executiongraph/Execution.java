@@ -43,7 +43,8 @@ import org.apache.flink.runtime.jobmanager.scheduler.Scheduler;
 import org.apache.flink.runtime.jobmanager.scheduler.SlotAllocationFuture;
 import org.apache.flink.runtime.jobmanager.scheduler.SlotAllocationFutureAction;
 import org.apache.flink.runtime.jobmanager.scheduler.SlotSharingGroup;
-import org.apache.flink.runtime.messages.TaskManagerMessages.TaskOperationResult;
+import org.apache.flink.runtime.messages.Messages;
+import org.apache.flink.runtime.messages.TaskMessages.TaskOperationResult;
 import org.apache.flink.runtime.state.StateHandle;
 import org.apache.flink.util.ExceptionUtils;
 import org.slf4j.Logger;
@@ -68,12 +69,13 @@ import static org.apache.flink.runtime.execution.ExecutionState.FAILED;
 import static org.apache.flink.runtime.execution.ExecutionState.FINISHED;
 import static org.apache.flink.runtime.execution.ExecutionState.RUNNING;
 import static org.apache.flink.runtime.execution.ExecutionState.SCHEDULED;
-import static org.apache.flink.runtime.messages.TaskManagerMessages.CancelTask;
-import static org.apache.flink.runtime.messages.TaskManagerMessages.FailIntermediateResultPartitions;
-import static org.apache.flink.runtime.messages.TaskManagerMessages.SubmitTask;
-import static org.apache.flink.runtime.messages.TaskManagerMessages.UpdateTask;
-import static org.apache.flink.runtime.messages.TaskManagerMessages.UpdateTaskSinglePartitionInfo;
-import static org.apache.flink.runtime.messages.TaskManagerMessages.createUpdateTaskMultiplePartitionInfos;
+
+import static org.apache.flink.runtime.messages.TaskMessages.CancelTask;
+import static org.apache.flink.runtime.messages.TaskMessages.FailIntermediateResultPartitions;
+import static org.apache.flink.runtime.messages.TaskMessages.SubmitTask;
+import static org.apache.flink.runtime.messages.TaskMessages.UpdatePartitionInfo;
+import static org.apache.flink.runtime.messages.TaskMessages.UpdateTaskSinglePartitionInfo;
+import static org.apache.flink.runtime.messages.TaskMessages.createUpdateTaskMultiplePartitionInfos;
 
 /**
  * A single execution of a vertex. While an {@link ExecutionVertex} can be executed multiple times (for recovery,
@@ -327,7 +329,7 @@ public class Execution implements Serializable {
 			// register this execution at the execution graph, to receive call backs
 			vertex.getExecutionGraph().registerExecution(this);
 
-			Instance instance = slot.getInstance();
+			final Instance instance = slot.getInstance();
 			Future<Object> deployAction = Patterns.ask(instance.getTaskManager(),
 					new SubmitTask(deployment), new Timeout(timeout));
 
@@ -337,33 +339,18 @@ public class Execution implements Serializable {
 				public void onComplete(Throwable failure, Object success) throws Throwable {
 					if (failure != null) {
 						if (failure instanceof TimeoutException) {
-							markFailed(new Exception("Cannot deploy task - TaskManager not responding.", failure));
+							markFailed(new Exception(
+									"Cannot deploy task - TaskManager " + instance + " not responding.",
+									failure));
 						}
 						else {
 							markFailed(failure);
 						}
 					}
 					else {
-						if (success == null) {
-							markFailed(new Exception("Failed to deploy the task to slot " + slot + ": TaskOperationResult was null"));
-						}
-
-						if (success instanceof TaskOperationResult) {
-							TaskOperationResult result = (TaskOperationResult) success;
-
-							if (!result.executionID().equals(attemptId)) {
-								markFailed(new Exception("Answer execution id does not match the request execution id."));
-							} else if (result.success()) {
-								switchToRunning();
-							} else {
-								// deployment failed :(
-								markFailed(new Exception("Failed to deploy the task " +
-										getVertexWithAttempt() + " to slot " + slot + ": " + result
-										.description()));
-							}
-						} else {
+						if (!(success.equals(Messages.getAcknowledge()))) {
 							markFailed(new Exception("Failed to deploy the task to slot " + slot +
-									": Response was not of type TaskOperationResult"));
+									": Response was not of type Acknowledge"));
 						}
 					}
 				}
@@ -526,7 +513,7 @@ public class Execution implements Serializable {
 					final InputChannelDeploymentDescriptor descriptor = new InputChannelDeploymentDescriptor(
 							partitionId, partitionLocation);
 
-					final UpdateTask updateTaskMessage = new UpdateTaskSinglePartitionInfo(
+					final UpdatePartitionInfo updateTaskMessage = new UpdateTaskSinglePartitionInfo(
 							consumer.getAttemptId(), partition.getIntermediateResult().getId(), descriptor);
 
 					sendUpdateTaskRpcCall(consumerSlot, updateTaskMessage);
@@ -685,7 +672,7 @@ public class Execution implements Serializable {
 				inputChannelDeploymentDescriptors.add(partialInputChannelDeploymentDescriptor.createInputChannelDeploymentDescriptor(this));
 			}
 
-			UpdateTask updateTaskMessage =
+			UpdatePartitionInfo updateTaskMessage =
 					createUpdateTaskMultiplePartitionInfos(attemptId, resultIDs,
 							inputChannelDeploymentDescriptors);
 
@@ -756,7 +743,7 @@ public class Execution implements Serializable {
 		}
 	}
 
-	private boolean switchToRunning() {
+	boolean switchToRunning() {
 
 		if (transitionState(DEPLOYING, RUNNING)) {
 			sendPartitionInfos();
@@ -845,7 +832,7 @@ public class Execution implements Serializable {
 	}
 
 	private void sendUpdateTaskRpcCall(final SimpleSlot consumerSlot,
-									final UpdateTask updateTaskMsg) {
+										final UpdatePartitionInfo updateTaskMsg) {
 
 		if (consumerSlot != null) {
 			final Instance instance = consumerSlot.getInstance();

@@ -19,8 +19,10 @@
 package org.apache.flink.runtime.execution;
 
 import akka.actor.ActorRef;
+import org.apache.flink.api.common.accumulators.Accumulator;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.core.fs.Path;
+import org.apache.flink.runtime.accumulators.AccumulatorEvent;
 import org.apache.flink.runtime.broadcast.BroadcastVariableManager;
 import org.apache.flink.runtime.deployment.InputGateDeploymentDescriptor;
 import org.apache.flink.runtime.deployment.ResultPartitionDeploymentDescriptor;
@@ -33,15 +35,17 @@ import org.apache.flink.runtime.io.network.partition.ResultPartitionID;
 import org.apache.flink.runtime.io.network.partition.consumer.InputGate;
 import org.apache.flink.runtime.io.network.partition.consumer.SingleInputGate;
 import org.apache.flink.runtime.jobgraph.IntermediateDataSetID;
-import org.apache.flink.runtime.jobgraph.JobID;
+import org.apache.flink.api.common.JobID;
 import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.jobgraph.tasks.AbstractInvokable;
 import org.apache.flink.runtime.jobgraph.tasks.InputSplitProvider;
 import org.apache.flink.runtime.memorymanager.MemoryManager;
+import org.apache.flink.runtime.messages.accumulators.ReportAccumulatorResult;
 import org.apache.flink.runtime.taskmanager.Task;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -126,6 +130,7 @@ public class RuntimeEnvironment implements Environment, Runnable {
 				ResultPartitionID partitionId = new ResultPartitionID(desc.getPartitionId(), owner.getExecutionId());
 
 				this.producedPartitions[i] = new ResultPartition(
+						this,
 						owner.getJobID(),
 						partitionId,
 						desc.getPartitionType(),
@@ -144,7 +149,8 @@ public class RuntimeEnvironment implements Environment, Runnable {
 			this.inputGates = new SingleInputGate[consumedPartitions.size()];
 
 			for (int i = 0; i < inputGates.length; i++) {
-				inputGates[i] = SingleInputGate.create(consumedPartitions.get(i), networkEnvironment);
+				inputGates[i] = SingleInputGate.create(
+						this, consumedPartitions.get(i), networkEnvironment);
 
 				// The input gates are organized by key for task updates/channel updates at runtime
 				inputGatesById.put(inputGates[i].getConsumedResultId(), inputGates[i]);
@@ -349,6 +355,20 @@ public class RuntimeEnvironment implements Environment, Runnable {
 	@Override
 	public BroadcastVariableManager getBroadcastVariableManager() {
 		return broadcastVariableManager;
+	}
+
+	@Override
+	public void reportAccumulators(Map<String, Accumulator<?, ?>> accumulators) {
+		AccumulatorEvent evt;
+		try {
+			evt = new AccumulatorEvent(getJobID(), accumulators);
+		}
+		catch (IOException e) {
+			throw new RuntimeException("Cannot serialize accumulators to send them to JobManager", e);
+		}
+
+		ReportAccumulatorResult accResult = new ReportAccumulatorResult(getJobID(), owner.getExecutionId(), evt);
+		jobManager.tell(accResult, ActorRef.noSender());
 	}
 
 	@Override

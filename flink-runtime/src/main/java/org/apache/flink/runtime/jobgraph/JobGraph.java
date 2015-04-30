@@ -31,6 +31,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.flink.api.common.InvalidProgramException;
+import org.apache.flink.api.common.JobID;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.core.fs.FSDataInputStream;
 import org.apache.flink.core.fs.FileSystem;
@@ -74,10 +75,6 @@ public class JobGraph implements Serializable {
 	private boolean allowQueuedScheduling;
 
 	private ScheduleMode scheduleMode = ScheduleMode.FROM_SOURCES;
-	
-	public enum JobType {STREAMING, BATCH}
-	
-	private JobType jobType = JobType.BATCH;
 	
 	private boolean checkpointingEnabled = false;
 	
@@ -259,15 +256,6 @@ public class JobGraph implements Serializable {
 	 */
 	public int getNumberOfVertices() {
 		return this.taskVertices.size();
-	}
-
-
-	public void setJobType(JobType jobType) {
-		this.jobType = jobType;
-	}
-
-	public JobType getJobType() {
-		return jobType;
 	}
 
 	public void setCheckpointingEnabled(boolean checkpointingEnabled) {

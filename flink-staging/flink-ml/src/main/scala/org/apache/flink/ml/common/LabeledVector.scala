@@ -23,7 +23,20 @@ import org.apache.flink.ml.math.Vector
 /** This class represents a vector with an associated label as it is required for many supervised
   * learning tasks.
   *
-  * @param vector Data point
   * @param label Label of the data point
+  * @param vector Data point
   */
-case class LabeledVector(vector: Vector, label: Double) {}
+case class LabeledVector(label: Double, vector: Vector) extends Serializable {
+
+  override def equals(obj: Any): Boolean = {
+    obj match {
+      case labeledVector: LabeledVector =>
+        vector.equals(labeledVector.vector) && label.equals(labeledVector.label)
+      case _ => false
+    }
+  }
+
+  override def toString: String = {
+    s"LabeledVector($label, $vector)"
+  }
+}

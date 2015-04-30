@@ -18,21 +18,20 @@
 
 package org.apache.flink.test.javaApiOperators;
 
-import java.util.Collection;
-import java.util.Iterator;
-
 import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.functions.GroupReduceFunction;
-import org.apache.flink.api.common.operators.Order;
-import org.apache.flink.api.java.functions.KeySelector;
 import org.apache.flink.api.common.functions.RichGroupReduceFunction;
 import org.apache.flink.api.common.functions.RichMapFunction;
+import org.apache.flink.api.common.operators.Order;
+import org.apache.flink.api.java.DataSet;
+import org.apache.flink.api.java.ExecutionEnvironment;
+import org.apache.flink.api.java.functions.KeySelector;
 import org.apache.flink.api.java.tuple.Tuple;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.tuple.Tuple3;
 import org.apache.flink.api.java.tuple.Tuple5;
-import org.apache.flink.optimizer.Optimizer;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.optimizer.Optimizer;
 import org.apache.flink.test.javaApiOperators.util.CollectionDataSets;
 import org.apache.flink.test.javaApiOperators.util.CollectionDataSets.CrazyNested;
 import org.apache.flink.test.javaApiOperators.util.CollectionDataSets.CustomType;
@@ -49,9 +48,12 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
-import org.apache.flink.api.java.DataSet;
-import org.apache.flink.api.java.ExecutionEnvironment;
 import scala.math.BigInt;
+
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Set;
 
 @SuppressWarnings("serial")
 @RunWith(Parameterized.class)
@@ -1003,6 +1005,84 @@ public class GroupReduceITCase extends MultipleProgramsTestBase {
 				"PojoWithCollection{pojos.size()=2, key=0, sqlDate=2033-05-18, bigInt=92233720368547758070, bigDecimalKeepItNull=null, scalaBigInt=10, mixed=[{someKey=1}, /this/is/wrong, uhlala]}\n" +
 				"For key 92233720368547758070 we got:\n" +
 				"PojoWithCollection{pojos.size()=2, key=0, sqlDate=1976-05-03, bigInt=92233720368547758070, bigDecimalKeepItNull=null, scalaBigInt=31104000, mixed=null}\n";
+	}
+
+	@Test
+	public void testGroupReduceSelectorKeysWithSemProps() throws Exception {
+
+		/*
+		 * Test that semantic properties are correctly adapted when using Selector Keys
+		 */
+
+		final ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
+		env.setParallelism(4);
+
+		DataSet<Tuple5<Integer, Long, Integer, String, Long>> ds = CollectionDataSets.get5TupleDataSet(env);
+		DataSet<Tuple2<Integer, Long>> reduceDs = ds
+				// group by selector key
+				.groupBy(new KeySelector<Tuple5<Integer,Long,Integer,String,Long>, Long>() {
+					@Override
+					public Long getKey(Tuple5<Integer, Long, Integer, String, Long> v) throws Exception {
+						return (v.f0*v.f1)-(v.f2*v.f4);
+					}
+				})
+				.reduceGroup(
+						new GroupReduceFunction<Tuple5<Integer, Long, Integer, String, Long>, Tuple5<Integer, Long, Integer, String, Long>>() {
+							@Override
+							public void reduce(Iterable<Tuple5<Integer, Long, Integer, String, Long>> values, Collector<Tuple5<Integer, Long, Integer, String, Long>> out) throws Exception {
+								for (Tuple5<Integer, Long, Integer, String, Long> v : values) {
+									out.collect(v);
+								}
+							}
+						})
+				// add forward field information
+				.withForwardedFields("0")
+				// group again and reduce
+				.groupBy(0).reduceGroup(
+						new GroupReduceFunction<Tuple5<Integer, Long, Integer, String, Long>, Tuple2<Integer, Long>>() {
+							@Override
+							public void reduce(Iterable<Tuple5<Integer, Long, Integer, String, Long>> values, Collector<Tuple2<Integer, Long>> out) throws Exception {
+								int k = 0;
+								long s = 0;
+								for (Tuple5<Integer, Long, Integer, String, Long> v : values) {
+									k = v.f0;
+									s += v.f1;
+								}
+								out.collect(new Tuple2<Integer, Long>(k, s));
+							}
+						}
+				);
+
+		reduceDs.writeAsCsv(resultPath);
+
+		env.execute();
+
+		expected = "1,1\n" +
+				"2,5\n" +
+				"3,15\n" +
+				"4,34\n" +
+				"5,65\n";
+
+	}
+
+	@Test
+	public void testGroupReduceWithAtomicValue() throws Exception {
+		final ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
+		DataSet<Integer> ds = env.fromElements(1, 1, 2, 3, 4);
+		DataSet<Integer> reduceDs = ds.groupBy("*").reduceGroup(new GroupReduceFunction<Integer, Integer>() {
+			@Override
+			public void reduce(Iterable<Integer> values, Collector<Integer> out) throws Exception {
+				out.collect(values.iterator().next());
+			}
+		});
+
+		reduceDs.writeAsText(resultPath);
+		env.execute();
+
+		expected = "1\n" +
+			"2\n" +
+			"3\n" +
+			"4";
 	}
 
 	public static class GroupReducer8 implements GroupReduceFunction<CollectionDataSets.PojoWithCollection, String> {

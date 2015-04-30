@@ -94,7 +94,14 @@ under the License.
 		<dependency>
 			<groupId>io.netty</groupId>
 			<artifactId>netty-all</artifactId>
-			<version>4.0.26.Final</version>
+			<version>4.0.27.Final</version>
+		</dependency>
+
+		<!-- See: https://groups.google.com/forum/#!msg/netty/-aAPDBNUnDg/SkGOXL2Ma2QJ -->
+		<dependency>
+			<groupId>org.javassist</groupId>
+			<artifactId>javassist</artifactId>
+			<!-- Version is set in root POM -->
 		</dependency>
 
 		<dependency>
@@ -109,6 +116,12 @@ under the License.
 			<version>${guava.version}</version>
 		</dependency>
 
+		<dependency>
+			<groupId>org.ow2.asm</groupId>
+			<artifactId>asm-all</artifactId>
+			<version>${asm.version}</version>
+		</dependency>
+		
 		<dependency>
 			<groupId>org.scala-lang</groupId>
 			<artifactId>scala-library</artifactId>
@@ -132,6 +145,11 @@ under the License.
 		<dependency>
 			<groupId>com.typesafe.akka</groupId>
 			<artifactId>akka-testkit_${scala.binary.version}</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>org.clapper</groupId>
+			<artifactId>grizzled-slf4j_${scala.binary.version}</artifactId>
 		</dependency>
 
 		<dependency>

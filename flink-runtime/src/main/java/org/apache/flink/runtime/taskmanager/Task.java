@@ -26,12 +26,11 @@ import org.apache.flink.runtime.executiongraph.ExecutionAttemptID;
 import org.apache.flink.runtime.io.network.api.writer.ResultPartitionWriter;
 import org.apache.flink.runtime.io.network.partition.ResultPartition;
 import org.apache.flink.runtime.io.network.partition.consumer.SingleInputGate;
-import org.apache.flink.runtime.jobgraph.JobID;
+import org.apache.flink.api.common.JobID;
 import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.memorymanager.MemoryManager;
 import org.apache.flink.runtime.messages.ExecutionGraphMessages;
-import org.apache.flink.runtime.messages.JobManagerMessages;
-import org.apache.flink.runtime.messages.TaskManagerMessages.UnregisterTask;
+import org.apache.flink.runtime.messages.TaskMessages.UnregisterTask;
 import org.apache.flink.runtime.profiling.TaskManagerProfiler;
 import org.apache.flink.util.ExceptionUtils;
 import org.slf4j.Logger;
@@ -304,7 +303,7 @@ public class Task {
 				}
 			}
 			else {
-				throw new RuntimeException("unexpected state for cancelling: " + current);
+				throw new RuntimeException("unexpected state for failing the task: " + current);
 			}
 		}
 	}
@@ -355,16 +354,6 @@ public class Task {
 
 	protected void unregisterTask() {
 		taskManager.tell(new UnregisterTask(executionId), ActorRef.noSender());
-	}
-
-	protected void notifyExecutionStateChange(ExecutionState executionState,
-											Throwable optionalError) {
-		LOG.info("Update execution state of {} ({}) to {}.", this.getTaskName(),
-				this.getExecutionId(), executionState);
-		taskManager.tell(new JobManagerMessages.UpdateTaskExecutionState(
-				new TaskExecutionState(jobId, executionId, executionState, optionalError)),
-				ActorRef.noSender());
-
 	}
 
 	// -----------------------------------------------------------------------------------------------------------------

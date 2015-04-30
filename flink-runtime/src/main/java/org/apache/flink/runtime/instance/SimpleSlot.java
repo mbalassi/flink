@@ -20,7 +20,7 @@ package org.apache.flink.runtime.instance;
 
 import org.apache.flink.util.AbstractID;
 import org.apache.flink.runtime.executiongraph.Execution;
-import org.apache.flink.runtime.jobgraph.JobID;
+import org.apache.flink.api.common.JobID;
 import org.apache.flink.runtime.jobmanager.scheduler.Locality;
 
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
@@ -95,7 +95,7 @@ public class SimpleSlot extends Slot {
 			// kill all tasks currently running in this slot
 			Execution exec = this.executedTask;
 			if (exec != null && !exec.isFinished()) {
-				exec.fail(new Exception("The slot in which the task was scheduled has been killed (probably loss of TaskManager)."));
+				exec.fail(new Exception("The slot in which the task was scheduled has been killed (probably loss of TaskManager). Instance:"+getInstance()));
 			}
 		}
 	}

@@ -20,13 +20,11 @@ package org.apache.flink.streaming.util;
 import org.apache.flink.api.common.JobExecutionResult;
 import org.apache.flink.configuration.ConfigConstants;
 import org.apache.flink.configuration.Configuration;
-import org.apache.flink.runtime.client.JobClient;
+import org.apache.flink.runtime.client.SerializedJobExecutionResult;
 import org.apache.flink.runtime.jobgraph.JobGraph;
 import org.apache.flink.runtime.minicluster.LocalFlinkMiniCluster;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import akka.actor.ActorRef;
 
 public class ClusterUtil {
 
@@ -44,9 +42,8 @@ public class ClusterUtil {
 	 *            memorySize
 	 * @return The result of the job execution, containing elapsed time and accumulators.
 	 */
-	public static JobExecutionResult runOnMiniCluster(JobGraph jobGraph, int parallelism, long memorySize)
-			throws Exception {
-
+	public static JobExecutionResult runOnMiniCluster(JobGraph jobGraph, int parallelism, long memorySize,
+																boolean printDuringExecution) throws Exception {
 		Configuration configuration = jobGraph.getJobConfiguration();
 
 		LocalFlinkMiniCluster exec = null;
@@ -59,20 +56,19 @@ public class ClusterUtil {
 
 		try {
 			exec = new LocalFlinkMiniCluster(configuration, true);
-			ActorRef jobClient = exec.getJobClient();
 
-			return JobClient.submitJobAndWait(jobGraph, true, jobClient, exec.timeout());
-
-		} catch (Exception e) {
-			throw e;
-		} finally {
+			SerializedJobExecutionResult result = exec.submitJobAndWait(jobGraph, printDuringExecution);
+			return result.toJobExecutionResult(ClusterUtil.class.getClassLoader());
+		}
+		finally {
 			if (exec != null) {
 				exec.stop();
 			}
 		}
 	}
 
-	public static JobExecutionResult runOnMiniCluster(JobGraph jobGraph, int numOfSlots) throws Exception {
-		return runOnMiniCluster(jobGraph, numOfSlots, -1);
+	public static JobExecutionResult runOnMiniCluster(JobGraph jobGraph, int numOfSlots,
+														boolean printDuringExecution) throws Exception {
+		return runOnMiniCluster(jobGraph, numOfSlots, -1, printDuringExecution);
 	}
 }

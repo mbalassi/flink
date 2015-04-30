@@ -23,7 +23,7 @@ import java.util.StringTokenizer;
 import org.apache.flink.api.common.functions.FlatMapFunction;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.apache.flink.streaming.api.function.sink.SinkFunction;
+import org.apache.flink.streaming.api.functions.sink.SinkFunction;
 import org.apache.flink.test.testdata.WordCountData;
 import org.apache.flink.util.Collector;
 
@@ -37,7 +37,8 @@ public class StreamingProgram {
 		final int port = Integer.parseInt(args[2]);
 		
 		StreamExecutionEnvironment env = StreamExecutionEnvironment.createRemoteEnvironment(host, port, jarFile);
-
+		env.getConfig().disableSysoutLogging();
+		
 		DataStream<String> text = env.fromElements(WordCountData.TEXT);
 
 		DataStream<Word> counts =

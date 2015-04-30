@@ -42,6 +42,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.powermock.api.mockito.PowerMockito.spy;
@@ -112,7 +113,13 @@ public class LocalBufferPoolTest {
 	public void testRequestAfterDestroy() throws IOException {
 		localBufferPool.lazyDestroy();
 
-		assertNull(localBufferPool.requestBuffer());
+		try {
+			localBufferPool.requestBuffer();
+			fail("Call should have failed with an IllegalStateException");
+		}
+		catch (IllegalStateException e) {
+			// we expect exactly that
+		}
 	}
 
 	@Test
@@ -291,7 +298,13 @@ public class LocalBufferPoolTest {
 
 				// Try to request the next buffer (but pool should be destroyed either right before
 				// the request or more likely during the request).
-				assertNull(localBufferPool.requestBufferBlocking());
+				try {
+					localBufferPool.requestBufferBlocking();
+					fail("Call should have failed with an IllegalStateException");
+				}
+				catch (IllegalStateException e) {
+					// we expect exactly that
+				}
 
 				return requested;
 			}

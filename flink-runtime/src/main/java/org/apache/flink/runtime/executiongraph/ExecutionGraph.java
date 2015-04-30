@@ -28,7 +28,7 @@ import org.apache.flink.runtime.execution.ExecutionState;
 import org.apache.flink.runtime.io.network.partition.ResultPartitionID;
 import org.apache.flink.runtime.jobgraph.AbstractJobVertex;
 import org.apache.flink.runtime.jobgraph.IntermediateDataSetID;
-import org.apache.flink.runtime.jobgraph.JobID;
+import org.apache.flink.api.common.JobID;
 import org.apache.flink.runtime.jobgraph.JobStatus;
 import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.jobgraph.ScheduleMode;
@@ -175,6 +175,8 @@ public class ExecutionGraph implements Serializable {
 	 * This is an index into the "verticesInCreationOrder" collection.
 	 * Once this value has reached the number of vertices, the job is done. */
 	private int nextVertexToFinish;
+
+
 
 	private ActorContext parentContext;
 
@@ -599,6 +601,8 @@ public class ExecutionGraph implements Serializable {
 		Execution attempt = this.currentExecutions.get(state.getID());
 		if (attempt != null) {
 			switch (state.getExecutionState()) {
+				case RUNNING:
+					return attempt.switchToRunning();
 				case FINISHED:
 					attempt.markFinished();
 					return true;

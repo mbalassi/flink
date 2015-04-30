@@ -17,14 +17,16 @@
  */
 package org.apache.flink.api.scala
 
-import java.lang
 import org.apache.commons.lang3.Validate
+
 import org.apache.flink.api.common.InvalidProgramException
+import org.apache.flink.api.common.accumulators.SerializedListAccumulator
 import org.apache.flink.api.common.aggregators.Aggregator
 import org.apache.flink.api.common.functions._
 import org.apache.flink.api.common.io.{FileOutputFormat, OutputFormat}
 import org.apache.flink.api.common.operators.Order
 import org.apache.flink.api.common.operators.base.PartitionOperatorBase.PartitionMethod
+import org.apache.flink.api.common.typeutils.TypeSerializer
 import org.apache.flink.api.java.Utils.CountHelper
 import org.apache.flink.api.java.aggregation.Aggregations
 import org.apache.flink.api.java.functions.{FirstReducer, KeySelector}
@@ -39,10 +41,9 @@ import org.apache.flink.configuration.Configuration
 import org.apache.flink.core.fs.{FileSystem, Path}
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.util.{AbstractID, Collector}
-import scala.collection.JavaConverters._
-import scala.collection.mutable
-import scala.reflect.ClassTag
 
+import scala.collection.JavaConverters._
+import scala.reflect.ClassTag
 
 /**
  * The DataSet, the basic abstraction of Flink. This represents a collection of elements of a
@@ -520,9 +521,9 @@ class DataSet[T: ClassTag](set: JavaDataSet[T]) {
    * @see org.apache.flink.api.java.Utils.CountHelper
    */
   @throws(classOf[Exception])
-  def count: Long = {
+  def count(): Long = {
     val id = new AbstractID().toString
-    javaSet.flatMap(new CountHelper[T](id)).output(new DiscardingOutputFormat[lang.Long])
+    javaSet.flatMap(new CountHelper[T](id)).output(new DiscardingOutputFormat[java.lang.Long])
     val res = getExecutionEnvironment.execute()
     res.getAccumulatorResult[Long](id)
   }
@@ -531,17 +532,33 @@ class DataSet[T: ClassTag](set: JavaDataSet[T]) {
    * Convenience method to get the elements of a DataSet as a List
    * As DataSet can contain a lot of data, this method should be used with caution.
    *
-   * @return A List containing the elements of the DataSet
+   * @return A Seq containing the elements of the DataSet
    *
    * @see org.apache.flink.api.java.Utils.CollectHelper
    */
   @throws(classOf[Exception])
-  def collect: mutable.Buffer[T] = {
+  def collect(): Seq[T] = {
     val id = new AbstractID().toString
-    javaSet.flatMap(new Utils.CollectHelper[T](id)).output(new DiscardingOutputFormat[T])
+    val serializer = getType().createSerializer(getExecutionEnvironment.getConfig)
+    
+    javaSet.flatMap(new Utils.CollectHelper[T](id, serializer))
+           .output(new DiscardingOutputFormat[T])
+    
     val res = getExecutionEnvironment.execute()
 
-    res.getAccumulatorResult(id).asInstanceOf[java.util.List[T]].asScala
+    val accResult: java.util.ArrayList[Array[Byte]] = res.getAccumulatorResult(id)
+
+    try {
+      SerializedListAccumulator.deserializeList(accResult, serializer).asScala
+    }
+    catch {
+      case e: ClassNotFoundException => {
+        throw new RuntimeException("Cannot find type class of collected data type.", e)
+      }
+      case e: java.io.IOException => {
+        throw new RuntimeException("Serialization error while deserializing collected data", e)
+      }
+    }
   }
 
   /**
@@ -790,7 +807,6 @@ class DataSet[T: ClassTag](set: JavaDataSet[T]) {
    * This will not create a new DataSet, it will just attach the field names which will be
    * used for grouping when executing a grouped operation.
    *
-   * This only works on CaseClass DataSets.
    */
   def groupBy(firstField: String, otherFields: String*): GroupedDataSet[T] = {
     new GroupedDataSet[T](
@@ -1316,11 +1332,30 @@ class DataSet[T: ClassTag](set: JavaDataSet[T]) {
   }
 
   /**
-   * Writes a DataSet to the standard error stream (stderr).This uses [[AnyRef.toString]] on
+   * *
+   * Writes a DataSet to the standard output stream (stdout) with a sink identifier prefixed.
+   * This uses [[AnyRef.toString]] on each element.
+   * @param sinkIdentifier The string to prefix the output with.
+   */
+  def print(sinkIdentifier: String): DataSink[T] = {
+    output(new PrintingOutputFormat[T](sinkIdentifier, false))
+  }
+
+  /**
+   * Writes a DataSet to the standard error stream (stderr). This uses [[AnyRef.toString]] on
    * each element.
    */
   def printToErr(): DataSink[T] = {
     output(new PrintingOutputFormat[T](true))
+  }
+
+  /**
+   * Writes a DataSet to the standard error stream (stderr) with a sink identifier prefixed.
+   * This uses [[AnyRef.toString]] on each element.
+   * @param sinkIdentifier The string to prefix the output with.
+   */
+  def printToErr(sinkIdentifier: String): DataSink[T] = {
+      output(new PrintingOutputFormat[T](sinkIdentifier, true))
   }
 }
 

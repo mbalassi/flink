@@ -18,23 +18,23 @@
 
 package org.apache.flink.ml.math
 
-import org.scalatest.FlatSpec
+import org.scalatest.{Matchers, FlatSpec}
 
-class DenseVectorSuite extends FlatSpec {
+class DenseVectorSuite extends FlatSpec with Matchers {
 
-  behavior of "A DenseVector"
+  behavior of "Flink's DenseVector"
 
-  it should "contain the initialization data after initialization" in {
+  it should "contain the initialization data" in {
     val data = Array.range(1,10)
 
     val vector = DenseVector(data)
 
     assertResult(data.length)(vector.size)
 
-    data.zip(vector).foreach{case (expected, actual) => assertResult(expected)(actual)}
+    data.zip(vector.map(_._2)).foreach{case (expected, actual) => assertResult(expected)(actual)}
   }
 
-  it should "throw an IllegalArgumentException in case of an illegal index access" in {
+  it should "fail in case of an illegal element access" in {
     val size = 10
 
     val vector = DenseVector.zeros(size)
