@@ -104,7 +104,6 @@ public class StreamCrossOperator<I1, I2> extends
 			streamGraph.setOperator(id, operator);
 
 			return ((SingleOutputStreamOperator<R, ?>) this).returns(outTypeInfo);
-
 		}
 
 	}

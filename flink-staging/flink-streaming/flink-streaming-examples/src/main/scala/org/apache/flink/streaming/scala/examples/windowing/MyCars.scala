@@ -18,37 +18,45 @@
 
 package org.apache.flink.streaming.scala.examples.windowing
 
+import org.apache.flink.streaming.api.windowing.StreamWindow
+import org.apache.flink.streaming.api.windowing.helper._
+
+
 import java.util.concurrent.TimeUnit._
 
 import org.apache.flink.streaming.api.scala._
 import org.apache.flink.streaming.api.scala.windowing.{Delta, Time}
+import org.apache.flink.util.Collector
 
 import scala.Stream._
 import scala.math._
 import scala.language.postfixOps
 import scala.util.Random
 
-/**
- * An example of grouped stream windowing where different eviction and 
- * trigger policies can be used. A source fetches events from cars 
- * every 1 sec containing their id, their current speed (kmh),
- * overall elapsed distance (m) and a timestamp. The streaming
- * example triggers the top speed of each car every x meters elapsed 
- * for the last y seconds.
- */
 object MyCar {
 
-  case class CarEvent( speed: Int, distance: Double, time: Long) extends Serializable
+  case class CarEvent( speed: Int, time: Long) extends Serializable
+
+  
+  val ts: CarEvent => Long = (x: CarEvent) => x.time
+  
+  val mapFun : (Iterable[CarEvent],Collector[Double]) => Unit = {
+    case x => {
+      val count = x._1.toIterator.length.toDouble
+      val sum = x._1.toIterator.map(_.speed).sum.toDouble
+      x._2.collect(sum)
+    }
+  }
 
   def main(args: Array[String]) {
-    
 
     val cars = genCarStream()
-      .window(Time.of(5, SECONDS))
-      .every(Time.of(1,SECONDS))
-      .sum("distance")
+      .window(Time.of(20, ts, 1 ))
+      //.every(Time.of(1,ts,2))//.every(Count.of(1))
+      .mapWindow(mapFun)
+
     
-    cars.flatten print
+    cars print
 
     StreamExecutionEnvironment.getExecutionEnvironment.execute("TopSpeedWindowing")
 
@@ -56,22 +64,13 @@ object MyCar {
 
   def genCarStream(): DataStream[CarEvent] = {
 
-    def nextSpeed(carEvent : CarEvent, delay : Long) : CarEvent =
-    {
-      Thread.sleep(delay * 1000)
-      val next =
-        if (Random.nextBoolean) min(100, carEvent.speed + 5) else max(0, carEvent.speed - 5)
-      CarEvent( next, delay,System.currentTimeMillis )
-    }
-   
-    val carEvent = CarEvent(50,0,System.currentTimeMillis())
-    Seq(nextSpeed(carEvent, 0),nextSpeed(carEvent, 1), nextSpeed(carEvent,5),nextSpeed(carEvent, 0),nextSpeed(carEvent, 1), nextSpeed(carEvent,5)).toStream
+    Seq(CarEvent(1,1),CarEvent(2,9),CarEvent(4,9), CarEvent(8,10),CarEvent(20,19),CarEvent(80,20),CarEvent(1,20),CarEvent(500,29),CarEvent(1000,39),CarEvent(2000,55)).toStream
+    // Close End window: Seq(CarEvent(1,1),CarEvent(2,9),CarEvent(4,9), CarEvent(8,10),CarEvent(20,19),CarEvent(80,20),CarEvent(1,20),CarEvent(500,29),CarEvent(1000,39),CarEvent(2000,55)).toStream
+
   }
 
-
-
+  
   var numOfCars = 1
   var evictionSec = 5
   var triggerMeters = 50d
-
 }
