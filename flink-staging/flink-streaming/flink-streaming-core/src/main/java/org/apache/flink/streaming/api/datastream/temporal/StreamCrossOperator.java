@@ -101,10 +101,9 @@ public class StreamCrossOperator<I1, I2> extends
 					new CrossWindowFunction<I1, I2, R>(clean(function)), op.windowSize,
 					op.slideInterval, op.timeStamp1, op.timeStamp2);
 
+			streamGraph.setOperator(id, operator);
 
-			streamGraph.setInvokable(id, invokable);
-
-			return setType(outTypeInfo);
+			return ((SingleOutputStreamOperator<R, ?>) this).returns(outTypeInfo);
 		}
 
 	}
