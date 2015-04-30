@@ -39,7 +39,7 @@ public abstract class ChainableStreamOperator<IN, OUT> extends StreamOperator<IN
 	}
 
 	public ChainableStreamOperator<IN, OUT> withoutInputCopy() {
-		copyInput = false;
+//		copyInput = false;
 		return this;
 	}
 

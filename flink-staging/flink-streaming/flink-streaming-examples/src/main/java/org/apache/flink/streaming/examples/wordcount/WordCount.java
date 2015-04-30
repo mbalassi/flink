@@ -22,7 +22,11 @@ import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.examples.java.wordcount.util.WordCountData;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.api.functions.WindowMapFunction;
+import org.apache.flink.streaming.api.windowing.helper.Count;
 import org.apache.flink.util.Collector;
+
+import java.util.Iterator;
 
 /**
  * Implements the "WordCount" program that computes a simple word occurrence
@@ -59,6 +63,7 @@ public class WordCount {
 
 		// set up the execution environment
 		final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+		env.getStreamGraph().setChaining(false);
 
 		// get input data
 		DataStream<String> text = getTextDataStream(env);
@@ -66,8 +71,20 @@ public class WordCount {
 		DataStream<Tuple2<String, Integer>> counts =
 		// split up the lines in pairs (2-tuples) containing: (word,1)
 		text.flatMap(new Tokenizer())
+				.window(Count.of(100))
+				.mapWindow(new FlinkKeyedListWindowAggregationFunction())
+				.flatten()
+				.flatMap(new FlatMapFunction<Tuple2<String, Iterable<Integer>>, Tuple2<String, Integer>>() {
+					@Override
+					public void flatMap(Tuple2<String, Iterable<Integer>> value, Collector<Tuple2<String, Integer>> out) throws Exception {
+						for (Integer i : value.f1) {
+							out.collect(new Tuple2<String, Integer>(value.f0, i));
+						}
+					}
+				})
 		// group by the tuple field "0" and sum up tuple field "1"
-				.groupBy(0).sum(1);
+				.groupBy(0)
+				.sum(1);
 
 		// emit result
 		if (fileOutput) {
