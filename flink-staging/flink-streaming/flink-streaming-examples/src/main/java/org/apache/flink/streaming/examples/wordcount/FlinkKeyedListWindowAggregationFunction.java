@@ -17,55 +17,22 @@
 
 package org.apache.flink.streaming.examples.wordcount;
 
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.streaming.api.functions.WindowMapFunction;
 import org.apache.flink.util.Collector;
-
-import java.util.Iterator;
 
 public class FlinkKeyedListWindowAggregationFunction implements WindowMapFunction<Tuple2<String, Integer>, Tuple2<String, Iterable<Integer>>> {
 
     @Override
     public void mapWindow(Iterable<Tuple2<String, Integer>> values, Collector<Tuple2<String, Iterable<Integer>>> out) throws Exception {
-        Iterator<Tuple2<String, Integer>> it = values.iterator();
-        Tuple2<String, Integer> first = it.next();
-        Iterable<Integer> passThrough = new PassThroughIterable(first, it);;
-        out.collect(new Tuple2<String, Iterable<Integer>>(first.f0, passThrough));
-    }
-
-    private static class PassThroughIterable implements Iterable<Integer>, Iterator<Integer> {
-        private Tuple2<String, Integer> first;
-        private Iterator<Tuple2<String, Integer>> iterator;
-
-        public PassThroughIterable(Tuple2<String, Integer> first, Iterator<Tuple2<String, Integer>> iterator) {
-            this.first = first;
-            this.iterator = iterator;
+        List<Integer> output = new ArrayList<Integer>();
+        for(Tuple2<String,Integer> element: values){
+        	output.add(element.f1);
         }
-
-        @Override
-        public Iterator<Integer> iterator() {
-            return this;
-        }
-
-        @Override
-        public boolean hasNext() {
-            return first != null || iterator.hasNext();
-        }
-
-        @Override
-        public Integer next() {
-            if (first != null) {
-                Integer result = first.f1;
-                first = null;
-                return result;
-            } else {
-                return iterator.next().f1;
-            }
-        }
-
-        @Override
-        public void remove() {
-            throw new UnsupportedOperationException("Cannot remove elements from input.");
-        }
+        out.collect(new Tuple2<String, Iterable<Integer>>(values.iterator().next().f0, output));
     }
 }

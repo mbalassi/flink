@@ -71,7 +71,9 @@ public class WordCount {
 		DataStream<Tuple2<String, Integer>> counts =
 		// split up the lines in pairs (2-tuples) containing: (word,1)
 		text.flatMap(new Tokenizer())
+
 				.window(Count.of(100))
+				.groupBy(0)
 				.mapWindow(new FlinkKeyedListWindowAggregationFunction())
 				.flatten()
 				.flatMap(new FlatMapFunction<Tuple2<String, Iterable<Integer>>, Tuple2<String, Integer>>() {
@@ -83,7 +85,6 @@ public class WordCount {
 					}
 				})
 		// group by the tuple field "0" and sum up tuple field "1"
-				.groupBy(0)
 				.sum(1);
 
 		// emit result
