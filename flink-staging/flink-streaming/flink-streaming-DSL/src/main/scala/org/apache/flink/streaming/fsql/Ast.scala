@@ -1,4 +1,4 @@
-package org.apache.flink.fsql
+package org.apache.flink.streaming.fsql
 
 import scala.reflect.runtime.universe._
 

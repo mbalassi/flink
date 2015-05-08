@@ -1,4 +1,4 @@
-package org.apache.flink.fsql
+package org.apache.flink.streaming.fsql
 
 private[fsql] class Timer(enabled: Boolean) {
   def apply[A](msg: => String, indent: Int, a: => A) =

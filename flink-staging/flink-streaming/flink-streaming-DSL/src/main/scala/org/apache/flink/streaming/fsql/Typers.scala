@@ -1,4 +1,4 @@
-package org.apache.flink.fsql
+package org.apache.flink.streaming.fsql
 
 /**
  * Created by kidio on 06/05/15.

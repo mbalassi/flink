@@ -1,9 +1,8 @@
-package org.apache.flink
-
+package org.apache.flink.streaming
 
 package object fsql {
-  import scala.language.experimental.macros
-  import scala.language.implicitConversions
+//  import scala.language.experimental.macros
+//  import scala.language.implicitConversions
 
   
   
