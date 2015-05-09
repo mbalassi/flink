@@ -1,3 +1,7 @@
+# General
+## Macro
+  - string -> get a streamn for source of create stream
+  
 # May 9
 
 ## Complete set of Parser
@@ -19,3 +23,7 @@
             * RawStream : 
             * RawStream + Window + join
             * DerivedStream + window + join
+            
+            
+            
+       
