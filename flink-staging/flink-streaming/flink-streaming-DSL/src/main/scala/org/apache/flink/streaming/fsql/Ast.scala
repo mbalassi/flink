@@ -13,7 +13,7 @@ private[fsql] object Ast {
     type Named  = Ast.Predicate[Option[String]]
     type Statement = Ast.Statement[Option[String]]
     type Source = Ast.Source[Option[String]]
-    type WindowedStream = Ast.WindowedStream[Option[String]]
+    //type WindowedStream = Ast.WindowedStream[Option[String]]
     type Select = Ast.Select[Option[String]]
     type Predicate = Ast.Predicate[Option[String]]
     type PolicyBased = Ast.PolicyBased[Option[String]]
@@ -92,9 +92,9 @@ private[fsql] object Ast {
     def streams :List[Stream]
     def name: String
   }
-  case class ConcreteStream[T] (windowedStream : WindowedStream[T], join: Option[Join[T]]) extends  StreamReferences[T]{
-    def streams = windowedStream.stream :: join.fold(List[Stream]())(_.stream.streams)
-    def name = windowedStream.stream.name
+  case class ConcreteStream[T] (stream: Stream, windowSpec: Option[WindowSpec[T]], join: Option[Join[T]]) extends  StreamReferences[T]{
+    def streams = stream :: join.fold(List[Stream]())(_.stream.streams)
+    def name = stream.name
     
   }
   
@@ -105,7 +105,7 @@ private[fsql] object Ast {
   }
   
   case class Stream(name : String, alias: Option[String])
-  case class WindowedStream[T](stream: Stream, windowSpec: Option[WindowSpec[T]])
+  //case class WindowedStream[T](stream: Stream, windowSpec: Option[WindowSpec[T]])
   case class Named[T](name: String, alias: Option[String], expr: Expr[T]){
     def aliasName = alias getOrElse name
   }
@@ -229,7 +229,7 @@ private[fsql] object Ast {
    *  INSERT 
    */
   
-  case class  Insert[T](stream: WindowedStream[T], colNames: Option[List[String]], source: Source[T])
+  //case class  Insert[T](stream: WindowedStream[T], colNames: Option[List[String]], source: Source[T])
 
 
 
@@ -244,7 +244,7 @@ private[fsql] object Ast {
     type Named  = Ast.Predicate[Stream]
     type Statement = Ast.Statement[Stream]
     type Source = Ast.Source[Stream]
-    type WindowedStream = Ast.WindowedStream[Schema]
+    //type WindowedStream = Ast.WindowedStream[Schema]
     type Select = Ast.Select[Stream]
     type Predicate = Ast.Predicate[Stream]
     type PolicyBased = Ast.PolicyBased[Stream]
@@ -381,10 +381,10 @@ private[fsql] object Ast {
 
     //StreamReference
     def resolveStreamRef(streamRefs: StreamReferences[Option[String]]) : ?[StreamReferences[Stream]]= streamRefs match {
-      case c@ConcreteStream(wStream, join) => for {
-        ws <- resolveWindowedStream(wStream)
+      case c@ConcreteStream(stream,windowSpec, join) => for {
+        ws <- resolveWindowSpec(windowSpec,stream)
         j <- sequenceO(join map resolveJoin)
-      } yield c.copy(windowedStream = ws, join = j)
+      } yield c.copy(windowSpec = ws, join = j)
       
 
       case d@DerivedStream(_, select, join) => for{
@@ -396,9 +396,9 @@ private[fsql] object Ast {
 
 
     //resolveWindowedStream
-    def resolveWindowedStream(windowedStream: WindowedStream[Option[String]]): ?[WindowedStream[Stream]] = {
-      val thisStream: Stream = windowedStream.stream
-      // resolveWindowedSpec
+//    def resolveWindowedStream(windowedStream: WindowedStream[Option[String]]): ?[WindowedStream[Stream]] = {
+//      val thisStream: Stream = windowedStream.stream
+//      // resolveWindowedSpec
       /*def resolveWindowedSpec( windowedStream : WindowedStream[Option[String]]) : ?[Option[WindowSpec[Stream]]] =
         windowedStream.windowSpec.fold((None.ok: ?[Option[WindowSpec[Stream]]])) {
           spec => for {
@@ -408,8 +408,23 @@ private[fsql] object Ast {
 
           } yield Some(spec.copy(window = w, every =  e , partition =  p))
     }*/
-      def resolveWindowSpec(winSpec: Option[WindowSpec[Option[String]]]): ?[Option[WindowSpec[Stream]]] = {
-        sequenceO(winSpec map {
+      def resolveWindowSpec(winSpec: Option[WindowSpec[Option[String]]], thisStream: Stream): ?[Option[WindowSpec[Stream]]] = {
+
+        def resolvePolicyBased(based: PolicyBased[Option[String]]): ?[PolicyBased[Stream]] =
+          sequenceO(based.onField map { f => resolveColumn(f)(thisStream.name)}) map (o => based.copy(onField = o))
+
+        def resolveWindowing(window: Window[Option[String]]): ?[Window[Stream]] = {
+          resolvePolicyBased(window.policyBased) map (p => window.copy(policyBased = p))
+        }
+
+        def resolveEvery(maybeEvery: Option[Every[Option[String]]]): ?[Option[Every[Stream]]] =
+          sequenceO(maybeEvery map { e => resolvePolicyBased(e.policyBased) map (p => e.copy(policyBased = p))})
+
+        def resolvePartition(maybePartition: Option[Partition[Option[String]]]): ?[Option[Partition[Stream]]] =
+          sequenceO(maybePartition map { p => resolveColumn(p.field)(thisStream.name) map Partition.apply})
+
+
+      sequenceO(winSpec map {
           spec => for {
             w <- resolveWindowing(spec.window)
             e <- resolveEvery(spec.every)
@@ -419,39 +434,11 @@ private[fsql] object Ast {
         )
       }
 
-      def resolvePolicyBased(based: PolicyBased[Option[String]]): ?[PolicyBased[Stream]] =
-      /*based.onField match {
-      case Some(field) => resolveColumn(field) map (f => based.copy(onField =  Some(f)))
-      case None => PolicyBased[Stream](based.value,based.timeUnit,None).ok
-    }*/
-        sequenceO(based.onField map { f => resolveColumn(f)(thisStream.name)}) map (o => based.copy(onField = o))
-
-      def resolveWindowing(window: Window[Option[String]]): ?[Window[Stream]] = {
-        resolvePolicyBased(window.policyBased) map (p => window.copy(policyBased = p))
-      }
-
-      def resolveEvery(maybeEvery: Option[Every[Option[String]]]): ?[Option[Every[Stream]]] =
-      /*
-      maybeEvery.fold(None.ok: ?[Option[Every[Stream]]] ){
-        every =>
-          resolvePolicyBased(every.policyBased) map (p => Some((every.copy( policyBased = p))))
-      }
-    */
-        sequenceO(maybeEvery map { e => resolvePolicyBased(e.policyBased) map (p => e.copy(policyBased = p))})
-
-      def resolvePartition(maybePartition: Option[Partition[Option[String]]]): ?[Option[Partition[Stream]]] =
-      /*maybePartition.fold(None.ok: ?[Option[Partition[Stream]]] ){
-      partition =>
-        resolveColumn(partition.field) map (f => Some((Partition(f))))
-    }*/
-        sequenceO(maybePartition map { p => resolveColumn(p.field)(thisStream.name) map Partition.apply})
-
-
       // end  resolveWindowedSpec
 
-      resolveWindowSpec(windowedStream.windowSpec) map (spec => windowedStream.copy(windowSpec = spec))
+      //.resolveWindowSpec(windowedStream.windowSpec) map (spec => windowedStream.copy(windowSpec = spec))
 
-    } // end resolveWindowedStream
+    //} // end resolveWindowedStream
 
     //resolveJoin
     def resolveJoin(join: Join[Option[String]]): ?[Join[Stream]] = {

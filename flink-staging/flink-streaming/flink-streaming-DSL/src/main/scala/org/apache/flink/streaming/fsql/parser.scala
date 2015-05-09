@@ -154,9 +154,9 @@ trait FsqlParser extends RegexParsers with PackratParsers with Ast.Unresolved {
   }*/
   
   //TODO: too many layer here: Change to ConcreteStream(Stream(n,a),w,None)
-  lazy val rawStream = stream ^^ {case s => ConcreteStream(s, None)}
-  lazy val stream = optParens(ident ~ opt(windowSpec) ~ opt("as".i ~> ident)) ^^ {
-    case n ~ w ~ a => WindowedStream(Stream(n, a), w)
+  //lazy val rawStream = stream ^^ {case s => ConcreteStream(s, None)}
+  lazy val rawStream = optParens(ident ~ opt(windowSpec) ~ opt("as".i ~> ident)) ^^ {
+    case n ~ w ~ a => ConcreteStream(Stream(n, a), w, None)
   }
   
   
@@ -188,7 +188,7 @@ trait FsqlParser extends RegexParsers with PackratParsers with Ast.Unresolved {
   
   // joinedWindowStream
   // TODO: stream/derivedStream
-  lazy val joinedWindowStream = stream ~ opt(joinType) ^^ {case s ~ j => ConcreteStream(s,j)}
+  lazy val joinedWindowStream = rawStream ~ opt(joinType) ^^ {  case c ~ j => c.copy(join = j)}
   lazy val joinType: PackratParser[Join] =  crossJoin | qualifiedJoin
   
   //TODO: [note] if streamReference is complex again => error: not support
@@ -274,9 +274,9 @@ trait FsqlParser extends RegexParsers with PackratParsers with Ast.Unresolved {
    *  // insertStmt // merge
 	    insertStmt ::= "insert" "into" IDENT (IDENT| typedColumns)? selectStmt*
    * */
-  lazy val insertStmtSyntax = "insert".i ~> "into".i ~> stream ~ opt(colNames) ~ source ^^ {
+  /*lazy val insertStmtSyntax = "insert".i ~> "into".i ~> stream ~ opt(colNames) ~ source ^^ {
     case stream ~ cols ~ source => Insert(stream,cols,source)
-  }
+  }*/
 
   lazy val colNames = "(" ~> repsep(ident, ",") <~ ")"
 //  lazy val selectValue = optParens(selectStmtSyntax) ^^ SelectedInput.apply
