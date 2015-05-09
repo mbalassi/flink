@@ -25,5 +25,3 @@
             * DerivedStream + window + join
             
             
-            
-       

@@ -158,8 +158,7 @@ trait FsqlParser extends RegexParsers with PackratParsers with Ast.Unresolved {
   lazy val rawStream = optParens(ident ~ opt(windowSpec) ~ opt("as".i ~> ident)) ^^ {
     case n ~ w ~ a => ConcreteStream(Stream(n, a), w, None)
   }
-  
-  
+
 
   lazy val windowSpec = "[" ~> window ~ opt(every) ~ opt(partition) <~ "]" ^^ {
     case w ~ e ~ p => WindowSpec(w, e, p)
@@ -421,8 +420,10 @@ object Test2 extends FsqlParser {
       //stmt <- parser(new FsqlParser {}, "select id from stream [size 3] as s1 left join suoi [size 3] as s2 on s1.time=s2.thoigian")
       //stmt <- parser(new FsqlParser {}, "create stream myStream(time long) as (select p.id from oldStream as p)")
       //stmt <- parser(new FsqlParser {}, "create schema myStream oldschema "),
-      //stmt <- parser(new FsqlParser {}, "select id from (select p.id from oldStream as p) as q")
-      stmt <- timer("parser", 2,  parser(new FsqlParser {}, "select id from (select p.id from oldStream as p) as q"))
+      stmt <- parser(new FsqlParser {}, "select id from (select p.id from oldStream as p) as q")
+      //stmt <- timer("parser", 2,  parser(new FsqlParser {}, "select id from (select p.id from oldStream as p) as q"))
+      //stmt <- parser(new FsqlParser {}, "select id from stream [size 3] as s1 left join suoi [size 3] as s2 on s1.time=s2.thoigian")
+
 
       x <- timer("resolve",3,Ast.resolvedStreams(stmt))
     //y = stmt.streams

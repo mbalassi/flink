@@ -114,7 +114,6 @@ private[fsql] object Ast {
            *    SELECT
            * */
 
-          //TODO: should not have any Nil. for testing purpose only
   case class Select[T](projection: List[Named[T]] ,
                        streamReference: StreamReferences[T],
                        where: Option[Where[T]],
@@ -443,8 +442,6 @@ private[fsql] object Ast {
     //resolveJoin
     def resolveJoin(join: Join[Option[String]]): ?[Join[Stream]] = {
       for {
-      // streamRef
-      // joinSpec
         s <- resolveStreamRef(join.stream)
         j <- sequenceO(join.joinSpec map resolveJoinSpec)
       } yield join.copy(stream = s, joinSpec = j)
