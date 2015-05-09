@@ -49,11 +49,12 @@ object IncrementalLearningSkeleton {
   // PROGRAM
   // *************************************************************************
   
+  /* //TODO: fix bugs
   def main(args: Array[String]) {
     if (!parseParameters(args)) {
       return
     }
-    
+  
     
     val env : StreamExecutionEnvironment = StreamExecutionEnvironment.getExecutionEnvironment
     val model = env.fromCollection(genTrainingDataSrc)
@@ -76,7 +77,8 @@ object IncrementalLearningSkeleton {
     env.execute("Streaming Incremental Learning")
   }
   
-
+  */
+  
   // *************************************************************************
   // USER FUNCTIONS
   // *************************************************************************

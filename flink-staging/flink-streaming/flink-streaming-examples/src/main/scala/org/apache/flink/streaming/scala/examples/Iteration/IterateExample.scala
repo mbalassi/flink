@@ -43,6 +43,7 @@ object IterateExample {
   // *************************************************************************
   // PROGRAM
   // *************************************************************************
+  /* //TODO: fix bugs
   def main(args: Array[String]) {
     if (!parseParameters(args)) {
       return
@@ -66,7 +67,7 @@ object IterateExample {
     // execute the program
     env.execute("Streaming Iteration Example")
   }
-
+  */
   // *************************************************************************
   // USER FUNCTIONS
   // *************************************************************************
@@ -83,6 +84,7 @@ object IterateExample {
    * produces 2 split streams of (Double + random, Integer + 1).
    * One of them is output, the second will be fed back into the next iteration
    */
+  /* //TODO: fix bugs
   def stepFunction (input: DataStream[(Double, Int)]) : (DataStream[(Double, Int)], DataStream[(Double, Int)]) = {
       def  Myselector: ((Double,Int))=> String  ={
           case (x: Double,_) if x > 2 =>"output"
@@ -94,7 +96,7 @@ object IterateExample {
     ( step.select("iterate"), step.select("output"))
 
   }
-
+ */
   // *************************************************************************
   // UTIL METHODS
   // *************************************************************************

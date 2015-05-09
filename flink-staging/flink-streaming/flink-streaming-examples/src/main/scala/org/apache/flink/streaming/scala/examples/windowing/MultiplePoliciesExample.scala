@@ -28,6 +28,8 @@ import org.apache.flink.util.Collector
  * policies at the same time.
  */
 object MultiplePoliciesExample {
+/* 
+  //TODO: fix bugs
 
   def main(args: Array[String]) {
 
@@ -40,7 +42,7 @@ object MultiplePoliciesExample {
   val  dstream = env.fromCollection(generateBasicSource())
                   .groupBy(x => x)
                   .window(Count.of(2))
-                  .every(Count.of(2), Count.of(5))
+                  .every(Count.of(2))
                   .reduceGroup(concatString _)
     
   // emit result
@@ -54,6 +56,7 @@ object MultiplePoliciesExample {
   // execute the program 
   env.execute("Multiple Policies Example")
   }
+*/
 
   private def concatString (input: Iterable[String], out: Collector[String])  = {
     out.collect(input.mkString("|","|","|"))
