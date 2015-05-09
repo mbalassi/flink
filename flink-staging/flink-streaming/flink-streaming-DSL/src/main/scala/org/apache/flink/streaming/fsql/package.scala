@@ -15,9 +15,7 @@ package object fsql {
     def orFail(s: => String) = a map fsql.ok getOrElse fail(s)
   }
   
-  
 
-  
   // create new ?[A] object
   private[fsql] def fail[A](s: String, column: Int = 0, line: Int = 0): ?[A] = {
     fsql.Failure(s, column, line)

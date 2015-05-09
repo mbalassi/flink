@@ -97,6 +97,8 @@ private[fsql] object Ast {
     def name = windowedStream.stream.name
     
   }
+  
+  //TODO: an optional window
   case class DerivedStream[T] (name : String, subSelect: Select[T], join: Option[Join[T]]) extends StreamReferences[T]{
     def streams = Stream(name, None) :: join.fold(List[Stream]())(_.stream.streams)
     

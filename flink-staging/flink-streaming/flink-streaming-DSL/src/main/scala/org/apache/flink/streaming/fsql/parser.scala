@@ -153,6 +153,7 @@ trait FsqlParser extends RegexParsers with PackratParsers with Ast.Unresolved {
     case n ~ a => Stream(n, a)
   }*/
   
+  //TODO: too many layer here: Change to ConcreteStream(Stream(n,a),w,None)
   lazy val rawStream = stream ^^ {case s => ConcreteStream(s, None)}
   lazy val stream = optParens(ident ~ opt(windowSpec) ~ opt("as".i ~> ident)) ^^ {
     case n ~ w ~ a => WindowedStream(Stream(n, a), w)
@@ -176,18 +177,21 @@ trait FsqlParser extends RegexParsers with PackratParsers with Ast.Unresolved {
   lazy val partition = "partitioned".i ~> "on".i ~> column ^^ Partition.apply
 
   
-  // derivedStream
+  // derivedStream //TODO: subselect as a stream -> may have a window btw ident and subselect
   lazy val derivedStream = subselect ~ opt("as".i) ~ ident ~ opt(joinType) ^^ {
     case s ~ _ ~ i ~ j => DerivedStream(i, s.select , j)
   }
   
   
+  // TODO: subselect cannot be a WindowStream(must be flattened)
   lazy val subselect = "("~> selectStmtSyntax <~ ")" ^^ SubSelect.apply
   
   // joinedWindowStream
+  // TODO: stream/derivedStream
   lazy val joinedWindowStream = stream ~ opt(joinType) ^^ {case s ~ j => ConcreteStream(s,j)}
   lazy val joinType: PackratParser[Join] =  crossJoin | qualifiedJoin
   
+  //TODO: [note] if streamReference is complex again => error: not support
   lazy val crossJoin = ("cross".i ~> "join".i ~> optParens(streamReference)) ^^ {
     s => Join(s, None, Cross)
   }
