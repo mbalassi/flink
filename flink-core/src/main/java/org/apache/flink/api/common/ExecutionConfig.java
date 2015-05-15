@@ -46,7 +46,6 @@ import java.util.Map;
  * </ul>
  */
 public class ExecutionConfig implements Serializable {
-
 	private static final long serialVersionUID = 1L;
 
 	// Key for storing it in the Job Configuration
@@ -543,6 +542,144 @@ public class ExecutionConfig implements Serializable {
 		this.disableAutoTypeRegistration = false;
 	}
 
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime
+				* result
+				+ ((defaultKryoSerializerClasses == null) ? 0
+						: defaultKryoSerializerClasses.hashCode());
+		result = prime
+				* result
+				+ ((defaultKryoSerializers == null) ? 0
+						: defaultKryoSerializers.hashCode());
+		result = prime * result + (disableAutoTypeRegistration ? 1231 : 1237);
+		result = prime * result
+				+ ((executionMode == null) ? 0 : executionMode.hashCode());
+		result = prime * result + (forceAvro ? 1231 : 1237);
+		result = prime * result + (forceKryo ? 1231 : 1237);
+		result = prime
+				* result
+				+ ((globalJobParameters == null) ? 0 : globalJobParameters
+						.hashCode());
+		result = prime * result + numberOfExecutionRetries;
+		result = prime * result + (objectReuse ? 1231 : 1237);
+		result = prime * result + parallelism;
+		result = prime * result + (printProgressDuringExecution ? 1231 : 1237);
+		result = prime
+				* result
+				+ ((registeredKryoTypes == null) ? 0 : registeredKryoTypes
+						.hashCode());
+		result = prime
+				* result
+				+ ((registeredPojoTypes == null) ? 0 : registeredPojoTypes
+						.hashCode());
+		result = prime
+				* result
+				+ ((registeredTypesWithKryoSerializerClasses == null) ? 0
+						: registeredTypesWithKryoSerializerClasses.hashCode());
+		result = prime
+				* result
+				+ ((registeredTypesWithKryoSerializers == null) ? 0
+						: registeredTypesWithKryoSerializers.hashCode());
+		result = prime * result + (useClosureCleaner ? 1231 : 1237);
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj) {
+			return true;
+		}
+		if (obj == null) {
+			return false;
+		}
+		if (getClass() != obj.getClass()) {
+			return false;
+		}
+		ExecutionConfig other = (ExecutionConfig) obj;
+		if (defaultKryoSerializerClasses == null) {
+			if (other.defaultKryoSerializerClasses != null) {
+				return false;
+			}
+		} else if (!defaultKryoSerializerClasses
+				.equals(other.defaultKryoSerializerClasses)) {
+			return false;
+		}
+		if (defaultKryoSerializers == null) {
+			if (other.defaultKryoSerializers != null) {
+				return false;
+			}
+		} else if (!defaultKryoSerializers.equals(other.defaultKryoSerializers)) {
+			return false;
+		}
+		if (disableAutoTypeRegistration != other.disableAutoTypeRegistration) {
+			return false;
+		}
+		if (executionMode != other.executionMode) {
+			return false;
+		}
+		if (forceAvro != other.forceAvro) {
+			return false;
+		}
+		if (forceKryo != other.forceKryo) {
+			return false;
+		}
+		if (globalJobParameters == null) {
+			if (other.globalJobParameters != null) {
+				return false;
+			}
+		} else if (!globalJobParameters.equals(other.globalJobParameters)) {
+			return false;
+		}
+		if (numberOfExecutionRetries != other.numberOfExecutionRetries) {
+			return false;
+		}
+		if (objectReuse != other.objectReuse) {
+			return false;
+		}
+		if (parallelism != other.parallelism) {
+			return false;
+		}
+		if (printProgressDuringExecution != other.printProgressDuringExecution) {
+			return false;
+		}
+		if (registeredKryoTypes == null) {
+			if (other.registeredKryoTypes != null) {
+				return false;
+			}
+		} else if (!registeredKryoTypes.equals(other.registeredKryoTypes)) {
+			return false;
+		}
+		if (registeredPojoTypes == null) {
+			if (other.registeredPojoTypes != null) {
+				return false;
+			}
+		} else if (!registeredPojoTypes.equals(other.registeredPojoTypes)) {
+			return false;
+		}
+		if (registeredTypesWithKryoSerializerClasses == null) {
+			if (other.registeredTypesWithKryoSerializerClasses != null) {
+				return false;
+			}
+		} else if (!registeredTypesWithKryoSerializerClasses
+				.equals(other.registeredTypesWithKryoSerializerClasses)) {
+			return false;
+		}
+		if (registeredTypesWithKryoSerializers == null) {
+			if (other.registeredTypesWithKryoSerializers != null) {
+				return false;
+			}
+		} else if (!registeredTypesWithKryoSerializers
+				.equals(other.registeredTypesWithKryoSerializers)) {
+			return false;
+		}
+		if (useClosureCleaner != other.useClosureCleaner) {
+			return false;
+		}
+		return true;
+	}
 
 	// ------------------------------ Utilities  ----------------------------------
 
