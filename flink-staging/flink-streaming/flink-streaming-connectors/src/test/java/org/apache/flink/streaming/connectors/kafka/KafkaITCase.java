@@ -65,6 +65,7 @@ import org.apache.flink.streaming.connectors.kafka.api.KafkaSource;
 import org.apache.flink.streaming.connectors.kafka.api.persistent.PersistentKafkaSource;
 import org.apache.flink.streaming.connectors.kafka.partitioner.SerializableKafkaPartitioner;
 import org.apache.flink.streaming.connectors.kafka.util.KafkaLocalSystemTime;
+import org.apache.flink.streaming.util.TestStreamEnvironment;
 import org.apache.flink.streaming.util.serialization.DeserializationSchema;
 import org.apache.flink.streaming.util.serialization.JavaDefaultStringSchema;
 import org.apache.flink.util.Collector;
@@ -92,6 +93,7 @@ public class KafkaITCase {
 
 	private static final Logger LOG = LoggerFactory.getLogger(KafkaITCase.class);
 	private static final int NUMBER_OF_KAFKA_SERVERS = 3;
+	private static final long FLINK_MEMORY_SIZE = 32L;
 
 	private static int zkPort;
 	private static String kafkaHost;
@@ -210,8 +212,7 @@ public class KafkaITCase {
 
 		final String topicName = "testOffsetHacking";
 
-		StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironment(3);
-		env.getConfig().disableSysoutLogging();
+		StreamExecutionEnvironment env = new TestStreamEnvironment(NUMBER_OF_KAFKA_SERVERS, FLINK_MEMORY_SIZE);
 		env.enableCheckpointing(50);
 		env.setNumberOfExecutionRetries(0);
 
@@ -222,7 +223,6 @@ public class KafkaITCase {
 
 		// write a sequence from 0 to 99 to each of the three partitions.
 		writeSequence(env, topicName, 0, 99);
-
 
 		readSequence(env, standardCC, topicName, 0, 100, 300);
 
@@ -241,7 +241,6 @@ public class KafkaITCase {
 		Assert.assertEquals("The offset seems incorrect", 99L, PersistentKafkaSource.getOffset(zk, standardCC.groupId(), topicName, 1));
 		Assert.assertEquals("The offset seems incorrect", 99L, PersistentKafkaSource.getOffset(zk, standardCC.groupId(), topicName, 2));*/
 
-
 		LOG.info("Manipulating offsets");
 		// set the offset to 25, 50, and 75 for the three partitions
 		PersistentKafkaSource.setOffset(zk, standardCC.groupId(), topicName, 0, 50);
@@ -249,8 +248,7 @@ public class KafkaITCase {
 		PersistentKafkaSource.setOffset(zk, standardCC.groupId(), topicName, 2, 50);
 
 		// create new env
-		env = StreamExecutionEnvironment.createLocalEnvironment(3);
-		env.getConfig().disableSysoutLogging();
+		env = new TestStreamEnvironment(NUMBER_OF_KAFKA_SERVERS, FLINK_MEMORY_SIZE);
 		readSequence(env, standardCC, topicName, 50, 50, 150);
 
 		zk.close();
@@ -366,7 +364,7 @@ public class KafkaITCase {
 		String topic = "regularKafkaSourceTestTopic";
 		createTestTopic(topic, 1, 1);
 
-		final StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironment(1);
+		final StreamExecutionEnvironment env = new TestStreamEnvironment(1, FLINK_MEMORY_SIZE);
 		// add consuming topology:
 		DataStreamSource<Tuple2<Long, String>> consuming = env.addSource(
 				new KafkaSource<Tuple2<Long, String>>(zookeeperConnectionString, topic, "myFlinkGroup", new Utils.TypeInformationSerializationSchema<Tuple2<Long, String>>(new Tuple2<Long, String>(1L, ""), env.getConfig()), 5000));
@@ -438,7 +436,7 @@ public class KafkaITCase {
 		String topic = "tupleTestTopic";
 		createTestTopic(topic, 1, 1);
 
-		final StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironment(1);
+		final StreamExecutionEnvironment env = new TestStreamEnvironment(1, FLINK_MEMORY_SIZE);
 
 		// add consuming topology:
 		DataStreamSource<Tuple2<Long, String>> consuming = env.addSource(
@@ -530,7 +528,7 @@ public class KafkaITCase {
 		String topic = "bigRecordTestTopic";
 		createTestTopic(topic, 1, 1);
 
-		final StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironment(1);
+		final StreamExecutionEnvironment env = new TestStreamEnvironment(NUMBER_OF_KAFKA_SERVERS, FLINK_MEMORY_SIZE);
 
 		// add consuming topology:
 		Utils.TypeInformationSerializationSchema<Tuple2<Long, byte[]>> serSchema = new Utils.TypeInformationSerializationSchema<Tuple2<Long, byte[]>>(new Tuple2<Long, byte[]>(0L, new byte[]{0}), env.getConfig());
@@ -625,7 +623,7 @@ public class KafkaITCase {
 
 		createTestTopic(topic, 3, 1);
 
-		final StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironment(1);
+		final StreamExecutionEnvironment env = new TestStreamEnvironment(1, FLINK_MEMORY_SIZE);
 
 		// add consuming topology:
 		DataStreamSource<Tuple2<Long, String>> consuming = env.addSource(
@@ -735,7 +733,7 @@ public class KafkaITCase {
 
 		createTestTopic(topic, 1, 1);
 
-		final StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironment(1);
+		final StreamExecutionEnvironment env = new TestStreamEnvironment(1, FLINK_MEMORY_SIZE);
 
 		// add consuming topology:
 		DataStreamSource<String> consuming = env.addSource(
@@ -807,7 +805,7 @@ public class KafkaITCase {
 
 		// --------------------------- write data to topic ---------------------
 		LOG.info("Writing data to topic {}", topic);
-		StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironment(1);
+		StreamExecutionEnvironment env = new TestStreamEnvironment(NUMBER_OF_KAFKA_SERVERS, FLINK_MEMORY_SIZE);
 
 		DataStream<String> stream = env.addSource(new SourceFunction<String>() {
 			boolean running = true;
