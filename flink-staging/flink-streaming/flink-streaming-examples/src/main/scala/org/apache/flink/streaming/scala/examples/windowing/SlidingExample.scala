@@ -7,7 +7,7 @@ import org.apache.flink.streaming.api.scala._
 /**
  * Created by kidio on 26/01/15.
  */
-object SlidingExample {
+object fSlidingExample {
   def main(args: Array[String]) {
     
     if (!parseParameters(args)) {

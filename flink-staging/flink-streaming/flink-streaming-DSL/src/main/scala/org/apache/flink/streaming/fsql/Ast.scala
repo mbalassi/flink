@@ -98,8 +98,7 @@ private[fsql] object Ast {
     
   }
   
-  //TODO: an optional window
-  case class DerivedStream[T] (name : String, subSelect: Select[T], join: Option[Join[T]]) extends StreamReferences[T]{
+  case class DerivedStream[T] (name : String, windowSpec: Option[WindowSpec[T]],subSelect: Select[T], join: Option[Join[T]]) extends StreamReferences[T]{
     def streams = Stream(name, None) :: join.fold(List[Stream]())(_.stream.streams)
     
   }
@@ -386,10 +385,11 @@ private[fsql] object Ast {
       } yield c.copy(windowSpec = ws, join = j)
       
 
-      case d@DerivedStream(_, select, join) => for{
+      case d@DerivedStream(name,windowSpec, select, join) => for{
         s <- resolveSelect(select)()
+        ws <- resolveWindowSpec(windowSpec,Stream(name,None)) // TODO: this Stream is derived
         j <- sequenceO(join map resolveJoin)
-      } yield d.copy(subSelect = s,join = j)
+      } yield d.copy(subSelect = s,join = j, windowSpec = ws)
 
     }
 

@@ -50,12 +50,14 @@ object MyCar {
 
   def main(args: Array[String]) {
 
-    val cars = genCarStream()
-      .window(Time.of(20, ts, 1 ))
-      //.every(Time.of(1,ts,2))//.every(Count.of(1))
-      .mapWindow(mapFun)
-
-    
+    val cars = genCarStream()//.reduce((e1,e2)=>new CarEvent(e1.speed+e2.speed,e1.time+e2.time))
+      .window(Time.of(10, ts, 0 ))
+      .every(Count.of(3))
+      .mapWindow(mapFun).flatten
+      //.reduceWindow((e1,e2)=>new CarEvent(e1.speed+e2.speed,e1.time)).flatten()
+     /* .window(Count.of(3))
+      .every(Time.of(10, ts ))
+      .mapWindow(mapFun).flatten*/
     cars print
 
     StreamExecutionEnvironment.getExecutionEnvironment.execute("TopSpeedWindowing")
@@ -63,9 +65,11 @@ object MyCar {
   }
 
   def genCarStream(): DataStream[CarEvent] = {
+    //Seq(CarEvent(10,30),CarEvent(20,31),CarEvent(30,36),CarEvent(30,36),CarEvent(30,36),CarEvent(30,36)).toStream//, CarEvent(40,13),CarEvent(50,14),CarEvent(60,15),CarEvent(70,16)).toStream//,CarEvent(80,20),CarEvent(1,20)).toStream//,CarEvent(500,29),CarEvent(1000,39),CarEvent(2000,55)).toStream
 
-    Seq(CarEvent(1,1),CarEvent(2,9),CarEvent(4,9), CarEvent(8,10),CarEvent(20,19),CarEvent(80,20),CarEvent(1,20),CarEvent(500,29),CarEvent(1000,39),CarEvent(2000,55)).toStream
+    //Examp: 1 Seq(CarEvent(10,10),CarEvent(20,11),CarEvent(30,12), CarEvent(40,13),CarEvent(50,14),CarEvent(60,15),CarEvent(70,16)).toStream//,CarEvent(80,20),CarEvent(1,20)).toStream//,CarEvent(500,29),CarEvent(1000,39),CarEvent(2000,55)).toStream
     // Close End window: Seq(CarEvent(1,1),CarEvent(2,9),CarEvent(4,9), CarEvent(8,10),CarEvent(20,19),CarEvent(80,20),CarEvent(1,20),CarEvent(500,29),CarEvent(1000,39),CarEvent(2000,55)).toStream
+    Seq(CarEvent(1,6),CarEvent(4,11), CarEvent(20,13),CarEvent(80,14),CarEvent(100,18),CarEvent(1000,22),CarEvent(9,25),CarEvent(500,34),CarEvent(1,39),CarEvent(1,50)).toStream//,CarEvent(500,29),CarEvent(1000,39),CarEvent(2000,55)).toStream
 
   }
 

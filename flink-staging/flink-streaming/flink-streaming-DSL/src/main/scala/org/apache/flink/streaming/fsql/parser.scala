@@ -57,7 +57,7 @@ trait FsqlParser extends RegexParsers with PackratParsers with Ast.Unresolved {
     case h ~ _ ~ p => HostSource[Option[String]](h, p)
 
   }
-  lazy val file_source = "file" ~> "(" ~> stringLit <~ ")" ^^ {
+  lazy val file_source = "file" ~> "(" ~> stringLit <~ ")" ^^ { //TODO: delimiter
     case path => FileSource[Option[String]](path)
   }
 
@@ -177,8 +177,8 @@ trait FsqlParser extends RegexParsers with PackratParsers with Ast.Unresolved {
 
   
   // derivedStream //TODO: subselect as a stream -> may have a window btw ident and subselect
-  lazy val derivedStream = subselect ~ opt("as".i) ~ ident ~ opt(joinType) ^^ {
-    case s ~ _ ~ i ~ j => DerivedStream(i, s.select , j)
+  lazy val derivedStream = subselect ~ opt(windowSpec) ~ opt("as".i) ~ ident ~ opt(joinType) ^^ {
+    case s ~ w ~_ ~ i ~ j => DerivedStream(i,w, s.select , j)
   }
   
   
@@ -268,6 +268,9 @@ trait FsqlParser extends RegexParsers with PackratParsers with Ast.Unresolved {
   lazy val having = "having".i ~> predicate ^^ Having.apply
 
 
+  
+  
+  
   /**
    *  STATEMENT : INSERT //TODO
    *  // insertStmt // merge
