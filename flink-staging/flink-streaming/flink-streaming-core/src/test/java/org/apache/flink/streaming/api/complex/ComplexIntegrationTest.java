@@ -143,10 +143,7 @@ public class ComplexIntegrationTest extends StreamingMultipleProgramsTestBase {
 		env.execute();
 	}
 
-	// Disabled, because it depends on strange behaviour, for example of the sum() function.
-	// This test evens fails, for example, if the order of only two lines in the "input" is changed.
 	@SuppressWarnings("unchecked")
-	@Ignore
 	@Test
 	public void complexIntegrationTest2() throws Exception {
 		//Testing POJO source, grouping by multiple filds and windowing with timestamp
@@ -155,9 +152,8 @@ public class ComplexIntegrationTest extends StreamingMultipleProgramsTestBase {
 				"water_melon-b\n" + "water_melon-b\n" + "water_melon-b\n" + "water_melon-b\n" + "water_melon-b\n" +
 				"water_melon-b\n" + "water_melon-b\n" + "water_melon-b\n" + "water_melon-b\n" + "water_melon-b\n" +
 				"water_melon-b\n" + "water_melon-b\n" + "water_melon-b\n" + "water_melon-b\n" + "water_melon-b\n" +
-				"water_melon-b\n" + "orange-b\n" + "orange-b\n" + "orange-b\n" + "orange-b\n" + "orange-b\n" +
-				"orange-b\n" + "orange-c\n" + "orange-c\n" + "orange-c\n" + "orange-c\n" + "orange-d\n" + "orange-d\n" +
-				"peach-d\n" + "peach-d\n";
+				"water_melon-b\n" + "orange-b\n" + "orange-b\n" + "orange-c\n" + "orange-c\n" + "orange-c\n" +
+				"orange-c\n" + "orange-c\n" + "orange-c\n" + "orange-c\n" + "orange-c\n" + "peach-d\n" + "peach-d\n";
 
 		List<Tuple5<Integer, String, Character, Double, Boolean>> input = Arrays.asList(
 				new Tuple5<Integer, String, Character, Double, Boolean>(1, "apple", 'j', 0.1, false),
@@ -187,11 +183,10 @@ public class ComplexIntegrationTest extends StreamingMultipleProgramsTestBase {
 		DataStream<OuterPojo> sourceStream22 = env.addSource(new PojoSource());
 
 		sourceStream21
-				.sum(3)
 				.groupBy(2, 2)
 				.window(Time.of(10, new MyTimestamp(), 0))
 				.every(Time.of(4, new MyTimestamp(), 0))
-				.maxBy(3)
+				.maxBy(3, true)
 				.flatten()
 				.map(new MyMapFunction2())
 				.flatMap(new MyFlatMapFunction())
@@ -284,17 +279,6 @@ public class ComplexIntegrationTest extends StreamingMultipleProgramsTestBase {
 
 		env.execute();
 	}
-
-	private static class MyDelta implements DeltaFunction<Tuple2<RectangleClass, Integer>> {
-		private static final long serialVersionUID = 1L;
-
-		@Override
-		public double getDelta(Tuple2<RectangleClass, Integer> oldDataPoint, Tuple2<RectangleClass,
-				Integer> newDataPoint) {
-			return (newDataPoint.f0.b - newDataPoint.f0.a) - (oldDataPoint.f0.b - oldDataPoint.f0.a);
-		}
-	}
-
 
 	@SuppressWarnings("unchecked")
 	@Test
@@ -637,6 +621,16 @@ public class ComplexIntegrationTest extends StreamingMultipleProgramsTestBase {
 		@Override
 		public Tuple2<RectangleClass, Integer> map(RectangleClass value) throws Exception {
 			return new Tuple2<RectangleClass, Integer>(value, counter++);
+		}
+	}
+
+	private static class MyDelta implements DeltaFunction<Tuple2<RectangleClass, Integer>> {
+		private static final long serialVersionUID = 1L;
+
+		@Override
+		public double getDelta(Tuple2<RectangleClass, Integer> oldDataPoint, Tuple2<RectangleClass,
+				Integer> newDataPoint) {
+			return (newDataPoint.f0.b - newDataPoint.f0.a) - (oldDataPoint.f0.b - oldDataPoint.f0.a);
 		}
 	}
 
