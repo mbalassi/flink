@@ -1,5 +1,7 @@
 package org.apache.flink.streaming.fsql
 
+import org.apache.flink.api.common.typeinfo.TypeInformation
+
 import scala.reflect.runtime.universe._
 
 private[fsql] object Ast {
@@ -156,7 +158,7 @@ private[fsql] object Ast {
            */
   // Expression (previously : Term)
   sealed trait Expr[T]
-  case class Constant[T](tpe: (Type, Int), value : Any) extends Expr[T]
+  case class Constant[T](tpe: (Type, TypeInformation[_]), value : Any) extends Expr[T]
   case class Column[T](name: String, stream : T) extends Expr[T]
   case class AllColumns[T](schema: T) extends Expr[T]
   case class Function[T](name: String, params:List[Expr[T]]) extends Expr[T]
@@ -303,7 +305,6 @@ private[fsql] object Ast {
       case (c@Case(_, _)) => resolveCase(c)
       case Input() => Input[Stream]().ok
 
-
     }
 
     def resolveNamed(n: Named[Option[String]]): ?[Named[Stream]] =
@@ -370,7 +371,6 @@ private[fsql] object Ast {
       case p@Comparison3(e1, op, e2, e3) =>
         for {r1 <- resolve(e1); r2 <- resolve(e2); r3 <- resolve(e3)} yield p.copy(t = r1, value1 = r2, value2 = r3)
     }
-
 
     //projection
     def resolveProj(proj: List[Named[Option[String]]]): ?[List[Named[Stream]]]
@@ -468,7 +468,5 @@ private[fsql] object Ast {
     def resolveHavingOpt(having: Option[Having[Option[String]]]) = sequenceO(having map resolveHaving)
   }
 }
-
-
 
 

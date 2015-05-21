@@ -2,6 +2,8 @@ package org.apache.flink.streaming.fsql
 
 import java.sql.{Types => JdbcTypes}
 
+import org.apache.flink.api.common.typeinfo.BasicTypeInfo
+
 import scala.reflect.runtime.universe.{Type, typeOf}
 import scala.util.parsing.combinator._
 
@@ -152,8 +154,7 @@ trait FsqlParser extends RegexParsers with PackratParsers with Ast.Unresolved {
   /*lazy val rawStream = ident ~ opt("as".i ~> ident)  ^^ {
     case n ~ a => Stream(n, a)
   }*/
-  
-  //TODO: too many layer here: Change to ConcreteStream(Stream(n,a),w,None)
+
   //lazy val rawStream = stream ^^ {case s => ConcreteStream(s, None)}
   lazy val rawStream = optParens(ident ~ opt(windowSpec) ~ opt("as".i ~> ident)) ^^ {
     case n ~ w ~ a => ConcreteStream(Stream(n, a), w, None)
@@ -364,17 +365,17 @@ trait FsqlParser extends RegexParsers with PackratParsers with Ast.Unresolved {
   /**
    * Constant
    */
-  def constB(b: Boolean) = const((typeOf[Boolean], JdbcTypes.BOOLEAN), b)
+  def constB(b: Boolean) = const((typeOf[Boolean], BasicTypeInfo.BOOLEAN_TYPE_INFO), b) //JdbcTypes.BOOLEAN
 
-  def constS(s: String) = const((typeOf[String], JdbcTypes.VARCHAR), s)
+  def constS(s: String) = const((typeOf[String], BasicTypeInfo.STRING_TYPE_INFO), s) //JdbcTypes.VARCHAR
 
-  def constD(d: Double) = const((typeOf[Double], JdbcTypes.DOUBLE), d)
+  def constD(d: Double) = const((typeOf[Double], BasicTypeInfo.DOUBLE_TYPE_INFO), d) // JdbcTypes.DOUBLE
 
-  def constL(l: Long) = const((typeOf[Long], JdbcTypes.BIGINT), l)
+  def constL(l: Long) = const((typeOf[Long], BasicTypeInfo.LONG_TYPE_INFO), l) //JdbcTypes.BIGINT
 
-  def constNull = const((typeOf[AnyRef], JdbcTypes.JAVA_OBJECT), null)
+  def constNull = const((typeOf[AnyRef], BasicTypeInfo.VOID_TYPE_INFO), null) //JdbcTypes.JAVA_OBJECT
 
-  def const(tpe: (Type, Int), x: Any) = Constant[Option[String]](tpe, x)
+  def const(tpe: (Type, BasicTypeInfo[_]), x: Any) = Constant[Option[String]](tpe, x)
 
 
   /**
@@ -418,12 +419,22 @@ object Test2 extends FsqlParser {
     println("#########" * 10)
 
     val timer = Timer(true)
+    val queries = Array (
+      // create schema
+      "create schema mySchema0 (speed int, time long)",
+      "create schema mySchema1 mySchema0",
+      "create schema mySchema2 (id int) mySchema1",
+      
+      // select
+      "select id, s.speed, stream.time from stream [size 3]as s cross join stream2[size 3]",
+      "select id from stream [size 3] as s1 left join suoi [size 3] as s2 on s1.time=s2.thoigian",
+      "create stream myStream(time long) as (select p.id from oldStream as p)",
+      "select id from (select p.id as id from oldStream as p) as q",
+      "select id from stream [size 3] as s1 left join suoi [size 3] as s2 on s1.time=s2.thoigian"
+    
+    )
     val result = for {
-      //stmt <- parser(new FsqlParser {}, "select id, s.speed, stream.time from stream [size 3]as s cross join stream2[size 3]")
-      //stmt <- parser(new FsqlParser {}, "select id from stream [size 3] as s1 left join suoi [size 3] as s2 on s1.time=s2.thoigian")
-      //stmt <- parser(new FsqlParser {}, "create stream myStream(time long) as (select p.id from oldStream as p)")
-      //stmt <- parser(new FsqlParser {}, "create schema myStream oldschema "),
-      stmt <- parser(new FsqlParser {}, "select id from (select p.id from oldStream as p) as q")
+      stmt <- timer("parser", 2, parser(new FsqlParser {}, queries(0)))
       //stmt <- timer("parser", 2,  parser(new FsqlParser {}, "select id from (select p.id from oldStream as p) as q"))
       //stmt <- parser(new FsqlParser {}, "select id from stream [size 3] as s1 left join suoi [size 3] as s2 on s1.time=s2.thoigian")
 

@@ -5,4 +5,26 @@ package org.apache.flink.streaming.examples.flink
  */
 object SelectQueries {
 
+  /**
+   *  Stream to Stream  
+   */
+  // filter/ selection
+  
+  // map / projection
+
+
+  /**
+   * * Relation to Relation
+   * 
+   */
+
+
+  /**
+   * * Relation to Stream
+   */
+  
+  
+  
+  
+
 }
