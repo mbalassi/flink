@@ -50,6 +50,36 @@ private[fsql] object Ast {
 
   case class CreateSchema[T](s: String, schema: Schema, parentSchema: Option[String]) extends Statement[T] {
     def streams = Nil
+    //stage 3
+    def schemaName = s
+    def getSchema (context : SQLContext) : Schema = {
+
+      val schemaMap = context.schemas
+      // create a new schema
+
+
+      def isConflicted(schema1: List[StructField], schema2: List[StructField]): Boolean = {
+        val lengthOfConcatedSchema = (schema1 ::: schema2).map(_.name.toLowerCase).toSeq.length
+        lengthOfConcatedSchema != schema1.length + schema2.length
+      }
+
+      val pSchema = parentSchema match {
+        case Some(parent) => schemaMap.get(parent) orFail ("Fail")
+        case None => Schema(None, List()).ok
+      }
+
+      val parentFields = (for (ps <- pSchema) yield ps.fields).getOrElse(List())
+      // check if conflicted
+      if (isConflicted(parentFields, schema.fields))
+        throw new IllegalArgumentException
+      else {
+        val thisSchema = Schema(Some(schemaName), schema.fields ::: parentFields)
+        schemaMap += (schemaName -> thisSchema)
+        thisSchema
+      }
+      // add to SQLContext
+      
+    }
   }
 
 

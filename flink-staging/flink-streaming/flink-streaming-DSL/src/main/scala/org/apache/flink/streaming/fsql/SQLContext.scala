@@ -1,12 +1,18 @@
 package org.apache.flink.streaming.fsql
 
+import org.apache.flink.streaming.fsql.Ast.Schema
+
+import scala.collection.mutable.{Map,HashMap}
+
 
 class SQLContext {
   
   self =>
   
   protected [fsql] lazy val catalog: Catalog = new SimpleCatalog()
+  protected [fsql]  var schemas : Map[String, Schema] = new  HashMap[String, Schema]()
 
+  
 
 /*
   *  val people =

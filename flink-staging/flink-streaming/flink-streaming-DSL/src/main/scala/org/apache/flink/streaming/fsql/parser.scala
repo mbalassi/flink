@@ -373,6 +373,8 @@ trait FsqlParser extends RegexParsers with PackratParsers with Ast.Unresolved {
 
   def constL(l: Long) = const((typeOf[Long], BasicTypeInfo.LONG_TYPE_INFO), l) //JdbcTypes.BIGINT
 
+  def constI(l: Int) = const((typeOf[Int], BasicTypeInfo.INT_TYPE_INFO), l)
+
   def constNull = const((typeOf[AnyRef], BasicTypeInfo.VOID_TYPE_INFO), null) //JdbcTypes.JAVA_OBJECT
 
   def const(tpe: (Type, BasicTypeInfo[_]), x: Any) = Constant[Option[String]](tpe, x)
@@ -423,7 +425,7 @@ object Test2 extends FsqlParser {
       // create schema
       "create schema mySchema0 (speed int, time long)",
       "create schema mySchema1 mySchema0",
-      "create schema mySchema2 (id int) mySchema1",
+      "create schema mySchema2 (id int) extends mySchema0",
       
       // select
       "select id, s.speed, stream.time from stream [size 3]as s cross join stream2[size 3]",
@@ -433,18 +435,33 @@ object Test2 extends FsqlParser {
       "select id from stream [size 3] as s1 left join suoi [size 3] as s2 on s1.time=s2.thoigian"
     
     )
-    val result = for {
-      stmt <- timer("parser", 2, parser(new FsqlParser {}, queries(0)))
+    val context = new SQLContext()
+
+    
+    
+    var result = for {
+      st <- timer("parser", 2, parser(new FsqlParser {}, queries(0)))
       //stmt <- timer("parser", 2,  parser(new FsqlParser {}, "select id from (select p.id from oldStream as p) as q"))
       //stmt <- parser(new FsqlParser {}, "select id from stream [size 3] as s1 left join suoi [size 3] as s2 on s1.time=s2.thoigian")
 
 
-      x <- timer("resolve",3,Ast.resolvedStreams(stmt))
+      //x <- timer("resolve",3,Ast.resolvedStreams(st))
     //y = stmt.streams
 
-    } yield (x)
+    } yield st
 
     //println(result.getOrElse("fail"))
-    println(result)
+    //println(result.getOrElse("fail"))
+    println(result.getOrElse("fail").asInstanceOf[Ast.CreateSchema[Option[String]]].getSchema(context))
+    println(context.schemas.head)
+
+    result = for {
+      st <- timer("parser", 2, parser(new FsqlParser {}, queries(2)))
+
+    } yield st
+
+    println(result.getOrElse("fail").asInstanceOf[Ast.CreateSchema[Option[String]]].getSchema(context))
+    println(context.schemas)
+
   }
 }
