@@ -1,3 +1,4 @@
+/*
 package org.apache.flink.streaming.fsql
 import scala.reflect.runtime.universe._
 import java.sql.{Types=> jdbcType}
@@ -28,7 +29,7 @@ case class StructType (fields: Array[StructField])  extends Seq[StructField] {
   /** */
   private lazy val nameToField : Map[String, StructField] = fields map {f => (f.name -> f)} toMap
   
-  /** 
+  /**
    * Extracts a [[StructField]]  of the given name. If the [[StructType]] object does not
    * have a name matching the given name , `null` will be returned instead
    */
@@ -92,4 +93,4 @@ case class StructField(
 
    }
    
- }
+ }*/

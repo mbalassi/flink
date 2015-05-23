@@ -451,7 +451,6 @@ object Test2 extends FsqlParser {
     } yield st
 
     //println(result.getOrElse("fail"))
-    //println(result.getOrElse("fail"))
     println(result.getOrElse("fail").asInstanceOf[Ast.CreateSchema[Option[String]]].getSchema(context))
     println(context.schemas.head)
 

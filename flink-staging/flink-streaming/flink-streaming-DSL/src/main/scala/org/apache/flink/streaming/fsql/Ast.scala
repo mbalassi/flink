@@ -4,7 +4,7 @@ import org.apache.flink.api.common.typeinfo.TypeInformation
 
 import scala.reflect.runtime.universe._
 
-private[fsql] object Ast {
+object Ast {
 
   /**
    * *  UNRESOLVED
@@ -68,29 +68,42 @@ private[fsql] object Ast {
         case None => Schema(None, List()).ok
       }
 
-      val parentFields = (for (ps <- pSchema) yield ps.fields).getOrElse(List())
-      // check if conflicted
-      if (isConflicted(parentFields, schema.fields))
-        throw new IllegalArgumentException
-      else {
-        val thisSchema = Schema(Some(schemaName), schema.fields ::: parentFields)
-        schemaMap += (schemaName -> thisSchema)
-        thisSchema
+      (for (ps <- pSchema) yield ps.fields) match {
+        case Ok(fields) => {
+          if (isConflicted(fields, schema.fields))
+            throw new IllegalArgumentException
+          else {
+            val thisSchema = Schema(Some(schemaName), schema.fields ::: fields)
+            schemaMap += (schemaName -> thisSchema)
+            thisSchema
+          }
+        }
+        case _ => throw  new NoSuchElementException 
       }
-      // add to SQLContext
+
       
     }
+    
   }
 
 
   case class StructField(
                              name : String,
                              dataType: String,
-                             nullable: Boolean = true) {
+                             nullable: Boolean = true) /*{
 
     //override def toString : String = s"StructField($name, ${dataType.scalaType}, $nullable )"
 
-  }
+  }*/
+  
+  /*
+  object StructField {
+    implicit val lift = Liftable[StructField] { s =>
+      q"_root_.org.apache.flink.streaming.fsql.StructField(${s.name}, ${s.dataType}, ${s.nullable})"
+      
+    }
+    
+  }*/
   case class Schema(name: Option[String], fields: List[StructField])
 
 

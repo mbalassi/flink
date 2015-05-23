@@ -1,18 +1,23 @@
 package org.apache.flink.streaming.fsql
 
-import org.apache.flink.streaming.fsql.Ast.Schema
+import org.apache.flink.streaming.fsql.Ast._
 
-import scala.collection.mutable.{Map,HashMap}
+import scala.collection.mutable.{HashMap, Map}
+import scala.language.experimental.macros
+
 
 
 class SQLContext {
   
   self =>
   
-  protected [fsql] lazy val catalog: Catalog = new SimpleCatalog()
-  protected [fsql]  var schemas : Map[String, Schema] = new  HashMap[String, Schema]()
+  lazy val catalog: Catalog = new SimpleCatalog()
+  var schemas : Map[String, Schema] = new  HashMap[String, Schema]()
 
   
+  def sql(queryString: String) = macro FsqlMacros.fsqlImpl
+  
+
 
 /*
   *  val people =
@@ -42,6 +47,6 @@ class SQLContext {
   createDataFrame(rowRDD.rdd, schema)
   }
   */
-  
 
 }
+

@@ -52,7 +52,7 @@ object MyCar {
 
     val cars = genCarStream()//.reduce((e1,e2)=>new CarEvent(e1.speed+e2.speed,e1.time+e2.time))
       .map(c => (c.speed + c.time))
-      //.window(Time.of(10, ts, 0 ))
+      .window(Time.of(10, ts, 0 ))
       //.every(Time.of(1, MICROSECONDS))
       //.mapWindow(mapFun).flatten
       //.reduceWindow((e1,e2)=>new CarEvent(e1.speed+e2.speed,e1.time)).flatten()
