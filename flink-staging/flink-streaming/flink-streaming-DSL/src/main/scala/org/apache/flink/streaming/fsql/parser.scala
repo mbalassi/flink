@@ -49,8 +49,8 @@ trait FsqlParser extends RegexParsers with PackratParsers with Ast.Unresolved {
   lazy val createStreamStmtSyntax: Parser[Statement] =
     "create".i ~> "stream".i ~> ident ~ new_schema ~ opt(source) ^^ {
       case i ~ schema ~ source => CreateStream(i, schema, source)
-
     }
+  
   // source
   lazy val source: Parser[Source] = raw_source | derived_source
   lazy val derived_source = "as".i~> subselect ^^ (s => DerivedSource(s.select))
@@ -170,7 +170,7 @@ trait FsqlParser extends RegexParsers with PackratParsers with Ast.Unresolved {
   lazy val every = "every".i ~> policyBased ^^ Every.apply
   //lazy val policyBased = (countBased | timeBased)
   //lazy val countBased : PackratParser[CountBased]= integer <~ "rows" ^^ CountBased.apply
-  lazy val policyBased: PackratParser[PolicyBased] = integer ~ opt(timeUnit) ~ opt("on".i ~> column) ^^ {
+  lazy val policyBased: PackratParser[PolicyBased] = integer ~ opt(timeUnit) ~ opt("on".i ~> column) ^^ { //TODO: should be multiple columns
     case i ~ t ~ c => PolicyBased(i, t, c)
   }
 
@@ -238,13 +238,11 @@ trait FsqlParser extends RegexParsers with PackratParsers with Ast.Unresolved {
 
     )
 
-
   // function
   lazy val functionExpr : PackratParser[Function] =
     ident ~ "(" ~ repsep(expr, ",") ~ ")" ^^ {
       case name ~ _ ~ params ~ _ => Function(name, params)
     }
-
 
 
   // case
@@ -443,10 +441,8 @@ object Test2 extends FsqlParser {
       st <- timer("parser", 2, parser(new FsqlParser {}, queries(0)))
       //stmt <- timer("parser", 2,  parser(new FsqlParser {}, "select id from (select p.id from oldStream as p) as q"))
       //stmt <- parser(new FsqlParser {}, "select id from stream [size 3] as s1 left join suoi [size 3] as s2 on s1.time=s2.thoigian")
-
-
       //x <- timer("resolve",3,Ast.resolvedStreams(st))
-    //y = stmt.streams
+      //y = stmt.streams
 
     } yield st
 

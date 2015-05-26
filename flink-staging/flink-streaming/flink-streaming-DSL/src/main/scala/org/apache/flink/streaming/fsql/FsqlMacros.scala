@@ -28,8 +28,7 @@ object FsqlMacros {
     } yield st).fold( fail => c.abort(toPosition(fail), fail.message), st => generateCode(c, st)  )
 
     result
-   
-    
+
     /*val result2 : CreateSchema[Option[String]]= result.asInstanceOf[CreateSchema[Option[String]]]
 
 
@@ -74,12 +73,7 @@ object FsqlMacros {
 
 
     val result2 = statement.asInstanceOf[CreateSchema[Option[String]]]
-    
 
-    /*
-        c.prefix.tree
-        println(result.getOrElse("fail").asInstanceOf[Ast.CreateSchema[Option[String]]].getSchema(context))
-        println(context.schemas.head)*/
 
     val tpe = weakTypeOf[CreateSchema[Option[String]]]
 
@@ -88,7 +82,7 @@ object FsqlMacros {
                     
       $result2.getSchema(${c.prefix.tree})
 
-      ${c.prefix.tree}.schemas.head
+      ${c.prefix.tree}.schemas
       
     """)
 

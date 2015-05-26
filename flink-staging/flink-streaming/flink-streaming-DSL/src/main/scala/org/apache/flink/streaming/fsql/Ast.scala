@@ -4,7 +4,7 @@ import org.apache.flink.api.common.typeinfo.TypeInformation
 
 import scala.reflect.runtime.universe._
 
-object Ast {
+object Ast{
 
   /**
    * *  UNRESOLVED
@@ -80,17 +80,13 @@ object Ast {
         }
         case _ => throw  new NoSuchElementException 
       }
-
-      
     }
-    
   }
 
-
   case class StructField(
-                             name : String,
-                             dataType: String,
-                             nullable: Boolean = true) /*{
+                         name : String,
+                         dataType: String,
+                         nullable: Boolean = true) /*{
 
     //override def toString : String = s"StructField($name, ${dataType.scalaType}, $nullable )"
 
@@ -211,7 +207,6 @@ object Ast {
   case class ExprList[T](exprs: List[Expr[T]]) extends Expr[T]
   case class Case[T](conditions: List[(Predicate[T], Expr[T])], elze: Option[Expr[T]]) extends Expr[T]
 
-
           /**
            * * OPERATOR
            */
@@ -267,7 +262,6 @@ object Ast {
   case class GroupBy[T](exprs: List[Expr[T]], having: Option[Having[T]])
   case class Having[T](predicate: Predicate[T])
 
-
   /**
    *  INSERT 
    */
@@ -301,7 +295,6 @@ object Ast {
   }
   object Resolved extends  Resolved
   
-  
 
   def resolvedStreams(stmt : Statement[Option[String]]): ?[Statement[Stream]]
   = stmt match {
@@ -333,8 +326,7 @@ object Ast {
     case file@FileSource(path) => FileSource[Stream](path).ok
     case d@DerivedSource(s)   => resolveSelect(s)() map ( s => DerivedSource(s))
   }
-  
- 
+
   private class ResolveEnv (env : List[Stream]) {
 
     // Basic Elements
@@ -347,7 +339,7 @@ object Ast {
       case Constant(tpe, value) => Constant[Stream](tpe, value).ok
       case (c@Case(_, _)) => resolveCase(c)
       case Input() => Input[Stream]().ok
-
+        
     }
 
     def resolveNamed(n: Named[Option[String]]): ?[Named[Stream]] =

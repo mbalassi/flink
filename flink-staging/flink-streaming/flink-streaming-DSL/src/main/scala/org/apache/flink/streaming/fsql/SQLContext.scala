@@ -14,9 +14,9 @@ class SQLContext {
   lazy val catalog: Catalog = new SimpleCatalog()
   var schemas : Map[String, Schema] = new  HashMap[String, Schema]()
 
-  
   def sql(queryString: String) = macro FsqlMacros.fsqlImpl
-  
+
+}
 
 
 /*
@@ -33,20 +33,17 @@ class SQLContext {
   *  sqlContext.sql("select name from people").collect.foreach(println)
   * }}}
 */
-   /*
-  @DeveloperApi
-  def createDataFrame(rowRDD: RDD[Row], schema: StructType): DataFrame = {
-  // TODO: use MutableProjection when rowRDD is another DataFrame and the applied
-  // schema differs from the existing schema on any field data type.
-  val logicalPlan = LogicalRDD(schema.toAttributes, rowRDD)(self)
-  DataFrame(this, logicalPlan)
-  }
-
-  @DeveloperApi
-  def createDataFrame(rowRDD: JavaRDD[Row], schema: StructType): DataFrame = {
-  createDataFrame(rowRDD.rdd, schema)
-  }
-  */
-
+/*
+@DeveloperApi
+def createDataFrame(rowRDD: RDD[Row], schema: StructType): DataFrame = {
+// TODO: use MutableProjection when rowRDD is another DataFrame and the applied
+// schema differs from the existing schema on any field data type.
+val logicalPlan = LogicalRDD(schema.toAttributes, rowRDD)(self)
+DataFrame(this, logicalPlan)
 }
 
+@DeveloperApi
+def createDataFrame(rowRDD: JavaRDD[Row], schema: StructType): DataFrame = {
+createDataFrame(rowRDD.rdd, schema)
+}
+*/

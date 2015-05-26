@@ -13,23 +13,25 @@ import org.apache.flink.streaming.api.scala.{DataStream, StreamExecutionEnvironm
 
 object CreateStream {
   case class Field(typeInfo : Type)
+  case class CarEvent( speed: Int, time: Long) extends Serializable
 
-/*  def rowToCarEvent[T: WeakTypeTag](row: Row)= {
-//    weakTypeOf[T].members.filter(!_.isMethod).toList
-    weakTypeOf[CarEvent].members.filter(!_.isMethod).toList
 
-  }*/
+
 
   def main(args: Array[String]) {
-
     val env = StreamExecutionEnvironment.getExecutionEnvironment
+    
+    
     
     val textFromFile = getTextDataStream(env)
 
     val cars = textFromFile.map(_.split(",")).map(
         arr => { arrayToRow(arr, schema)}
     ).filter(_.isDefined).map(_.get)
-    cars print()
+    
+    
+    val e = cars.map(r => r.productElement(3))
+    e print
 
     val m = runtimeMirror(getClass.getClassLoader)
 
@@ -47,12 +49,14 @@ object CreateStream {
     env.execute()*/
 
   }
+  
+  
+  
 
+  
   def arrayToRow (arr : Array[String], schema: Array[_<:BasicTypeInfo[_]]): Option[Row] ={
     val row =  new Row(arr.length)
 
-
-    
     for (i <- 0 until arr.length)  {
       
       val castedValue = try {
@@ -76,6 +80,9 @@ object CreateStream {
       }
 
       Some(row)
+    
+      // transform
+      // check create Select
 
   }
   
@@ -95,6 +102,10 @@ object CreateStream {
     env.socketTextStream(hostName, port)
   }
 
+  def genCarStream(): DataStream[CarEvent] = {
+    Seq(CarEvent(1,6),CarEvent(4,11), CarEvent(20,13),CarEvent(80,14),CarEvent(100,18),CarEvent(1000,22),CarEvent(9,25),CarEvent(500,34),CarEvent(1,39),CarEvent(1,50)).toStream//,CarEvent(500,29),CarEvent(1000,39),CarEvent(2000,55)).toStream
+
+  }
   // subselect
   case class CarEvent(carId: Int, speed: Int, distance: Double, time: Long)
 
@@ -103,6 +114,7 @@ object CreateStream {
   private val port :Int= 2015
   private val schema = Seq(BasicTypeInfo.INT_TYPE_INFO, BasicTypeInfo.INT_TYPE_INFO,BasicTypeInfo.DOUBLE_TYPE_INFO, BasicTypeInfo.LONG_TYPE_INFO).toArray
 
+  
 }
 
 
@@ -132,3 +144,11 @@ object CreateStream {
 
 createTable  :  A -> Row
  */
+
+
+
+/*  def rowToCarEvent[T: WeakTypeTag](row: Row)= {
+//    weakTypeOf[T].members.filter(!_.isMethod).toList
+    weakTypeOf[CarEvent].members.filter(!_.isMethod).toList
+
+  }*/

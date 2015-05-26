@@ -51,15 +51,19 @@ object MyCar {
   def main(args: Array[String]) {
 
     val cars = genCarStream()//.reduce((e1,e2)=>new CarEvent(e1.speed+e2.speed,e1.time+e2.time))
-      .map(c => (c.speed + c.time))
+      
+      //.map(c => (c.speed + c.time))
       .window(Time.of(10, ts, 0 ))
+      .groupBy(0,1)
       //.every(Time.of(1, MICROSECONDS))
       //.mapWindow(mapFun).flatten
       //.reduceWindow((e1,e2)=>new CarEvent(e1.speed+e2.speed,e1.time)).flatten()
      /* .window(Count.of(3))
       .every(Time.of(10, ts ))
       .mapWindow(mapFun).flatten*/
-    cars print
+    //cars print
+    
+    println(cars.getType())
 
     StreamExecutionEnvironment.getExecutionEnvironment.execute("TopSpeedWindowing")
 

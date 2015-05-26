@@ -104,7 +104,8 @@ public class FirstNOperatorTest {
 		
 		// should work
 		try {
-			tupleDs.groupBy(1,3).first(10);
+			tupleDs.
+                    groupBy(1,3).first(10);
 		} catch(Exception e) {
 			Assert.fail();
 		}
