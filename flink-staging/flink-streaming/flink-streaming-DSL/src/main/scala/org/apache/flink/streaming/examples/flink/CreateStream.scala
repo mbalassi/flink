@@ -13,45 +13,104 @@ import org.apache.flink.streaming.api.scala.{DataStream, StreamExecutionEnvironm
 
 object CreateStream {
   case class Field(typeInfo : Type)
-  case class CarEvent( speed: Int, time: Long) extends Serializable
+  case class Schema(name: Option[String], fields: List[StructField])
+  case class StructField( name : String,
+                          dataType: BasicTypeInfo[_])
+  case class SimpleCarEvent( speed: Int, time: Long) extends Serializable
 
 
+  
 
 
   def main(args: Array[String]) {
     val env = StreamExecutionEnvironment.getExecutionEnvironment
+    val listOfField = Array("carId", "speed", "distance", "time").zip(schema).toList.map {  case (s:String, t:BasicTypeInfo[_]) => StructField(s,t)}
+    val carSchema = Schema(Some("CarEvent"), listOfField)
     
-    
-    
+    /**
+     * * from file to Row stream
+     */
     val textFromFile = getTextDataStream(env)
+    
 
     val cars = textFromFile.map(_.split(",")).map(
-        arr => { arrayToRow(arr, schema)}
+        arr => { arrayToRow(arr, carSchema.fields.map(_.dataType).toArray)}
     ).filter(_.isDefined).map(_.get)
+    //val e = cars.map(r => r.productElement(3))
+    //e print
+
     
     
-    val e = cars.map(r => r.productElement(3))
-    e print
+    /**
+     * * From Socket to Row stream
+     */
+    /*  val textFromSocket = getSocketTextStream(env)
+    textFromSocket.map(_.toLowerCase.length) print()
+    */
 
-    val m = runtimeMirror(getClass.getClassLoader)
+    /**
+     * * From case class to Row Stream
+     */
 
+    println(carSchema)
+    val carsClass = cars.map(r => rowToCarEvent(r))
+    // carsClass print
 
+    // checking Car with schema
+       // class CarEvent infor
+      val m = runtimeMirror(getClass.getClassLoader)
+      println(weakTypeOf[CarEvent].members.filter(!_.isMethod).map(x=>(x.name,m.staticClass("java.lang."+{ var value = x.typeSignature.toString; if (value=="Int") "Integer" else value})))) // each stream go with a schema (RowTypeInfor)
+      val carTypeList = (weakTypeOf[CarEvent].members.filter(!_.isMethod).foldRight(List[String]())((field, list)=> list :+ field.typeSignature.toString).map(_.take(3)))
+      val schemaTypeList = (listOfField.map(_.dataType.toString.take(3)))
+      println(carTypeList == schemaTypeList)
+    
+      
+    val fields = weakTypeOf[CarEvent].decls.collectFirst {
+      case m: MethodSymbol if m.isPrimaryConstructor => m
+    }.get.paramLists.head.map(x => weakTypeOf[CarEvent].decl(x.name.toTermName).typeSignature)
+    println(fields)
+    
+    // convert from Car to Row
+    import org.apache.flink.streaming.experimental.ArrMappable
+    def mapify[T: ArrMappable](t: T) = implicitly[ArrMappable[T]].toMap(t)
+      
+    val rowCar = carsClass.map(car => Row(mapify(car)))
+    //rowCar print
+    
+    // get information from case class
+    /*val m = runtimeMirror(getClass.getClassLoader)
     println(weakTypeOf[CarEvent].members.filter(!_.isMethod).map(x=>(x.name,m.staticClass("java.lang."+{ var value = x.typeSignature.toString; if (value=="Int") "Integer" else value})))) // each stream go with a schema (RowTypeInfor)
-    println(cars.getType())
-    env.execute()
+    println(cars.getType())*/
+
+    
     
     /*val resultFields = inputType.getFieldNames.map(UnresolvedFieldReference)
     as(resultFields: _*)
     */
-    
-  /*  val textFromSocket = getSocketTextStream(env)
-    textFromSocket.map(_.toLowerCase.length) print()
-    env.execute()*/
 
+    /**
+     * * From tuple to Row 
+     */
+    def mapify2[T: ArrMappable](t: T) = implicitly[ArrMappable[T]].toTuple(t)
+
+    val tupleCar = carsClass.map(car => mapify2(car))
+    
+    val rowCar2 = tupleCar.map(x => Row(x.productIterator.toArray))
+    
+    rowCar2 print
+    
+    println(rowCar2.getType)
+    
+    env.execute()
   }
   
   
   
+  
+  
+  def rowToCarEvent (row: Row): CarEvent ={
+    CarEvent(row.productElement(0).asInstanceOf[Int], row.productElement(1).asInstanceOf[Int],row.productElement(2).asInstanceOf[Double],row.productElement(3).asInstanceOf[Long])
+  }
 
   
   def arrayToRow (arr : Array[String], schema: Array[_<:BasicTypeInfo[_]]): Option[Row] ={
@@ -87,9 +146,6 @@ object CreateStream {
   }
   
 
-  def arrayToTuple(arr: Array[String]) ={
-    (arr(1),arr(2))
-  }
 
   // file 
   def getTextDataStream (env : StreamExecutionEnvironment): DataStream[String] ={
@@ -102,9 +158,9 @@ object CreateStream {
     env.socketTextStream(hostName, port)
   }
 
-  def genCarStream(): DataStream[CarEvent] = {
-    Seq(CarEvent(1,6),CarEvent(4,11), CarEvent(20,13),CarEvent(80,14),CarEvent(100,18),CarEvent(1000,22),CarEvent(9,25),CarEvent(500,34),CarEvent(1,39),CarEvent(1,50)).toStream//,CarEvent(500,29),CarEvent(1000,39),CarEvent(2000,55)).toStream
-
+  def genCarStream(): DataStream[SimpleCarEvent] = {
+    Seq(SimpleCarEvent(1,6),SimpleCarEvent(4,11), SimpleCarEvent(20,13),SimpleCarEvent(80,14),SimpleCarEvent(100,18),
+      SimpleCarEvent(1000,22),SimpleCarEvent(9,25),SimpleCarEvent(500,34),SimpleCarEvent(1,39),SimpleCarEvent(1,50)).toStream//,CarEvent(500,29),CarEvent(1000,39),CarEvent(2000,55)).toStream
   }
   // subselect
   case class CarEvent(carId: Int, speed: Int, distance: Double, time: Long)
@@ -114,7 +170,6 @@ object CreateStream {
   private val port :Int= 2015
   private val schema = Seq(BasicTypeInfo.INT_TYPE_INFO, BasicTypeInfo.INT_TYPE_INFO,BasicTypeInfo.DOUBLE_TYPE_INFO, BasicTypeInfo.LONG_TYPE_INFO).toArray
 
-  
 }
 
 

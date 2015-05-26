@@ -36,3 +36,16 @@ class Row(arity: Int) extends Product {
   override def toString = fields.mkString(",")
 
 }
+
+object Row {
+  def apply (arr : Array[Any]) = {
+    val row = new Row(arr.length)
+    for (i <- 0 to arr.length-1){
+      row.setField(i, arr(i))
+    }
+    row
+  }
+  
+}
+
+
