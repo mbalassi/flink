@@ -1,10 +1,11 @@
 package org.apache.flink.streaming.fsql
 
+import org.apache.flink.streaming.api.scala.DataStream
+import org.apache.flink.streaming.experimental.Row
 import org.apache.flink.streaming.fsql.Ast._
 
 import scala.collection.mutable.{HashMap, Map}
 import scala.language.experimental.macros
-
 
 
 class SQLContext {
@@ -13,11 +14,11 @@ class SQLContext {
   
   lazy val catalog: Catalog = new SimpleCatalog()
   var schemas : Map[String, Schema] = new  HashMap[String, Schema]()
+  var streamsMap : Map[String, DataStream[Row]] = new HashMap[String, DataStream[Row]]()
 
-  def sql(queryString: String) = macro FsqlMacros.fsqlImpl
+  def sql(queryString: String) : Any = macro FsqlMacros.fsqlImpl
 
 }
-
 
 /*
   *  val people =

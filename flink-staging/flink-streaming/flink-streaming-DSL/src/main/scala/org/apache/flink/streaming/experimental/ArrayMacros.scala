@@ -7,7 +7,7 @@ import scala.language.experimental.macros
 trait ArrMappable[T]{
   def toMap(t:T): Array[Any]
   def fromMap(map: Map[String,Any]): T
-  def toTuple (t:T) :Product
+//  def toTuple (t:T) :Product
 }
 
 object ArrMappable{
@@ -43,10 +43,10 @@ object ArrMappable{
       new ArrMappable[$tpe] {
         def toMap(t: $tpe): Array[Any] = Array(..$toMapParams)
         def fromMap(map: Map[String,Any]): $tpe = $companion(..$fromMapParams)
-        def toTuple(t: $tpe) :Product= (..$toTuple)
+
       }
     """ }
-
+// def toTuple(t: $tpe) :Product= (..$toTuple)
   }
   
 

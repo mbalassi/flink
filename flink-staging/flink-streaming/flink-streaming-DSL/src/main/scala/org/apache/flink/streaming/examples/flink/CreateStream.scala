@@ -77,6 +77,10 @@ object CreateStream {
     val rowCar = carsClass.map(car => Row(mapify(car)))
     //rowCar print
     
+    
+    
+    println("get carEvent typel"+ carsClass.getType().getTypeClass.getCanonicalName )
+    
     // get information from case class
     /*val m = runtimeMirror(getClass.getClassLoader)
     println(weakTypeOf[CarEvent].members.filter(!_.isMethod).map(x=>(x.name,m.staticClass("java.lang."+{ var value = x.typeSignature.toString; if (value=="Int") "Integer" else value})))) // each stream go with a schema (RowTypeInfor)
@@ -91,15 +95,17 @@ object CreateStream {
     /**
      * * From tuple to Row 
      */
-    def mapify2[T: ArrMappable](t: T) = implicitly[ArrMappable[T]].toTuple(t)
+    /*def mapify2[T: ArrMappable](t: T) = implicitly[ArrMappable[T]].toTuple(t)
 
     val tupleCar = carsClass.map(car => mapify2(car))
     
     val rowCar2 = tupleCar.map(x => Row(x.productIterator.toArray))
     
-    rowCar2 print
+    //rowCar2 print
     
-    println(rowCar2.getType)
+    println(rowCar2.getType)*/
+    
+    
     
     env.execute()
   }

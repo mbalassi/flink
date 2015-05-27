@@ -1,6 +1,7 @@
 package org.apache.flink.streaming.fsql
 
 
+import org.apache.flink.streaming.api.scala.DataStream
 
 import scala.reflect.macros.blackbox.Context
 import scala.language.experimental.macros
@@ -69,26 +70,49 @@ object FsqlMacros {
     implicit val lift1 = Liftable[CreateSchema[Option[String]]] { p:CreateSchema[Option[String]] =>
       q"$schemaSyn1(${p.s}, ${p.schema}, ${p.parentSchema})"
     }
+/** !!! Important
 
-
-
-    val result2 = statement.asInstanceOf[CreateSchema[Option[String]]]
-
-
-    val tpe = weakTypeOf[CreateSchema[Option[String]]]
-
-
-    c.Expr[Any](q"""
-                    
-      $result2.getSchema(${c.prefix.tree})
-
-      ${c.prefix.tree}.schemas
+    if (statement.isInstanceOf[CreateSchema[Option[String]]]) {
+        val result2 = statement.asInstanceOf[CreateSchema[Option[String]]]
+  
+  
+        val tpe = weakTypeOf[CreateSchema[Option[String]]]
+  
+  
+        c.Expr[Any]( q"""
+                      
+        $result2.getSchema(${c.prefix.tree})
+  
+        ${c.prefix.tree}.schemas
+        
+      """)
+    } else if (statement.isInstanceOf[Ast.Select[Option[String]]]){
       
-    """)
+      val result = statement.asInstanceOf[Ast.Select[Option[String]]]
+      val nameOfString = result.streamReference.name
 
+      c.Expr[Any]( q"""       
+        val  p = ${c.prefix.tree}.streamsMap($nameOfString)
+        p print
+      """)
+      
+    } else {
+
+      c.Expr[Any]( q"""
+        nothing
+      """)
+      
+    }
+ **/
+    val result = statement.asInstanceOf[Ast.Select[Option[String]]]
+    val nameOfString = result.streamReference.name
+
+    c.Expr[Any]( q"""
+        ${c.prefix.tree}.streamsMap($nameOfString).map(x => "1")
+      """)
   }
 
-  def fsqlImpl(c: Context)(queryString: c.Expr[String]) :c.Expr[Any] ={
+  def fsqlImpl(c: Context)(queryString: c.Expr[String]) : c.Expr[Any] ={
 
     import c.universe._
 
@@ -109,8 +133,25 @@ object FsqlMacros {
 }
 
 
-
-
+/**
+ * 
+ *  using mirror in macro, String -> symbol
+ *
+ * * http://docs.scala-lang.org/overviews/reflection/environment-universes-mirrors.html
+ * 
+ *
+import scala.reflect.macros.Context
+case class Location(filename: String, line: Int, column: Int)
+object Macros {
+  def currentLocation: Location = macro impl
+  def impl(c: Context): c.Expr[Location] = {
+    import c.universe._
+    val pos = c.macroApplication.pos
+    val clsLocation = c.mirror.staticModule("Location") // get symbol of "Location" object
+    c.Expr(Apply(Ident(clsLocation), List(Literal(Constant(pos.source.path)), Literal(Constant(pos.line)), Literal(Constant(pos.column)))))
+  }
+} 
+ */
 
 
 
