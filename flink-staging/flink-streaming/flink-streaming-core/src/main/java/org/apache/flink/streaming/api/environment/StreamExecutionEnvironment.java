@@ -242,7 +242,7 @@ public abstract class StreamExecutionEnvironment {
 	 * Sets the {@link StateHandleProvider} used for storing operator state
 	 * checkpoints when checkpointing is enabled.
 	 * <p>
-	 * An example would be using a {@link FileStateHandle#createProvider(Path)}
+	 * An example would be using a {@link FileStateHandle#createProvider(String)}
 	 * to use any Flink supported file system as a state backend
 	 * 
 	 */
