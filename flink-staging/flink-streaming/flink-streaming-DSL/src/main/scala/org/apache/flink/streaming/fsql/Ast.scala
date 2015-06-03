@@ -123,6 +123,11 @@ object Ast{
     def streams = Nil
     
   }
+  
+  case class StreamSource[T] (streamName : String) extends Source[T] {
+    def streams = Nil
+  }
+  
   case class DerivedSource[T](subSelect: Select[T]) extends Source[T]{
     def streams = subSelect.streams
   }
@@ -324,6 +329,7 @@ object Ast{
   def resolveSource(source: Source[Option[String]])  = source match{
     case host@HostSource(h,p) => HostSource[Stream](h,p).ok
     case file@FileSource(path) => FileSource[Stream](path).ok
+    case stream@StreamSource(streamName) => StreamSource[Stream](streamName).ok
     case d@DerivedSource(s)   => resolveSelect(s)() map ( s => DerivedSource(s))
   }
 

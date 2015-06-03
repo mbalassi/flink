@@ -54,13 +54,18 @@ trait FsqlParser extends RegexParsers with PackratParsers with Ast.Unresolved {
   // source
   lazy val source: Parser[Source] = raw_source | derived_source
   lazy val derived_source = "as".i~> subselect ^^ (s => DerivedSource(s.select))
-  lazy val raw_source = "source".i ~> (host_source | file_source)// stream_source| ) //TODO
+  lazy val raw_source = "source".i ~> (host_source | file_source | stream_source)// stream_source| ) //TODO
   lazy val host_source = "host" ~> "(" ~> stringLit ~ "," ~ integer <~ ")" ^^ {
     case h ~ _ ~ p => HostSource[Option[String]](h, p)
   }
   
   lazy val file_source = "file" ~> "(" ~> stringLit <~ ")" ^^ { //TODO: delimiter
     case path => FileSource[Option[String]](path)
+  }
+  
+  lazy val stream_source = "stream" ~> "(" ~> stringLit <~ ")" ^^ {
+    case stream => StreamSource[Option[String]](stream)
+    
   }
 
   /**
@@ -425,7 +430,8 @@ object Test2 extends FsqlParser {
       "create schema mySchema1 mySchema0",
       "create schema mySchema2 (id int) extends mySchema0",
       // creat stream 
-      ""
+      "create stream CarStream (speed int) source stream ('cars')",
+      "create stream CarStream carSchema source stream ('cars')",
       // select
       "select id, s.speed, stream.time from stream [size 3]as s cross join stream2[size 3]",
       "select id from stream [size 3] as s1 left join suoi [size 3] as s2 on s1.time=s2.thoigian",
@@ -436,7 +442,6 @@ object Test2 extends FsqlParser {
     )
     val context = new SQLContext()
 
-    
     
     var result = for {
       st <- timer("parser", 2, parser(new FsqlParser {}, queries(0)))
@@ -452,12 +457,11 @@ object Test2 extends FsqlParser {
     println(context.schemas.head)
 
     result = for {
-      st <- timer("parser", 2, parser(new FsqlParser {}, queries(2)))
+      st <- timer("parser", 2, parser(new FsqlParser {}, queries(4)))
 
     } yield st
 
-    println(result.getOrElse("fail").asInstanceOf[Ast.CreateSchema[Option[String]]].getSchema(context))
-    println(context.schemas)
+    println(result.getOrElse("fail"))
 
   }
 }

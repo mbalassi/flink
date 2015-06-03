@@ -50,7 +50,7 @@ object FsqlMacros {
     """)*/
   }
 
-  def generateCode  (c: Context, statement: Statement[Option[String]]): c.Expr[Any] = {
+  def generateCode  (c: Context, statement : Statement[Option[String]]): c.Expr[Any] = {
     import c.universe._
 
     val schemaSyn3 = weakTypeOf[StructField].typeSymbol.companion
@@ -114,8 +114,7 @@ object FsqlMacros {
 
             $creatSchema.getSchema(${c.prefix.tree})
 
-            ${c.prefix.tree}.schemas
-        """)
+        """) //${c.prefix.tree}.schemas
       
       case select@Ast.Select(_,_,_,_) =>
         val nameOfString = select.streamReference.name
@@ -123,6 +122,44 @@ object FsqlMacros {
         c.Expr[Any]( q"""
             ${c.prefix.tree}.streamsMap($nameOfString).map(x => "1")
           """)
+        
+      //"create stream CarStream (speed int) source stream ('cars')",
+      //CreateStream(CarStream,Schema(None,List(StructField(speed,int,true))),Some(StreamSource(cars)))
+      
+      //create stream CarStream carSchema source stream ('cars')
+      //CreateStream(CarStream,Schema(Some(carSchema),List()),Some(StreamSource(cars)))
+      case createStream@Ast.CreateStream(streamName,schema,source) =>
+
+        schema.name match {
+          case None => 
+            val x = generateCode(c, schema.copy(name = Some(streamName)).asInstanceOf[Ast.CreateSchema[Option[String]]])
+            c.Expr(q"$x")
+          case Some(name) =>
+            
+            // case : source stream
+            // get original stream
+            val realStream = newTermName(source.get.asInstanceOf[StreamSource[Option[String]]].streamName)
+            c.Expr[Any](q"$realStream")
+            
+            // TODO: convert to row stream
+            
+            val putSourceStreamToMap = q"${c.prefix.tree}.streamsMap += ($streamName -> $realStream)"
+            c.Expr[Any](q"$putSourceStreamToMap")
+            
+            // put to Map
+            val putSchemaStreamToMap = q"${c.prefix.tree}.streamSchemaMap += ($streamName -> $name)"
+
+            c.Expr[Any] (
+              q"""
+                 $putSourceStreamToMap
+                 $putSchemaStreamToMap
+               """)
+            
+            
+        }
+        
+        
+        
         
 
       case _ => c.abort(c.enclosingPosition, "not a case")
