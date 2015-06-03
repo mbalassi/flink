@@ -31,6 +31,7 @@ object DQC{
     //reify{c.Expr[String](select).splice}
     //
     c.literal(showRaw(c.prefix.tree))
+    c.Expr[String](sqlExpr)
   }
 }
 
@@ -46,3 +47,18 @@ object Test {
 
 
 }*/
+
+
+/*
+
+
+Apply(
+  Select(Select(Select..... DQC), TermName("DynSQLContext")), //DQC.DynSQLContext(
+  List(Apply(
+          Select(Select(Ident(scala), scala.StringContext), TermName("apply")),
+          List(Literal(Constant("select agen from person p where ")), Literal(Constant(" = ?"))) // part
+      )
+  )
+)
+ */
+

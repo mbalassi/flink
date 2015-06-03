@@ -57,8 +57,8 @@ trait FsqlParser extends RegexParsers with PackratParsers with Ast.Unresolved {
   lazy val raw_source = "source".i ~> (host_source | file_source)// stream_source| ) //TODO
   lazy val host_source = "host" ~> "(" ~> stringLit ~ "," ~ integer <~ ")" ^^ {
     case h ~ _ ~ p => HostSource[Option[String]](h, p)
-
   }
+  
   lazy val file_source = "file" ~> "(" ~> stringLit <~ ")" ^^ { //TODO: delimiter
     case path => FileSource[Option[String]](path)
   }
@@ -424,7 +424,8 @@ object Test2 extends FsqlParser {
       "create schema mySchema0 (speed int, time long)",
       "create schema mySchema1 mySchema0",
       "create schema mySchema2 (id int) extends mySchema0",
-      
+      // creat stream 
+      ""
       // select
       "select id, s.speed, stream.time from stream [size 3]as s cross join stream2[size 3]",
       "select id from stream [size 3] as s1 left join suoi [size 3] as s2 on s1.time=s2.thoigian",

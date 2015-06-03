@@ -104,12 +104,29 @@ object FsqlMacros {
       
     }
  **/
-    val result = statement.asInstanceOf[Ast.Select[Option[String]]]
-    val nameOfString = result.streamReference.name
+    statement match {
 
-    c.Expr[Any]( q"""
-        ${c.prefix.tree}.streamsMap($nameOfString).map(x => "1")
-      """)
+
+      case creatSchema@Ast.CreateSchema(_,_,_) =>
+        val tpe = weakTypeOf[CreateSchema[Option[String]]]
+
+        c.Expr[Any]( q"""
+
+            $creatSchema.getSchema(${c.prefix.tree})
+
+            ${c.prefix.tree}.schemas
+        """)
+      
+      case select@Ast.Select(_,_,_,_) =>
+        val nameOfString = select.streamReference.name
+
+        c.Expr[Any]( q"""
+            ${c.prefix.tree}.streamsMap($nameOfString).map(x => "1")
+          """)
+        
+
+      case _ => c.abort(c.enclosingPosition, "not a case")
+      }
   }
 
   def fsqlImpl(c: Context)(queryString: c.Expr[String]) : c.Expr[Any] ={
@@ -120,15 +137,10 @@ object FsqlMacros {
       case Literal(Constant(sql: String))  => sql
       case _ => c.abort(c.enclosingPosition, "Argument to macro must be a String literal")
     }
-    
-    
-    
     compile(c, (parser, s) => parser.parseAllWith(parser.stmt, s), sql)(Literal(Constant(sql)))
     
 //    c.literal(show(c.prefix.tree))
   }
-
- 
 
 }
 
