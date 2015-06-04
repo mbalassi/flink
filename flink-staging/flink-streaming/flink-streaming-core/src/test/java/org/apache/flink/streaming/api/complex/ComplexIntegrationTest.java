@@ -44,11 +44,9 @@ import org.apache.flink.streaming.api.windowing.helper.Delta;
 import org.apache.flink.streaming.api.windowing.helper.Time;
 import org.apache.flink.streaming.api.windowing.helper.Timestamp;
 import org.apache.flink.streaming.util.StreamingMultipleProgramsTestBase;
-import org.apache.flink.streaming.util.TestStreamEnvironment;
 import org.apache.flink.util.Collector;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -114,8 +112,7 @@ public class ComplexIntegrationTest extends StreamingMultipleProgramsTestBase {
 		//i == 18
 		expected2 += "(20,(a,1))";
 
-		//We create a separate environment for this test because of the slot-related to iteration issues.
-		StreamExecutionEnvironment env = new TestStreamEnvironment(4, 32); //StreamExecutionEnvironment.getExecutionEnvironment();
+		StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
 		DataStream<Tuple2<Long, Tuple2<String, Long>>> sourceStream1 = env.addSource(new TupleSource()).setParallelism(1);
 
@@ -735,6 +732,7 @@ public class ComplexIntegrationTest extends StreamingMultipleProgramsTestBase {
 		public String f1;
 
 		//default constructor to qualify as Flink POJO
+		@SuppressWarnings("unused")
 		InnerPojo(){}
 
 		public InnerPojo(Long f0, String f1) {
@@ -772,6 +770,7 @@ public class ComplexIntegrationTest extends StreamingMultipleProgramsTestBase {
 		public int b;
 
 		//default constructor to qualify as Flink POJO
+		@SuppressWarnings("unused")
 		public RectangleClass() {}
 
 		public RectangleClass(int a, int b) {
