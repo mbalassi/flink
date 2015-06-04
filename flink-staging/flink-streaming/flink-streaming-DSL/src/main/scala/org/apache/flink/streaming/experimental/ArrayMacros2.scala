@@ -1,19 +1,17 @@
 package org.apache.flink.streaming.experimental
 
-import scala.reflect.macros.blackbox.Context
 import scala.language.experimental.macros
+import scala.reflect.macros.blackbox.Context
 
 
-trait ArrMappable[T]{
-  def toMap(t:T): Array[Any]
-  def fromMap(map: Map[String,Any]): T
-  def toTuple (t:T): Product
+trait ArrMappable2[T]{
+  def toTuple (t:T):Row
 }
 
-object ArrMappable{
-  implicit def materializeMappable[T] : ArrMappable[T] = macro materializeMappableImpl[T]
+object ArrMappable2{
+  implicit def materializeMappable[T] : ArrMappable2[T] = macro materializeMappableImpl[T]
 
-  def materializeMappableImpl[T: c.WeakTypeTag](c: Context): c.Expr[ArrMappable[T]]= {
+  def materializeMappableImpl[T: c.WeakTypeTag](c: Context): c.Expr[ArrMappable2[T]]= {
     import c.universe._
     val tpe = weakTypeOf[T]
     val companion = tpe.typeSymbol.companion
@@ -42,11 +40,9 @@ object ArrMappable{
     
 
 
-    c.Expr[ArrMappable[T]] { q"""
-      new ArrMappable[$tpe] {
-        def toMap(t: $tpe): Array[Any] = Array(..$toMapParams)
-        def fromMap(map: Map[String,Any]): $tpe = $companion(..$fromMapParams)
-        def toTuple(t: $tpe) : (..$tpes) = ((..$toTuple))
+    c.Expr[ArrMappable2[T]] { q"""
+      new ArrMappable2[$tpe] {
+        def toTuple(t: $tpe):Row  = Row(Array(..$toTuple))
       }
     """ }
   }

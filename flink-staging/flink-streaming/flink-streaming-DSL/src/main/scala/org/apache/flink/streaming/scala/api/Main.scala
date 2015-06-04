@@ -45,20 +45,32 @@ object Main {
     val simpleCars = getCarStream(env)
 
     
-    import org.apache.flink.streaming.experimental.ArrMappable
-    def mapify[T: ArrMappable](t: T) = implicitly[ArrMappable[T]].toMap(t)
+    import org.apache.flink.streaming.experimental.ArrMappable2
+    def mapify[T: ArrMappable2](t: T) = implicitly[ArrMappable2[T]].toTuple(t)
 
-    val rowCar = simpleCars.map( car=>  Row(mapify(car)))
-    rowCar print
-    
-    // register a new stream from source stream
-    val newStream = sqlContext.sql("create stream CarStream carSchema source stream ('rowCar')")
-    
-    println(sqlContext.schemas)
-    println(sqlContext.streamsMap)
-    println(sqlContext.streamSchemaMap)
+    val rowCar = simpleCars//.map( car=>  mapify(car))
+    //rowCar print
+//
+//    // register a new stream from source stream
+    val newStream = sqlContext.sql("create stream CarStream (plate Int) source stream ('rowCar')")
+    println(sqlContext.sql("create schema carSchema3 (pedal String)"))
+
+    val newStream2 = sqlContext.sql("create stream CarStream carSchema3 source stream ('rowCar')")
 
     
+    /*
+    
+        println(sqlContext.schemas)
+        println(sqlContext.streamsMap)
+        println(sqlContext.streamSchemaMap)
+        println(    sqlContext.streamsMap("CarStream").getType()    )*/
+    
+    
+    
+    println(newStream2)
+    
+    
+
     env.execute()
 
   }
@@ -73,8 +85,6 @@ object Main {
 
     }*/
   
-
-
 
   def getTextDataStream (env : StreamExecutionEnvironment): DataStream[String] ={
     env.readTextFile(inputPath)

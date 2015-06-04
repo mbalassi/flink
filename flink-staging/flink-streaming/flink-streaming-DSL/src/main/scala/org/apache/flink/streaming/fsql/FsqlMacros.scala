@@ -128,13 +128,19 @@ object FsqlMacros {
       
       //create stream CarStream carSchema source stream ('cars')
       //CreateStream(CarStream,Schema(Some(carSchema),List()),Some(StreamSource(cars)))
+        
+      // TODO: check same member type : schema and row
       case createStream@Ast.CreateStream(streamName,schema,source) =>
-
-        schema.name match {
-          case None => 
-            val x = generateCode(c, schema.copy(name = Some(streamName)).asInstanceOf[Ast.CreateSchema[Option[String]]])
-            c.Expr(q"$x")
+        var schemaName = ""
+        val newSchema = schema.name match {
+          case None =>
+            schemaName = streamName
+            generateCode(c, CreateSchema(streamName, schema, None))
+          
           case Some(name) =>
+            schemaName = name
+            c.Expr[Any](q"")
+        }
             
             // case : source stream
             // get original stream
@@ -147,20 +153,43 @@ object FsqlMacros {
             c.Expr[Any](q"$putSourceStreamToMap")
             
             // put to Map
-            val putSchemaStreamToMap = q"${c.prefix.tree}.streamSchemaMap += ($streamName -> $name)"
+            val putSchemaStreamToMap = q"${c.prefix.tree}.streamSchemaMap += ($streamName -> $schemaName)"
 
+        
+            
             c.Expr[Any] (
               q"""
+                 $newSchema
                  $putSourceStreamToMap
                  $putSchemaStreamToMap
                """)
+            c.Expr[Any](q"$realStream")
+
+        // well done with add stream of case class
+        val listOfTypes = schema.fields.map(_.dataType.toString.toLowerCase.take(3))
+        c.Expr[Any](q"""
+            $newSchema
+            val classfieldsType = $realStream.getType.getTypeClass.getDeclaredFields.toList.map(_.getType.toString.toLowerCase.take(3))
+            val schemaFieldsType = ${c.prefix.tree}.schemas($schemaName).fields.map(_.dataType.toString.toLowerCase.take(3))
+            if (classfieldsType == schemaFieldsType){
+              $putSourceStreamToMap
+              $putSchemaStreamToMap
+            } else {
+              throw new IllegalArgumentException("class and schema do not match")
+            
+            }
             
             
-        }
-        
-        
-        
-        
+        """)
+
+
+
+
+
+
+
+
+
 
       case _ => c.abort(c.enclosingPosition, "not a case")
       }

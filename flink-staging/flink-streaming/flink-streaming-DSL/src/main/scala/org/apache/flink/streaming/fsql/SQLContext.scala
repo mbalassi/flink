@@ -15,7 +15,7 @@ class SQLContext {
   
   lazy val catalog: Catalog = new SimpleCatalog()
   var schemas : Map[String, Schema] = new  HashMap[String, Schema]()
-  var streamsMap : Map[String, DataStream[Row]] = new HashMap[String, DataStream[Row]]()
+  var streamsMap : Map[String, DataStream[_]] = new HashMap[String, DataStream[_]]()
   val streamSchemaMap : Map[String, String] = new mutable.HashMap[String, String]()
 
   def sql(queryString: String) : Any = macro FsqlMacros.fsqlImpl

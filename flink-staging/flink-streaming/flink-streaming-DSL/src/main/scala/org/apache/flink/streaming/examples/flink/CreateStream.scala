@@ -72,15 +72,16 @@ object CreateStream {
     
     // convert from Car to Row
     import org.apache.flink.streaming.experimental.ArrMappable
-    def mapify[T: ArrMappable](t: T) = implicitly[ArrMappable[T]].toMap(t)
+    //def mapify[T: ArrMappable](t: T) = implicitly[ArrMappable[T]].toMap(t)
       
-    val rowCar = carsClass.map(car => Row(mapify(car)))
+    //val rowCar = carsClass.map(car => Row(mapify(car)))
     //rowCar print
     
     
     
-    println("get carEvent typel"+ carsClass.getType().getTypeClass.getCanonicalName )
-    
+    println("get carEvent type: "+ carsClass.getType().getTypeClass.getCanonicalName )
+    println("get carEvent type: "+ carsClass.getType().getTypeClass.getDeclaredFields.toList.map(_.getType.toString.toLowerCase.take(3) ))
+
     // get information from case class
     /*val m = runtimeMirror(getClass.getClassLoader)
     println(weakTypeOf[CarEvent].members.filter(!_.isMethod).map(x=>(x.name,m.staticClass("java.lang."+{ var value = x.typeSignature.toString; if (value=="Int") "Integer" else value})))) // each stream go with a schema (RowTypeInfor)
@@ -104,9 +105,18 @@ object CreateStream {
     //rowCar2 print
     
     println(rowCar2.getType)*/
-    
-    
-    
+
+    /**
+     * * From case class  to tuple
+     */
+
+
+    import org.apache.flink.streaming.experimental.ArrMappable
+    //def mapify2[T: ArrMappable](t: T) = implicitly[ArrMappable[T]].toTuple(t)
+
+    //val rowCar2 = carsClass.map(car => mapify2(car))
+    //rowCar2 print
+
     env.execute()
   }
   
