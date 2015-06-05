@@ -28,7 +28,8 @@ object FsqlMacros {
     
     val result = (for {
       st <- parse(new FsqlParser{}, sql)
-    } yield st).fold( fail => c.abort(toPosition(fail), fail.message), st => generateCode(c, st)  )
+      rslv <- resolvedStreams(st)
+    } yield rslv).fold( fail => c.abort(toPosition(fail), fail.message), rslv => generateCode(c, rslv)  )
 
     result
 
@@ -52,7 +53,7 @@ object FsqlMacros {
     """)*/
   }
 
-  def generateCode  (c: Context, statement : Statement[Option[String]]): c.Expr[Any] = {
+  def generateCode  (c: Context, statement : Statement[Stream]): c.Expr[Any] = {
     import c.universe._
 
     val schemaSyn3 = weakTypeOf[StructField].typeSymbol.companion
@@ -67,9 +68,9 @@ object FsqlMacros {
       p:Schema => q"$schemaSyn2(${p.name}, List(..${p.fields}))"
     }
 
-    val schemaSyn1 = weakTypeOf[CreateSchema[Option[String]]].typeSymbol.companion
+    val schemaSyn1 = weakTypeOf[CreateSchema[Stream]].typeSymbol.companion
 
-    implicit val lift1 = Liftable[CreateSchema[Option[String]]] { p:CreateSchema[Option[String]] =>
+    implicit val lift1 = Liftable[CreateSchema[Stream]] { p:CreateSchema[Stream] =>
       q"$schemaSyn1(${p.s}, ${p.schema}, ${p.parentSchema})"
     }
 /** !!! Important
@@ -110,7 +111,7 @@ object FsqlMacros {
 
 
       case creatSchema@Ast.CreateSchema(_,_,_) =>
-        val tpe = weakTypeOf[CreateSchema[Option[String]]]
+        val tpe = weakTypeOf[CreateSchema[Stream]]
 
         c.Expr[Any]( q"""
 
@@ -146,7 +147,7 @@ object FsqlMacros {
             
             // case : source stream
             // get original stream
-            val realStream = newTermName(source.get.asInstanceOf[StreamSource[Option[String]]].streamName)
+            val realStream = newTermName(source.get.asInstanceOf[StreamSource[Stream]].streamName)
             c.Expr[Any](q"$realStream")
             
             // TODO: convert to row stream
@@ -181,14 +182,14 @@ object FsqlMacros {
         def getIndexFrom(name: String) = schema.fields.map(_.name).indexOf(name)
         def getTypeFrom(name:String) = newTermName(schema.fields.find(_.name == name).get.dataType).toTypeName
 
-        val f = "plate"
+        /*val f = "plate"
         val n =
             q"""
             def map(r : Row) : Any= {
               r.productElement(${getIndexFrom(f)}).asInstanceOf[${getTypeFrom(f)}] + 11
             }
             map _
-           """
+           """*/
         c.Expr[Any](q"""
             $newSchema
             val classfieldsType = $realStream.getType.getTypeClass.getDeclaredFields.toList.map(_.getType.toString.toLowerCase.take(3))
@@ -200,7 +201,7 @@ object FsqlMacros {
               $putSchemaStreamToMap
               
               // convert stream to Row here
-              $classToRow.map($n)
+              $classToRow
               
             } else {
               throw new IllegalArgumentException("class and schema do not match")

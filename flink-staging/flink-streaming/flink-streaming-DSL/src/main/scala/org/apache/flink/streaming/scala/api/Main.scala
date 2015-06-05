@@ -64,16 +64,20 @@ object Main {
     
     
     
+    
+    
     /*
     
         println(sqlContext.schemas)
         println(sqlContext.streamsMap)
         println(sqlContext.streamSchemaMap)
         println(    sqlContext.streamsMap("CarStream").getType()    )*/
-    
-    
 
-    
+
+    /**
+     *  
+     *  SELECT
+     * */
     
 
     env.execute()
