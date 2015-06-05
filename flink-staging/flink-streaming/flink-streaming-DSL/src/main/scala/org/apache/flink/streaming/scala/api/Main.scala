@@ -40,7 +40,7 @@ object Main {
        * * create stream
        */
     // create schema
-     println(sqlContext.sql("create schema carSchema (pedal Int)"))
+     println(sqlContext.sql("create schema carSchema (plate Int)"))
     // create real DataStream
     val simpleCars = getCarStream(env)
 
@@ -55,8 +55,14 @@ object Main {
     val newStream = sqlContext.sql("create stream CarStream (plate Int) source stream ('rowCar')")
     println(sqlContext.sql("create schema carSchema3 (pedal String)"))
 
-    val newStream2 = sqlContext.sql("create stream CarStream carSchema3 source stream ('rowCar')")
+    val newStream2 = sqlContext.sql("create stream CarStream (plate Int) source stream ('rowCar')")
+    
+   newStream2.asInstanceOf[DataStream[_]] print
 
+    
+    
+    
+    
     
     /*
     
@@ -66,8 +72,7 @@ object Main {
         println(    sqlContext.streamsMap("CarStream").getType()    )*/
     
     
-    
-    println(newStream2)
+
     
     
 
@@ -75,7 +80,7 @@ object Main {
 
   }
   
-  
+
   /*     implicit def toRow[M](stream: DataStream[M]): DataStream[Row] = {
 
       import org.apache.flink.streaming.experimental.ArrMappable

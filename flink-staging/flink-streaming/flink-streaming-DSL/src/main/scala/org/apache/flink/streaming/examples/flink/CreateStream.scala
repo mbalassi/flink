@@ -78,9 +78,9 @@ object CreateStream {
     //rowCar print
     
     
-    
     println("get carEvent type: "+ carsClass.getType().getTypeClass.getCanonicalName )
     println("get carEvent type: "+ carsClass.getType().getTypeClass.getDeclaredFields.toList.map(_.getType.toString.toLowerCase.take(3) ))
+    println("get carEvent type: "+ carsClass.map(x=>(x.carId,x.distance)).getType().getTypeClass.getDeclaredFields.toList.head.getType)
 
     // get information from case class
     /*val m = runtimeMirror(getClass.getClassLoader)

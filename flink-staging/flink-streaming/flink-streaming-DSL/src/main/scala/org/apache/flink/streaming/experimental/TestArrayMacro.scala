@@ -9,8 +9,8 @@ object TestArrayMacro {
   def main(args: Array[String]) {
     //def mapify2[Z: ArrMappable2,T](t: Z) = implicitly[ArrMappable2[Z,T]].toZuple(t)
 
-    def toTuple[T: ArrMappable2](z: T) =
-      implicitly[ArrMappable2[T]].toTuple(z)
+    
+    def toTuple[T: ArrMappable2](z: T) = implicitly[ArrMappable2[T]].toTuple(z)
     
     println(toTuple(Car(1,"2")).getClass)
   }

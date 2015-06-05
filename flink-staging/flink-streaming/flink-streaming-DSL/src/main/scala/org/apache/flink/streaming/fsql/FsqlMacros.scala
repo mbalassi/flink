@@ -1,7 +1,9 @@
 package org.apache.flink.streaming.fsql
 
 
+import org.apache.flink.api.common.functions.MapFunction
 import org.apache.flink.streaming.api.scala.DataStream
+import org.apache.flink.streaming.experimental.Row
 
 import scala.reflect.macros.blackbox.Context
 import scala.language.experimental.macros
@@ -164,31 +166,49 @@ object FsqlMacros {
                  $putSchemaStreamToMap
                """)
             c.Expr[Any](q"$realStream")
+        
+        // convert stream to Row
+        val classToRow = q"""
+                             import org.apache.flink.streaming.experimental.ArrMappable2
+                             def toTuple[T: ArrMappable2](z: T) = implicitly[ArrMappable2[T]].toTuple(z)
+                             $realStream.map(x=>toTuple(x))
+                             """
+        
 
         // well done with add stream of case class
         val listOfTypes = schema.fields.map(_.dataType.toString.toLowerCase.take(3))
+        val intType = newTypeName("Int")
+        def getIndexFrom(name: String) = schema.fields.map(_.name).indexOf(name)
+        def getTypeFrom(name:String) = newTermName(schema.fields.find(_.name == name).get.dataType).toTypeName
+
+        val f = "plate"
+        val n =
+            q"""
+            def map(r : Row) : Any= {
+              r.productElement(${getIndexFrom(f)}).asInstanceOf[${getTypeFrom(f)}] + 11
+            }
+            map _
+           """
         c.Expr[Any](q"""
             $newSchema
             val classfieldsType = $realStream.getType.getTypeClass.getDeclaredFields.toList.map(_.getType.toString.toLowerCase.take(3))
             val schemaFieldsType = ${c.prefix.tree}.schemas($schemaName).fields.map(_.dataType.toString.toLowerCase.take(3))
             if (classfieldsType == schemaFieldsType){
+              
               $putSourceStreamToMap
+              
               $putSchemaStreamToMap
+              
+              // convert stream to Row here
+              $classToRow.map($n)
+              
             } else {
               throw new IllegalArgumentException("class and schema do not match")
-            
             }
-            
-            
         """)
 
-
-
-
-
-
-
-
+      //Row(Array(1,"2")).productElement(0).asInstanceOf[$intType] + 10
+       //              $classToRow.map(x => x.productElement(${getIndexFrom(n)}).asInstanceOf[${getTypeFrom(n)}] + 11)
 
 
       case _ => c.abort(c.enclosingPosition, "not a case")
