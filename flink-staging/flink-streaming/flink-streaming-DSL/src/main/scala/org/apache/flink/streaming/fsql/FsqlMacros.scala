@@ -1,9 +1,6 @@
 package org.apache.flink.streaming.fsql
 
 
-import org.apache.flink.api.common.functions.MapFunction
-import org.apache.flink.streaming.api.scala.DataStream
-import org.apache.flink.streaming.experimental.Row
 
 import scala.reflect.macros.blackbox.Context
 import scala.language.experimental.macros

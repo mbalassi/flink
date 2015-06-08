@@ -21,7 +21,7 @@ package org.apache.flink.streaming.experimental
  * This is used for executing Table API operations. We use manually generated
  * TypeInfo to check the field types and create serializers and comparators.
  */
-class Row(arity: Int) extends Product {
+ class Row(arity: Int) extends Product {
 
   private val fields = new Array[Any](arity)
 
