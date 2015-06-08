@@ -17,10 +17,7 @@
 
 package org.apache.flink.streaming.api.graph;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.PrintWriter;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -57,7 +54,7 @@ import org.slf4j.LoggerFactory;
  * necessary to build the jobgraph for the execution.
  * 
  */
-public class StreamGraph extends StreamingPlan {
+public class StreamGraph extends StreamingPlan implements Serializable{
 
 	private static final Logger LOG = LoggerFactory.getLogger(StreamGraph.class);
 	private final static String DEAFULT_JOB_NAME = "Flink Streaming Job";

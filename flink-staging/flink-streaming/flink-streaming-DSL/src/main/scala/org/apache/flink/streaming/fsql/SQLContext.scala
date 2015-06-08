@@ -1,23 +1,25 @@
 package org.apache.flink.streaming.fsql
 
 import org.apache.flink.streaming.api.scala.DataStream
-import org.apache.flink.streaming.experimental.Row
 import org.apache.flink.streaming.fsql.Ast._
+import org.apache.flink.streaming.fsql.macros.FsqlMacros
 
 import scala.collection.mutable
 import scala.collection.mutable.{HashMap, Map}
-import scala.language.experimental.macros
 
 
-class SQLContext {
+
+
+class SQLContext extends Serializable {
   
   self =>
-  
-  lazy val catalog: Catalog = new SimpleCatalog()
+
   var schemas : Map[String, Schema] = new  HashMap[String, Schema]()
-  var streamsMap : Map[String, DataStream[Row]] = new HashMap[String, DataStream[Row]]()
+  var streamsMap : Map[String, DataStream[org.apache.flink.streaming.fsql.Row]] = new HashMap[String, DataStream[org.apache.flink.streaming.fsql.Row]]()
   val streamSchemaMap : Map[String, String] = new mutable.HashMap[String, String]()
 
+
+  import scala.language.experimental.macros
   def sql(queryString: String) : Any = macro FsqlMacros.fsqlImpl
 
 }

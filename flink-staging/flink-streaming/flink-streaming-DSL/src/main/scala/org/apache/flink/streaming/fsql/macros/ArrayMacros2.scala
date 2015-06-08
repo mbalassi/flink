@@ -1,11 +1,12 @@
-package org.apache.flink.streaming.experimental
+package org.apache.flink.streaming.fsql.macros
+
 
 import scala.language.experimental.macros
 import scala.reflect.macros.blackbox.Context
 
 
 trait ArrMappable2[T]{
-  def toTuple (t:T):Row
+  def toTuple (t:T): org.apache.flink.streaming.fsql.Row
 }
 
 object ArrMappable2{
@@ -42,7 +43,7 @@ object ArrMappable2{
 
     c.Expr[ArrMappable2[T]] { q"""
       new ArrMappable2[$tpe] {
-        def toTuple(t: $tpe):Row  = Row(Array(..$toTuple))
+        def toTuple(t: $tpe):org.apache.flink.streaming.fsql.Row  = org.apache.flink.streaming.fsql.Row(Array(..$toTuple))
       }
     """ }
   }

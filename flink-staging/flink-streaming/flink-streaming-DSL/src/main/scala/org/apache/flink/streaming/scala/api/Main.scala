@@ -1,40 +1,23 @@
 package org.apache.flink.streaming.scala.api
 
-import org.apache.flink.streaming.experimental.{ArrMappable, Row}
 import org.apache.flink.streaming.fsql.SQLContext
 import org.apache.flink.streaming.api.scala.{DataStream, StreamExecutionEnvironment}
 import org.apache.flink.streaming.api.scala._
-
-
+import org.apache.flink.streaming.fsql.macros.ArrMappable
 
 
 object Main {
 //  case class SimpleCarEvent( speed: Int, time: Long) extends Serializable
-  case class Car (plate: Int) extends Serializable
+  case class Car (plate: Int, price: Int) extends Serializable
 
   def main(args: Array[String]) {
     val sqlContext = new SQLContext()
     println(sqlContext.sql("create schema carSchema2 (speed int)"))
-    //println(sqlContext.sql("create schema myschema2 (time long) extends myschema"))
 
     val env = StreamExecutionEnvironment.getExecutionEnvironment
     
     
     val cars = getTextDataStream(env)
-    
-    //sqlContext.streamsMap += ("cars" -> cars.map(car => Row(Array(car))))
-      /**
-       * convert stream of case class to stream of Row
-       */
-
-/*  import org.apache.flink.streaming.experimental.ArrMappable
-    def mapify[T: ArrMappable](t: T) = implicitly[ArrMappable[T]].toMap(t)
-
-    val rowCar = cars.map(car => Car(car)).map( car=>  Row(mapify(car)))
-    sqlContext.streamsMap += ("cars" -> rowCar)
-
-    val h = sqlContext.sql("select * from cars")
-    h.asInstanceOf[DataStream[_]] print*/
 
       /**
        * * create stream
@@ -44,41 +27,27 @@ object Main {
     // create real DataStream
     val simpleCars = getCarStream(env)
 
-    
-    import org.apache.flink.streaming.experimental.ArrMappable2
-    def mapify[T: ArrMappable2](t: T) = implicitly[ArrMappable2[T]].toTuple(t)
 
-    val rowCar = simpleCars//.map( car=>  mapify(car))
-    //rowCar print
+    val rowCar = simpleCars
 //
 //    // register a new stream from source stream
-    val newStream = sqlContext.sql("create stream CarStream (plate Int) source stream ('rowCar')")
-    println(sqlContext.sql("create schema carSchema3 (pedal String)"))
+    val newStream = sqlContext.sql("create stream CarStream (plate Int, price Int) source stream ('rowCar')")
+    //println(sqlContext.sql("create schema carSchema3 (pedal String)"))
 
-    val newStream2 = sqlContext.sql("create stream CarStream (plate Int) source stream ('rowCar')")
+    println(newStream)
+    //val newStream2 = sqlContext.sql("create stream CarStream (plate Int) source stream ('rowCar')")
     
-   newStream2.asInstanceOf[DataStream[_]] print
-
-    
-    
-    
-    
-    
-    
-    
-    /*
-    
-        println(sqlContext.schemas)
-        println(sqlContext.streamsMap)
-        println(sqlContext.streamSchemaMap)
-        println(    sqlContext.streamsMap("CarStream").getType()    )*/
-
+  // newStream2.asInstanceOf[DataStream[_]] print
 
     /**
      *  
      *  SELECT
      * */
     
+
+    
+    val dStream = sqlContext.sql("select plate from CarStream")
+    println(dStream)
 
     env.execute()
 
@@ -100,7 +69,7 @@ object Main {
   }
   
   def getCarStream (env : StreamExecutionEnvironment) : DataStream [Car] = {
-    Seq(Car(8888)).toStream
+    Seq(Car(8888,2)).toStream
   }
 
   private val inputPath: String = "./flink-staging/flink-streaming/flink-streaming-DSL/src/main/scala/org/apache/flink/streaming/util/carEvent.txt"

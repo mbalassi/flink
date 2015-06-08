@@ -58,7 +58,7 @@ import org.apache.flink.streaming.api.operators.StreamGroupedFold
 import org.apache.flink.streaming.api.operators.StreamMap
 import org.apache.flink.streaming.api.operators.StreamFold
 
-class DataStream[T](javaStream: JavaStream[T]) {
+class DataStream[T](javaStream: JavaStream[T]) extends  Serializable{
 
   /**
    * Gets the underlying java DataStream object.

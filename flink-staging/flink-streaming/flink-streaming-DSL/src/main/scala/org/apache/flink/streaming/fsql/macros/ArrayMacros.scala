@@ -1,7 +1,7 @@
-package org.apache.flink.streaming.experimental
+package org.apache.flink.streaming.fsql.macros
 
-import scala.reflect.macros.blackbox.Context
 import scala.language.experimental.macros
+import scala.reflect.macros.blackbox.Context
 
 
 trait ArrMappable[T]{

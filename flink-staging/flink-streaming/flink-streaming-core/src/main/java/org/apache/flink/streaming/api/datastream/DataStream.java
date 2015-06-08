@@ -17,6 +17,7 @@
 
 package org.apache.flink.streaming.api.datastream;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -101,7 +102,7 @@ import org.apache.flink.streaming.util.serialization.SerializationSchema;
  *            The type of the DataStream, i.e., the type of the elements of the
  *            DataStream.
  */
-public class DataStream<OUT> {
+public class DataStream<OUT> implements Serializable {
 
 	protected static Integer counter = 0;
 	protected final StreamExecutionEnvironment environment;

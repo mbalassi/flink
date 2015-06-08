@@ -65,7 +65,7 @@ import com.esotericsoftware.kryo.Serializer;
  * necessary to construct streaming topologies.
  * 
  */
-public abstract class StreamExecutionEnvironment {
+public abstract class StreamExecutionEnvironment implements Serializable {
 
 	private static int defaultLocalParallelism = Runtime.getRuntime().availableProcessors();
 

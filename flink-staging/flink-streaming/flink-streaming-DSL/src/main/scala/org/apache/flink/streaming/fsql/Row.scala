@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.flink.streaming.experimental
+package org.apache.flink.streaming.fsql
 
 /**
  * This is used for executing Table API operations. We use manually generated

@@ -340,7 +340,7 @@ class StreamExecutionEnvironment(javaEnv: JavaEnv) {
 
 }
 
-object StreamExecutionEnvironment {
+object StreamExecutionEnvironment extends Serializable {
   
   private[flink] def clean[F <: AnyRef](f: F, checkSerializable: Boolean = true): F = {
     ClosureCleaner.clean(f, checkSerializable)

@@ -1,5 +1,7 @@
 package org.apache.flink.streaming.experimental
 
+import org.apache.flink.streaming.fsql.macros.ArrMappable2
+
 /**
  * Created by kidio on 04/06/15.
  */
@@ -10,9 +12,9 @@ object TestArrayMacro {
     //def mapify2[Z: ArrMappable2,T](t: Z) = implicitly[ArrMappable2[Z,T]].toZuple(t)
 
     
-    def toTuple[T: ArrMappable2](z: T) = implicitly[ArrMappable2[T]].toTuple(z)
+    //def toTuple[T: ArrMappable2](z: T) = implicitly[ArrMappable2[T]].toTuple(z)
     
-    println(toTuple(Car(1,"2")).getClass)
+    //println(toTuple(Car(1,"2")).getClass)
   }
 
 }

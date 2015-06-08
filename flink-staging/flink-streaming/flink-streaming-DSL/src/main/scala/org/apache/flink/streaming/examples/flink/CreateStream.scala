@@ -3,7 +3,8 @@ package org.apache.flink.streaming.examples.flink
 import org.apache.flink.api.common.typeinfo.{TypeInformation, BasicTypeInfo}
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.streaming.api.scala._
-import org.apache.flink.streaming.experimental.{RowTypeInfo, Row, Tuples}
+import org.apache.flink.streaming.experimental.Tuples
+import org.apache.flink.streaming.fsql.Row
 import scala.reflect.runtime.universe._
 
 import org.apache.flink.streaming.api.scala.{DataStream, StreamExecutionEnvironment}
@@ -71,7 +72,6 @@ object CreateStream {
     println(fields)
     
     // convert from Car to Row
-    import org.apache.flink.streaming.experimental.ArrMappable
     //def mapify[T: ArrMappable](t: T) = implicitly[ArrMappable[T]].toMap(t)
       
     //val rowCar = carsClass.map(car => Row(mapify(car)))
@@ -110,8 +110,7 @@ object CreateStream {
      * * From case class  to tuple
      */
 
-
-    import org.apache.flink.streaming.experimental.ArrMappable
+    import org.apache.flink.streaming.fsql.macros.ArrMappable
     //def mapify2[T: ArrMappable](t: T) = implicitly[ArrMappable[T]].toTuple(t)
 
     //val rowCar2 = carsClass.map(car => mapify2(car))
