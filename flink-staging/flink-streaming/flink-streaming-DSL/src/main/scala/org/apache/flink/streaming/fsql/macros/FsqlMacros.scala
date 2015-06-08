@@ -140,8 +140,26 @@ object FsqlMacros {
                  val schema = ${c.prefix.tree}.schemas(schemaName)
                  val position = schema.fields.map(_.name).indexOf($name)
                  val fieldType = schema.fields.find(_.name == $name).get.dataType
-                 r.productElement(position)
+                 r.productElement(position).asInstanceOf[Int] + 1
               """
+            }
+
+            case all@Ast.AllColumns(_) => q"r"
+      
+            case cons@Ast.Constant(tpe, value) =>{
+              q"""
+                  ${value.asInstanceOf[Long]}.asInstanceOf[Long]
+              """
+            }
+
+            case arth@Ast.ArithExpr(lsh, op, rsh) => {
+              op match {
+                case "+" => q"${genProject(lsh)} + ${genProject(rsh)} "
+                case "-" => q"${genProject(lsh)} - ${genProject(rsh)} "
+                case "*" => q"${genProject(lsh)} * ${genProject(rsh)} "
+                case "/" => q"${genProject(lsh)} / ${genProject(rsh)} "
+
+              }
             }
             case _ => c.abort(c.enclosingPosition, "not support not column")
           }

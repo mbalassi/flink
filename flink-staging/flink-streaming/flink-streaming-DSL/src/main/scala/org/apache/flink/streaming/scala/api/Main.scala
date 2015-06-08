@@ -1,6 +1,6 @@
 package org.apache.flink.streaming.scala.api
 
-import org.apache.flink.streaming.fsql.SQLContext
+import org.apache.flink.streaming.fsql.{Row, SQLContext}
 import org.apache.flink.streaming.api.scala.{DataStream, StreamExecutionEnvironment}
 import org.apache.flink.streaming.api.scala._
 import org.apache.flink.streaming.fsql.macros.ArrMappable
@@ -12,9 +12,9 @@ object Main {
 
   def main(args: Array[String]) {
     val sqlContext = new SQLContext()
-    println(sqlContext.sql("create schema carSchema2 (speed int)"))
 
     val env = StreamExecutionEnvironment.getExecutionEnvironment
+
     
     
     val cars = getTextDataStream(env)
@@ -26,7 +26,6 @@ object Main {
      println(sqlContext.sql("create schema carSchema (plate Int)"))
     // create real DataStream
     val simpleCars = getCarStream(env)
-
 
     val rowCar = simpleCars
 //
@@ -46,23 +45,13 @@ object Main {
     
 
     
-    val dStream = sqlContext.sql("select plate from CarStream")
-    println(dStream)
+    val dStream = sqlContext.sql("select * from CarStream")
+    dStream.asInstanceOf[DataStream[Row]] print
 
     env.execute()
 
   }
-  
 
-  /*     implicit def toRow[M](stream: DataStream[M]): DataStream[Row] = {
-
-      import org.apache.flink.streaming.experimental.ArrMappable
-      def mapify[T: ArrMappable](t: T) = implicitly[ArrMappable[T]].toMap(t)
-
-      stream.map((x:M) => Row(mapify(x)))
-
-    }*/
-  
 
   def getTextDataStream (env : StreamExecutionEnvironment): DataStream[String] ={
     env.readTextFile(inputPath)
