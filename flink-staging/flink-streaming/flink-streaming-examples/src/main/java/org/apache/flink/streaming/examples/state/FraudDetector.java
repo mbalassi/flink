@@ -19,6 +19,7 @@ package org.apache.flink.streaming.examples.state;
 
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.java.tuple.Tuple3;
+import org.apache.flink.core.fs.FileSystem;
 import org.apache.flink.streaming.api.checkpoint.CheckpointedAsynchronously;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
@@ -44,9 +45,9 @@ public class FraudDetector {
 		env.setNumberOfExecutionRetries(10);
 
 		DataStream<Tuple3<STATE, TRANSITION, STATE>> transitions =
-				env.addSource(new TransitionSource())//.rebalance()
+				env.addSource(new TransitionSource())
 					.map(new StateMap())
-					.writeAsCsv(args[0]);
+					.writeAsCsv(args[0], FileSystem.WriteMode.OVERWRITE);
 
 		// execute program
 		env.execute("FraudDetector");
