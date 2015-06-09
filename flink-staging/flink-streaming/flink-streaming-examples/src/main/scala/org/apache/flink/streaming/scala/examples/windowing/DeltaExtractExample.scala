@@ -57,6 +57,7 @@ object DeltaExtractExample {
 
   }
   
+  
   // util func
   private def countingStream(): Stream[Counting] = {
     def mapper (x: Int): Counting = {
