@@ -296,14 +296,14 @@ object FsqlMacros {
            */
           case derivedStream@Ast.DerivedStream(name, winSpec,subSelect,join) =>{
             // gen subSelect -> add to SQLContext
-            val subSelectTree = generateCode(c,subSelect).tree
+            val subStreamTree = generateCode(c,subSelect).tree
 
-            //TODO: convert tuple stream to Rowstream
+            //TODO: productIterator not working with isBasicType
             val fieldNames = subSelect.projection.map(x=> x.aliasName)
-            c.Expr[Any](
+            val subQueryTree = 
               q"""
                 // gen dataStream (tuple)
-                val tempStream = $subSelectTree
+                val tempStream = $subStreamTree
                 
                 // gen Schema
                 val types = tempStream.asInstanceOf[DataStream[_]].getType()
@@ -319,17 +319,34 @@ object FsqlMacros {
                 val schema = org.apache.flink.streaming.fsql.Ast.Schema(Some($name), structFields)
                 
                 // convert dataStream to Row
-                schema
+                
+                val rowStream = 
+                  if (types.isBasicType)
+                    tempStream.map(x=> org.apache.flink.streaming.fsql.Row(Array[Any](x)))
+                  else
+                   
+                    tempStream.map(x=>org.apache.flink.streaming.fsql.Row(x.productIterator.toArray))
+                
+                // put 
+                if(${c.prefix.tree}.streamsMap.contains($name))
+                  throw new IllegalArgumentException(" temporary Stream exists!")
+                ${c.prefix.tree}.streamsMap +=($name -> rowStream)
+                
+                ${c.prefix.tree}.schemas    +=($name -> schema)
+                
+                ${c.prefix.tree}.streamSchemaMap    +=($name -> $name)
+
                 
                 """
-                //$fieldNames.zip(types)
-            //.map(case (name, type) => StructField(name, type))
-            /*import org.apache.flink.streaming.fsql.macros.ArrMappable2
-            def toTuple[T: ArrMappable2](z: T) = implicitly[ArrMappable2[T]].toTuple(z)
-
-            val newRowStream = tempStream.map(x=>toTuple(x))
-            ${c.prefix.tree}.streamsMap+=($name, newRowStream)*/
+           
+            val x = ConcreteStream(Stream(name,None,true), winSpec, join)
+            val allTree = generateCode(c,sel.copy(streamReference = x))
             
+            c.Expr[Any](
+              q"""
+                $subQueryTree
+                $allTree
+              """
             
             )
             

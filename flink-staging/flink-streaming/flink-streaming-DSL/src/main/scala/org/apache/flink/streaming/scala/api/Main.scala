@@ -56,25 +56,31 @@ object Main {
     fStream.asInstanceOf[DataStream[_]] print*/
 
     val stream5 = sqlContext.sql("select plate, price from CarStream")
-    println(stream5.asInstanceOf[DataStream[_]].getType().getGenericParameters.toArray.toList.map(x => x.toString))
-    println(    stream5.asInstanceOf[DataStream[_]].getType().isBasicType)
+    //println(stream5.asInstanceOf[DataStream[_]].getType().getGenericParameters.toArray.toList.map(x => x.toString))
+    //println(    stream5.asInstanceOf[DataStream[_]].getType().isBasicType)
     
 
-    val stream6 = sqlContext.sql("select * from (select plate,price from CarStream) as p")
+    val stream6 = sqlContext.sql("select c.price + 1 from (select plate , price from CarStream) as c")
+//    val stream6 = sqlContext.sql("select c.plate from (select plate , price from CarStream)[Size 1] as c")
+
+
+
     /*
-    
-    
-      println(stream6.asInstanceOf[DataStream[_]].getType())
-      stream6.asInstanceOf[DataStream[_]] print
-    */
-    println("Stream6: "+ stream6)
-    
-    
+          println(stream6.asInstanceOf[DataStream[_]].getType())
+          stream6.asInstanceOf[DataStream[_]] print
+
+        println("Stream6: "+ stream6)
+        */
     
     
     
     
-    //println(sqlContext.streamsMap)
+
+    
+
+
+    println(stream6.asInstanceOf[DataStream[_]].getType())
+    stream6.asInstanceOf[DataStream[_]] print
     
     
     

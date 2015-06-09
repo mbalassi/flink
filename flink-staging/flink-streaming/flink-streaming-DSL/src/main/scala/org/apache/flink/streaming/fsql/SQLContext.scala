@@ -18,7 +18,6 @@ class SQLContext extends Serializable {
   var streamsMap : Map[String, DataStream[org.apache.flink.streaming.fsql.Row]] = new HashMap[String, DataStream[org.apache.flink.streaming.fsql.Row]]()
   val streamSchemaMap : Map[String, String] = new mutable.HashMap[String, String]()
 
-
   import scala.language.experimental.macros
   def sql(queryString: String) : Any = macro FsqlMacros.fsqlImpl
 
