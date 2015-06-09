@@ -18,11 +18,10 @@ trait FsqlParser extends RegexParsers with PackratParsers with Ast.Unresolved {
     case err: NoSuccess => fail(err.msg, err.next.pos.column, err.next.pos.line)
   }
 
-
   /**
    * * Top statement
    */
-  lazy val stmt = createSchemaStmtSyntax | createStreamStmtSyntax | selectStmtSyntax // | insertStmtSyntax | splitStmt | deleteStmt
+  lazy val stmt = createSchemaStmtSyntax | createStreamStmtSyntax | selectStmtSyntax // | insertStmtSyntax | splitStmt | MergeStmt
 
 
   /**
@@ -54,7 +53,7 @@ trait FsqlParser extends RegexParsers with PackratParsers with Ast.Unresolved {
   // source
   lazy val source: Parser[Source] = raw_source | derived_source
   lazy val derived_source = "as".i~> subselect ^^ (s => DerivedSource(s.select))
-  lazy val raw_source = "source".i ~> (host_source | file_source | stream_source)// stream_source| ) //TODO
+  lazy val raw_source = "source".i ~> (host_source | file_source | stream_source)
   lazy val host_source = "host" ~> "(" ~> stringLit ~ "," ~ integer <~ ")" ^^ {
     case h ~ _ ~ p => HostSource[Option[String]](h, p)
   }
@@ -132,8 +131,9 @@ trait FsqlParser extends RegexParsers with PackratParsers with Ast.Unresolved {
         column |
         "?"        ^^^ Input[Option[String]]()|
         optParens(simpleExpr)
-    // "?"
     )
+  
+  
   lazy val extraTerms : PackratParser[Expr] = failure("expect an expression")
   lazy val allColumns =
     opt(ident <~ ".") <~ "*" ^^ (schema => AllColumns(schema))
@@ -144,7 +144,6 @@ trait FsqlParser extends RegexParsers with PackratParsers with Ast.Unresolved {
 
   private def col(name: String, schema: Option[String]) =
     Column(name, schema)
-
 
   /**
    *  CLAUSE: FROM
@@ -181,8 +180,7 @@ trait FsqlParser extends RegexParsers with PackratParsers with Ast.Unresolved {
 
   lazy val partition = "partitioned".i ~> "on".i ~> column ^^ Partition.apply
 
-  
-  // derivedStream //TODO: subselect as a stream -> may have a window btw ident and subselect
+
   lazy val derivedStream = subselect ~ opt(windowSpec) ~ opt("as".i) ~ ident ~ opt(joinType) ^^ {
     case s ~ w ~_ ~ i ~ j => DerivedStream(i,w, s.select , j)
   }
@@ -249,7 +247,6 @@ trait FsqlParser extends RegexParsers with PackratParsers with Ast.Unresolved {
       case name ~ _ ~ params ~ _ => Function(name, params)
     }
 
-
   // case
   lazy val caseExpr = "case".i ~> rep(caseCondition) ~ opt(caseElse) <~ "end".i  ^^ {
       case conds ~ elze => Case(conds, elze)
@@ -265,15 +262,10 @@ trait FsqlParser extends RegexParsers with PackratParsers with Ast.Unresolved {
    *  CLAUSE: GROUPBY
    *  Not supported yet: with rollup, collate
    */
-  lazy val groupBy = "group".i ~> "by".i ~> rep1sep(expr, ",") ~ opt(having) ^^ {
-    case exprs ~ h => GroupBy(exprs, h)
+  lazy val groupBy = "group".i ~> "by".i ~> rep1sep(expr, ",")  ^^ {
+    case exprs => GroupBy(exprs)
   }
-  
-  lazy val having = "having".i ~> predicate ^^ Having.apply
 
-
-  
-  
   
   /**
    *  STATEMENT : INSERT //TODO
@@ -288,10 +280,6 @@ trait FsqlParser extends RegexParsers with PackratParsers with Ast.Unresolved {
 //  lazy val selectValue = optParens(selectStmtSyntax) ^^ SelectedInput.apply
 //  lazy val sourceStream = stream ^^ MergedStream.apply
 
-
-  /**
-   * delete //TODO
-   **/
   
 
 
@@ -437,9 +425,12 @@ object Test2 extends FsqlParser {
       "select id from stream [size 3] as s1 left join suoi [size 3] as s2 on s1.time=s2.thoigian",
       "create stream myStream(time long) as (select p.id from oldStream as p)",
       "select id from (select p.id as id from oldStream as p) as q",
-      "select id from stream [size 3] as s1 left join suoi [size 3] as s2 on s1.time=s2.thoigian"
+      "select id from stream [size 3] as s1 left join suoi [size 3] as s2 on s1.time=s2.thoigian",
+      "Select count(*) From (Select * From Bid Where item_id >= 100 and item_id <= 200) [Size 1] p",
+      "Select Count(*) From Bid[Size 1] Where item_id >= 100 and item_id <= 200"
     
     )
+    
     val context = new SQLContext()
 
     
@@ -457,7 +448,7 @@ object Test2 extends FsqlParser {
     println(context.schemas.head)
 
     result = for {
-      st <- timer("parser", 2, parser(new FsqlParser {}, queries(4)))
+      st <- timer("parser", 2, parser(new FsqlParser {}, queries(10)))
 
     } yield st
 

@@ -264,8 +264,7 @@ object Ast{
   case class Comparison3[T](t: Expr[T], op: Operator3, value1: Expr[T], value2: Expr[T]) extends SimplePredicate[T]
 
   
-  case class GroupBy[T](exprs: List[Expr[T]], having: Option[Having[T]])
-  case class Having[T](predicate: Predicate[T])
+  case class GroupBy[T](exprs: List[Expr[T]])
 
   /**
    *  INSERT 
@@ -434,20 +433,6 @@ object Ast{
 
     }
 
-
-    //resolveWindowedStream
-//    def resolveWindowedStream(windowedStream: WindowedStream[Option[String]]): ?[WindowedStream[Stream]] = {
-//      val thisStream: Stream = windowedStream.stream
-//      // resolveWindowedSpec
-      /*def resolveWindowedSpec( windowedStream : WindowedStream[Option[String]]) : ?[Option[WindowSpec[Stream]]] =
-        windowedStream.windowSpec.fold((None.ok: ?[Option[WindowSpec[Stream]]])) {
-          spec => for {
-            w <- resolveWindowing(spec.window)
-            e <- resolveEvery(spec.every)
-            p <- resolvePartition(spec.partition)
-
-          } yield Some(spec.copy(window = w, every =  e , partition =  p))
-    }*/
       def resolveWindowSpec(winSpec: Option[WindowSpec[Option[String]]], thisStream: Stream): ?[Option[WindowSpec[Stream]]] = {
 
         def resolvePolicyBased(based: PolicyBased[Option[String]]): ?[PolicyBased[Stream]] =
@@ -501,12 +486,8 @@ object Ast{
     //groupBy
     def resolveGroupBy(groupBy: GroupBy[Option[String]]) = for {
       t <- sequence(groupBy.exprs map resolve)
-      h <- resolveHavingOpt(groupBy.having)
-    } yield groupBy.copy(exprs = t, having = h)
+    } yield groupBy.copy(exprs = t)
     def resolveGroupByOpt(groupBy: Option[GroupBy[Option[String]]]) = sequenceO(groupBy map resolveGroupBy)
-
-    def resolveHaving(having: Having[Option[String]]) = resolvePredicate(having.predicate) map Having.apply
-    def resolveHavingOpt(having: Option[Having[Option[String]]]) = sequenceO(having map resolveHaving)
   }
 }
 
