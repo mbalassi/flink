@@ -213,33 +213,56 @@ object FsqlMacros {
                 case Gt => q"${genProject(lsh)} > ${genProject(rsh)}"
                 case Ge => q"${genProject(lsh)} >= ${genProject(rsh)}"
               }
-              
             }
-              
+            case And(p1,p2) => q"${genPredicate(p1)} && ${genPredicate(p2)} "
+            case Or(p1,p2) => q"${genPredicate(p1)}  || ${genPredicate(p2)} "
+
             case _ => c.abort(c.enclosingPosition, "do not support other predicate")
           }
           
         }
         
-        val defaultPre = Comparison0[Stream](Ast.Constant((scala.reflect.runtime.universe.typeOf[Boolean] , BasicTypeInfo.BOOLEAN_TYPE_INFO), true).asInstanceOf[Ast.Expr[Stream]])
+        val defaultPre = Comparison0[Stream](Ast.Constant((scala.reflect.runtime.universe.typeOf[Boolean] , 
+                          BasicTypeInfo.BOOLEAN_TYPE_INFO), true).asInstanceOf[Ast.Expr[Stream]])
         val predicateTree = genPredicate(where.getOrElse(Where(defaultPre)).predicate)
-        
-        
-        
-        
-        
 
 
+        /**
+         *      groupBy
+         * */
+        
+         // TODO
+
+        /**
+         *  Window Spec 
+         */
+        
+        def genWindow (windowSpec: Ast.WindowSpec[Stream]): c.Tree = {
+          val value = windowSpec.window.policyBased.value
+          val window = TermName("window")
+          q"org.apache.flink.streaming.api.windowing.helper.Count.of($value)"
+        }
+        
+        
+        
+        def genOptWindow (ws : Option[Ast.WindowSpec[Stream]]): c.Tree = {
+          ws.fold(q"")(w => genWindow(w))
+        }
+        
         streamRefs match {
-          case conc@Ast.ConcreteStream(s, None, None) =>
+          case conc@Ast.ConcreteStream(s, w, None) =>
 
-            c.Expr[Any](
+            val dstreamTree = 
               q"""
                    ${c.prefix.tree}.streamsMap(${s.name}).filter(${mapFunc(List(predicateTree))}).map(${mapFunc(elements)})
-                   
-               """)
+
+               """
             //                   ${c.prefix.tree}.streamsMap(${s.name}).map($mapFunc)
 
+            val window = TermName("window")
+            c.Expr[Any](
+              q"$dstreamTree.$window(${genOptWindow(w)})"
+            )
 
           case _ => c.abort(c.enclosingPosition, "concrete Stream only")
         }
