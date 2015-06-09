@@ -57,11 +57,9 @@ object Main {
     val stream5 = sqlContext.sql("select * from CarStream[Size 1]")
     println(stream5)
 
-
     env.execute()
     
   }
-
 
   def getTextDataStream (env : StreamExecutionEnvironment): DataStream[String] ={
     env.readTextFile(inputPath)
@@ -72,6 +70,5 @@ object Main {
   }
 
   private val inputPath: String = "./flink-staging/flink-streaming/flink-streaming-DSL/src/main/scala/org/apache/flink/streaming/util/carEvent.txt"
-
 
 }
