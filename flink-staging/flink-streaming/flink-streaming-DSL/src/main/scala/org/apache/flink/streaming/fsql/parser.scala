@@ -34,7 +34,7 @@ trait FsqlParser extends RegexParsers with PackratParsers with Ast.Unresolved {
   }
 
   lazy val typedColumn = (ident ~ dataType) ^^ {
-    case n ~ t => StructField(n, t)
+    case n ~ t => StructField(n, t.toLowerCase)
   }
   lazy val anonymous_schema = "(" ~> rep1sep(typedColumn, ",") <~ ")" ^^ { case columns => Schema(None, columns)}
   lazy val new_schema = ident ^^ { case i => Schema(Some(i), List())} | anonymous_schema
@@ -85,7 +85,7 @@ trait FsqlParser extends RegexParsers with PackratParsers with Ast.Unresolved {
     case (c@Column(n, _)) ~ a       => Named(n, a, c)
     case (c@AllColumns(_)) ~ a      => Named("*", a, c)
     case (e@ArithExpr(_, _, _)) ~ a => Named("<constant>", a, e)
-    case (c@Constant(_, _)) ~ a     => Named("<constant", a, c)
+    case (c@Constant(_, _,_)) ~ a     => Named("<constant", a, c)
     case (f@Function(n, _)) ~ a     => Named( n , a, f)
     case (c@Case(_,_)) ~ a          => Named("case", a, c)
     
@@ -350,26 +350,25 @@ trait FsqlParser extends RegexParsers with PackratParsers with Ast.Unresolved {
    * Basic type name
    */
 
-  lazy val dataType = "int".i | "string".i | "double".i | "date".i | "byte".i | "short".i | "long".i | "float".i | "character".i | "boolean".i
+  lazy val dataType = "int".i | "string".i | "double".i | "date".i | "byte".i | "short".i | "long".i | "float".i | "char".i | "boolean".i
   lazy val timeUnit = "microsec".i | "milisec".i | "sec".i | "min".i | "h".i | "d".i
 
   /**
    * Constant
    */
-  def constB(b: Boolean) = const((typeOf[Boolean], BasicTypeInfo.BOOLEAN_TYPE_INFO), b) //JdbcTypes.BOOLEAN
+  def constB(b: Boolean) = const((typeOf[Boolean], BasicTypeInfo.BOOLEAN_TYPE_INFO), b, "boolean") //JdbcTypes.BOOLEAN
 
-  def constS(s: String) = const((typeOf[String], BasicTypeInfo.STRING_TYPE_INFO), s) //JdbcTypes.VARCHAR
+  def constS(s: String) = const((typeOf[String], BasicTypeInfo.STRING_TYPE_INFO), s, "string") //JdbcTypes.VARCHAR
 
-  def constD(d: Double) = const((typeOf[Double], BasicTypeInfo.DOUBLE_TYPE_INFO), d) // JdbcTypes.DOUBLE
+  def constD(d: Double) = const((typeOf[Double], BasicTypeInfo.DOUBLE_TYPE_INFO), d, "double") // JdbcTypes.DOUBLE
 
-  def constL(l: Long) = const((typeOf[Long], BasicTypeInfo.LONG_TYPE_INFO), l) //JdbcTypes.BIGINT
+  def constL(l: Long) = const((typeOf[Long], BasicTypeInfo.LONG_TYPE_INFO), l, "long") //JdbcTypes.BIGINT
 
-  def constI(l: Int) = const((typeOf[Int], BasicTypeInfo.INT_TYPE_INFO), l)
+  def constI(l: Int) = const((typeOf[Int], BasicTypeInfo.INT_TYPE_INFO), l, "int")
 
-  def constNull = const((typeOf[AnyRef], BasicTypeInfo.VOID_TYPE_INFO), null) //JdbcTypes.JAVA_OBJECT
+  def constNull = const((typeOf[AnyRef], BasicTypeInfo.VOID_TYPE_INFO), null, "null") //JdbcTypes.JAVA_OBJECT
 
-  def const(tpe: (Type, BasicTypeInfo[_]), x: Any) = Constant[Option[String]](tpe, x)
-
+  def const(tpe: (Type, BasicTypeInfo[_]), x: Any, typeName :String = "") = Constant[Option[String]](tpe, x, typeName)
 
   /**
    * ==============================================
@@ -434,7 +433,7 @@ object Test2 extends FsqlParser {
     val context = new SQLContext()
 
     
-    var result = for {
+    val result = for {
       st <- timer("parser", 2, parser(new FsqlParser {}, queries(0)))
       //stmt <- timer("parser", 2,  parser(new FsqlParser {}, "select id from (select p.id from oldStream as p) as q"))
       //stmt <- parser(new FsqlParser {}, "select id from stream [size 3] as s1 left join suoi [size 3] as s2 on s1.time=s2.thoigian")
@@ -447,12 +446,18 @@ object Test2 extends FsqlParser {
     println(result.getOrElse("fail").asInstanceOf[Ast.CreateSchema[Option[String]]].getSchema(context))
     println(context.schemas.head)
 
-    result = for {
+    val result2 = for {
       st <- timer("parser", 2, parser(new FsqlParser {}, queries(10)))
 
-    } yield st
+      x <- timer("resolve",3,Ast.resolvedStreams(st))
+      
+    } yield x
 
-    println(result.getOrElse("fail"))
-
+//    println(result.getOrElse("fail"))
+    println(result2.fold( fail => "fail", 
+      rslv => rslv ))
+    
+    //asInstanceOf[Ast.Select[Stream]].streamReference.asInstanceOf[Ast.DerivedStream[Stream]].subSelect.
+    
   }
 }

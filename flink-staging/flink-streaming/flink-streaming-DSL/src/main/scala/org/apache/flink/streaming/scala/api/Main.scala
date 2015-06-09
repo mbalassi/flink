@@ -54,9 +54,8 @@ object Main {
 
     fStream.asInstanceOf[DataStream[_]] print*/
 
-    val stream5 = sqlContext.sql("select * from CarStream[Size 1]")
-    println(stream5)
-
+    val stream5 = sqlContext.sql("select plate, price from CarStream")
+    println(    stream5.asInstanceOf[DataStream[_]].getType().getGenericParameters.toArray.map(x => x.toString))
     env.execute()
     
   }

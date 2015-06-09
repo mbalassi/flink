@@ -32,7 +32,6 @@ object FsqlMacros {
 
     result
 
-
   }
 
   def generateCode  (c: Context, statement : Statement[Stream]): c.Expr[Any] = {
@@ -75,7 +74,6 @@ object FsqlMacros {
       //create stream CarStream carSchema source stream ('cars')
       //CreateStream(CarStream,Schema(Some(carSchema),List()),Some(StreamSource(cars)))
 
-      // TODO: check same member type : schema and row
       case createStream@Ast.CreateStream(streamName, schema, source) =>
         var schemaName = ""
         val newSchema = schema.name match {
@@ -99,8 +97,6 @@ object FsqlMacros {
 
         // put to Map
         val putSchemaStreamToMap = q"${c.prefix.tree}.streamSchemaMap += ($streamName -> $schemaName)"
-
-
 
 
         // convert stream to Row
@@ -153,7 +149,7 @@ object FsqlMacros {
 
             case all@Ast.AllColumns(_) => q"r"
 
-            case cons@Ast.Constant(tpe, value) => {
+            case cons@Ast.Constant(tpe, value, typeName) => {
               tpe._2 match {
                 case BasicTypeInfo.LONG_TYPE_INFO =>
                   q"""
@@ -163,11 +159,35 @@ object FsqlMacros {
                   q"""
                       ${value.asInstanceOf[Boolean]}.asInstanceOf[Boolean]
                   """
+                case BasicTypeInfo.DOUBLE_TYPE_INFO =>
+                  q"""
+                      ${value.asInstanceOf[Double]}.asInstanceOf[Double]
+                  """
+                case BasicTypeInfo.INT_TYPE_INFO =>
+                  q"""
+                      ${value.asInstanceOf[Int]}.asInstanceOf[Int]
+                  """
+
+                case BasicTypeInfo.BYTE_TYPE_INFO =>
+                  q"""
+                      ${value.asInstanceOf[Byte]}.asInstanceOf[Byte]
+                  """
+                case BasicTypeInfo.SHORT_TYPE_INFO =>
+                  q"""
+                      ${value.asInstanceOf[Short]}.asInstanceOf[Short]
+                  """
+                case BasicTypeInfo.FLOAT_TYPE_INFO =>
+                  q"""
+                      ${value.asInstanceOf[Float]}.asInstanceOf[Float]
+                  """
+                case BasicTypeInfo.CHAR_TYPE_INFO =>
+                  q"""
+                      ${value.asInstanceOf[Char]}.asInstanceOf[Char]
+                  """
                 case _  => 
                   q"""
                       ${value.asInstanceOf[String]}
                   """
-                
               }
               
             }
@@ -250,6 +270,9 @@ object FsqlMacros {
         }
         
         streamRefs match {
+          /**
+           *  Concrete Stream 
+           */
           case conc@Ast.ConcreteStream(s, w, None) =>
 
             val dstreamTree = 
@@ -259,11 +282,23 @@ object FsqlMacros {
                """
             //                   ${c.prefix.tree}.streamsMap(${s.name}).map($mapFunc)
 
-            val window = TermName("window")
+            /*val window = TermName("window")
             c.Expr[Any](
               q"$dstreamTree.$window(${genOptWindow(w)})"
-            )
+            )*/
 
+            //c.Expr[Any](q"$sel.getType(${c.prefix.tree})")
+            c.Expr[Any](q"$dstreamTree")
+
+
+          /**
+           * * Derived Stream
+           */
+          /*case derivedStream@Ast.DerivedStream(name, winSpec,subSelect,join) =>{
+
+
+
+          }*/ // end Derived Stream
           case _ => c.abort(c.enclosingPosition, "concrete Stream only")
         }
       }

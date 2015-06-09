@@ -12,7 +12,7 @@ object Ast{
 
   trait Unresolved {
     type Expr = Ast.Expr[Option[String]]
-    type Named  = Ast.Predicate[Option[String]]
+    type Named  = Ast.Named[Option[String]]
     type Statement = Ast.Statement[Option[String]]
     type Source = Ast.Source[Option[String]]
     //type WindowedStream = Ast.WindowedStream[Option[String]]
@@ -145,14 +145,14 @@ object Ast{
   }
   
   case class DerivedStream[T] (name : String, windowSpec: Option[WindowSpec[T]],subSelect: Select[T], join: Option[Join[T]]) extends StreamReferences[T]{
-    def streams = Stream(name, None) :: join.fold(List[Stream]())(_.stream.streams)
-    
+    def streams = Stream(name, None, true) :: join.fold(List[Stream]())(_.stream.streams)
   }
   
-  case class Stream(name : String, alias: Option[String])
+  case class Stream(name : String, alias: Option[String], isTemp:Boolean = false)
   //case class WindowedStream[T](stream: Stream, windowSpec: Option[WindowSpec[T]])
   case class Named[T](name: String, alias: Option[String], expr: Expr[T]){
     def aliasName = alias getOrElse name
+    
   }
 
           /**
@@ -167,6 +167,13 @@ object Ast{
             
     def streams = streamReference.streams
     override def isQuery = true
+    def localSchema(sqlContext : => SQLContext) : Schema = {
+      Schema(None, getType(sqlContext))
+    }
+
+    def getType[T <: Stream](sqlContext: => SQLContext): List[StructField] = {
+        projection.flatMap(named => named.expr.getType(sqlContext))
+    }    
   }
   
   case class Where[T](predicate: Predicate[T])
@@ -201,16 +208,114 @@ object Ast{
            * * EXPRESSION
            */
   // Expression (previously : Term)
-  sealed trait Expr[T]
-  case class Constant[T](tpe: (Type, TypeInformation[_]), value : Any) extends Expr[T]
-  case class Column[T](name: String, stream : T) extends Expr[T]
-  case class AllColumns[T](schema: T) extends Expr[T]
-  case class Function[T](name: String, params:List[Expr[T]]) extends Expr[T]
-  case class ArithExpr[T](lhs:Expr[T], op: String, rhs:Expr[T]) extends Expr[T]
-  case class Input[T]() extends Expr[T]
-  case class SubSelect[T](select: Select[T]) extends Expr[T]
-  case class ExprList[T](exprs: List[Expr[T]]) extends Expr[T]
-  case class Case[T](conditions: List[(Predicate[T], Expr[T])], elze: Option[Expr[T]]) extends Expr[T]
+  sealed trait Expr[T] {
+       def getType[T <: Stream](sqlContext: => SQLContext): List[StructField]
+       def exprName :String
+  }
+  
+  case class Constant[T](tpe: (Type, TypeInformation[_]), value : Any, typeName :String = "") extends Expr[T]{
+    self =>
+    override def exprName = value.toString
+    override def getType[T <: Stream](sqlContext: => SQLContext): List[StructField] = {
+      List(StructField(self.exprName, typeName))
+      
+    }
+  }
+  case class Column[T](name: String, stream : T) extends Expr[T] {
+    override def exprName = name
+    def getType[T <: Stream](sqlContext: => SQLContext): List[StructField] = {
+      
+      val schemaName = sqlContext.streamSchemaMap(stream.asInstanceOf[Stream].name)
+      val schema = sqlContext.schemas(schemaName)
+      val colType = schema.fields.find(_.name == name).get.dataType.toLowerCase
+      List(StructField(name, colType))
+    }
+    
+  }
+  case class AllColumns[T](stream: T) extends Expr[T] {
+    override def getType[T <: Stream](sqlContext: => SQLContext): List[StructField] = {
+      val schemaName = sqlContext.streamSchemaMap(stream.asInstanceOf[Stream].name)
+      val schema = sqlContext.schemas(schemaName)
+      schema.fields
+    }
+
+    override def exprName: String = "*"
+  }
+  case class Function[T](name: String, params:List[Expr[T]]) extends Expr[T] {
+    override def getType[T <: Stream](sqlContext: => SQLContext): List[StructField] = {
+      name.toLowerCase match {
+        case "sum" => params.head.getType(sqlContext)
+
+        case _ => params.head.getType(sqlContext)
+
+      }
+      
+    }
+
+    override def exprName: String = name
+  }
+  case class ArithExpr[T](lhs:Expr[T], op: String, rhs:Expr[T]) extends Expr[T] {
+    self => 
+    val typeMap : Map[String, Int] = Map(
+      ("string" -> 0),
+      ("char" -> 1) ,
+      ("byte" -> 2),
+      ("short" -> 2),
+      ("int" -> 3),
+      ("long" -> 4),
+      ("float" -> 5),
+      ("double" -> 6)
+    )
+
+    override def getType[T <: Stream](sqlContext: => SQLContext): List[StructField] = {
+      
+        
+      val left = lhs.getType(sqlContext)
+      val right = rhs.getType(sqlContext)
+      val leftPriority = typeMap.get(left.head.dataType.toLowerCase).getOrElse(-10)
+      val rightPriority = typeMap.get(right.head.dataType.toLowerCase).getOrElse(-10)
+      leftPriority*rightPriority match {
+        case 0 if op == "+" => List(StructField(self.exprName, "string"))//left.map(e => e.copy(name = self.exprName ))
+        case 0 => throw  new IllegalArgumentException("can do  '"+ op+ "' with String")
+        case _ if leftPriority >= rightPriority => right.map(e => e.copy(name = self.exprName ))
+        case _ if leftPriority < rightPriority => left.map(e => e.copy(name = self.exprName ))
+      }
+    }
+
+    override def exprName: String = op
+  }
+  
+  case class Input[T]() extends Expr[T] {
+    override def getType[T <: Stream](sqlContext: => SQLContext): List[StructField] = {
+      List(StructField("?", "string"))
+    }
+
+    override def exprName: String = "?"
+  }
+
+  case class SubSelect[T](select: Select[T]) extends Expr[T] {
+    override def getType[T <: Stream](sqlContext: => SQLContext): List[StructField] = {
+      select.projection.flatMap(named => named.expr.getType(sqlContext))
+    }
+
+    override def exprName: String = select.streamReference.name
+  }
+  case class ExprList[T](exprs: List[Expr[T]]) extends Expr[T] {
+    override def getType[T <: Stream](sqlContext: => SQLContext): List[StructField] = {
+      exprs.flatMap(f => f.getType(sqlContext))
+ 
+    }
+
+    override def exprName: String = exprs.map(_.exprName).mkString("|")
+  }
+  case class Case[T](conditions: List[(Predicate[T], Expr[T])], elze: Option[Expr[T]]) extends Expr[T] {
+    override def getType[T <: Stream](sqlContext: => SQLContext): List[StructField] = {
+      conditions.head._2.getType(sqlContext)
+      
+    }
+
+    override def exprName: String = "case"
+  }
 
           /**
            * * OPERATOR
@@ -282,7 +387,7 @@ object Ast{
 
   trait Resolved {
     type Expr = Ast.Expr[Stream]
-    type Named  = Ast.Predicate[Stream]
+    type Named  = Ast.Named[Stream]
     type Statement = Ast.Statement[Stream]
     type Source = Ast.Source[Stream]
     //type WindowedStream = Ast.WindowedStream[Schema]
@@ -341,7 +446,7 @@ object Ast{
       case (f@Function(_, ps)) => resolveFunc(f)
       case ArithExpr(lhs, op, rhs) =>
         for (l <- resolve(lhs); r <- resolve(rhs)) yield ArithExpr(l, op, r)
-      case Constant(tpe, value) => Constant[Stream](tpe, value).ok
+      case Constant(tpe, value, typeName) => Constant[Stream](tpe, value, typeName).ok
       case (c@Case(_, _)) => resolveCase(c)
       case Input() => Input[Stream]().ok
         
