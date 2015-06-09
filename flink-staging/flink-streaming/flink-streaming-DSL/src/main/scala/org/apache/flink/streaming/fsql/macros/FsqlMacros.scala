@@ -1,5 +1,7 @@
 package org.apache.flink.streaming.fsql.macros
 
+
+import org.apache.flink.api.common.typeinfo.BasicTypeInfo
 import org.apache.flink.streaming.fsql._
 
 import scala.language.experimental.macros
@@ -131,6 +133,11 @@ object FsqlMacros {
 
       case sel@Ast.Select(proj, streamRefs, where, groupBy) => {
 
+        /**
+         * *  Projection
+         * @param expr
+         * @return
+         */
         def genProject(expr: Ast.Expr[Stream]): c.Tree = {
           expr match {
             case col@Ast.Column(name, stream) => {
@@ -145,11 +152,24 @@ object FsqlMacros {
             }
 
             case all@Ast.AllColumns(_) => q"r"
-      
-            case cons@Ast.Constant(tpe, value) =>{
-              q"""
-                  ${value.asInstanceOf[Long]}.asInstanceOf[Long]
-              """
+
+            case cons@Ast.Constant(tpe, value) => {
+              tpe._2 match {
+                case BasicTypeInfo.LONG_TYPE_INFO =>
+                  q"""
+                      ${value.asInstanceOf[Long]}.asInstanceOf[Long]
+                  """
+                case BasicTypeInfo.BOOLEAN_TYPE_INFO =>
+                  q"""
+                      ${value.asInstanceOf[Boolean]}.asInstanceOf[Boolean]
+                  """
+                case _  => 
+                  q"""
+                      ${value.asInstanceOf[String]}
+                  """
+                
+              }
+              
             }
 
             case arth@Ast.ArithExpr(lsh, op, rsh) => {
@@ -168,16 +188,46 @@ object FsqlMacros {
           val iType  = tq"Int"
           q"r.asInstanceOf[Row].productElement(0).asInstanceOf[$iType] + 1"*/
         }
+        val elements = proj.map( p => genProject(p.expr))
 
-        val ele = genProject(proj.head.expr)
-
-        val mapFunc =
+        def mapFunc (elements: List[c.Tree]) : c.Tree=
           q"""
              (r: org.apache.flink.streaming.fsql.Row) => {
-              $ele
+              (..$elements)
              }
           """
 
+        /**
+         * * Predicate 
+         * @param predicate
+         * @return
+         */
+        def genPredicate(predicate: Ast.Predicate[Stream]) : c.Tree = {
+          predicate match {
+            case Comparison0(expr) => genProject(expr)
+            case Comparison2(lsh, op, rsh) =>{
+              op match {
+                case Eq => q"${genProject(lsh)} == ${genProject(rsh)}"
+                case Lt => q"${genProject(lsh)} < ${genProject(rsh)}"
+                case Le => q"${genProject(lsh)} <= ${genProject(rsh)}"
+                case Gt => q"${genProject(lsh)} > ${genProject(rsh)}"
+                case Ge => q"${genProject(lsh)} >= ${genProject(rsh)}"
+              }
+              
+            }
+              
+            case _ => c.abort(c.enclosingPosition, "do not support other predicate")
+          }
+          
+        }
+        
+        val defaultPre = Comparison0[Stream](Ast.Constant((scala.reflect.runtime.universe.typeOf[Boolean] , BasicTypeInfo.BOOLEAN_TYPE_INFO), true).asInstanceOf[Ast.Expr[Stream]])
+        val predicateTree = genPredicate(where.getOrElse(Where(defaultPre)).predicate)
+        
+        
+        
+        
+        
 
 
         streamRefs match {
@@ -185,9 +235,11 @@ object FsqlMacros {
 
             c.Expr[Any](
               q"""
-                   ${c.prefix.tree}.streamsMap(${s.name}).map($mapFunc)
+                   ${c.prefix.tree}.streamsMap(${s.name}).filter(${mapFunc(List(predicateTree))}).map(${mapFunc(elements)})
                    
                """)
+            //                   ${c.prefix.tree}.streamsMap(${s.name}).map($mapFunc)
+
 
           case _ => c.abort(c.enclosingPosition, "concrete Stream only")
         }

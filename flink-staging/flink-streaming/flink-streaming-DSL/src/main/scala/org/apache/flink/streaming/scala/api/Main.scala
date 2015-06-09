@@ -43,13 +43,22 @@ object Main {
      *  SELECT
      * */
     
-
     
-    val dStream = sqlContext.sql("select * from CarStream")
-    dStream.asInstanceOf[DataStream[Row]] print
+    val dStream = sqlContext.sql("select plate, price + 1 from CarStream")
+    
+    
+    println(dStream.asInstanceOf[DataStream[_]].getType())
+    
+    val fStream = sqlContext.sql("select plate from CarStream where plate > price")
+    
+    
+    
+    fStream.asInstanceOf[DataStream[_]] print
+
+
 
     env.execute()
-
+    
   }
 
 
