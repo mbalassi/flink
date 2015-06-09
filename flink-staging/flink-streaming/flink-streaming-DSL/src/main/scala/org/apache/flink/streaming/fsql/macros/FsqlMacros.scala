@@ -294,11 +294,47 @@ object FsqlMacros {
           /**
            * * Derived Stream
            */
-          /*case derivedStream@Ast.DerivedStream(name, winSpec,subSelect,join) =>{
+          case derivedStream@Ast.DerivedStream(name, winSpec,subSelect,join) =>{
+            // gen subSelect -> add to SQLContext
+            val subSelectTree = generateCode(c,subSelect).tree
 
+            //TODO: convert tuple stream to Rowstream
+            val fieldNames = subSelect.projection.map(x=> x.aliasName)
+            c.Expr[Any](
+              q"""
+                // gen dataStream (tuple)
+                val tempStream = $subSelectTree
+                
+                // gen Schema
+                val types = tempStream.asInstanceOf[DataStream[_]].getType()
+                val fieldTypes = 
+                  if (types.isBasicType){
+                    List(types)
+                  } else
+                  types.getGenericParameters.toArray.toList.map(x => x.toString).map {
+                  x => if (x=="Int") "int" else x.toLowerCase
+                  
+                  }
+                val structFields = $fieldNames.zip(fieldTypes).map(x => org.apache.flink.streaming.fsql.Ast.StructField(x._1, x._2.toString))
+                val schema = org.apache.flink.streaming.fsql.Ast.Schema(Some($name), structFields)
+                
+                // convert dataStream to Row
+                schema
+                
+                """
+                //$fieldNames.zip(types)
+            //.map(case (name, type) => StructField(name, type))
+            /*import org.apache.flink.streaming.fsql.macros.ArrMappable2
+            def toTuple[T: ArrMappable2](z: T) = implicitly[ArrMappable2[T]].toTuple(z)
 
+            val newRowStream = tempStream.map(x=>toTuple(x))
+            ${c.prefix.tree}.streamsMap+=($name, newRowStream)*/
+            
+            
+            )
+            
 
-          }*/ // end Derived Stream
+          } // end Derived Stream
           case _ => c.abort(c.enclosingPosition, "concrete Stream only")
         }
       }

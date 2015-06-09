@@ -151,7 +151,7 @@ object Ast{
   case class Stream(name : String, alias: Option[String], isTemp:Boolean = false)
   //case class WindowedStream[T](stream: Stream, windowSpec: Option[WindowSpec[T]])
   case class Named[T](name: String, alias: Option[String], expr: Expr[T]){
-    def aliasName = alias getOrElse name
+    def aliasName = alias getOrElse expr.exprName
     
   }
 

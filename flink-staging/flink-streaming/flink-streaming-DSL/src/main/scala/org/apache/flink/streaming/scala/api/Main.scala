@@ -27,6 +27,7 @@ object Main {
     // create real DataStream
     val simpleCars = getCarStream(env)
 
+    
     val rowCar = simpleCars
 //
 //    // register a new stream from source stream
@@ -55,7 +56,31 @@ object Main {
     fStream.asInstanceOf[DataStream[_]] print*/
 
     val stream5 = sqlContext.sql("select plate, price from CarStream")
-    println(    stream5.asInstanceOf[DataStream[_]].getType().getGenericParameters.toArray.map(x => x.toString))
+    println(stream5.asInstanceOf[DataStream[_]].getType().getGenericParameters.toArray.toList.map(x => x.toString))
+    println(    stream5.asInstanceOf[DataStream[_]].getType().isBasicType)
+    
+
+    val stream6 = sqlContext.sql("select * from (select plate,price from CarStream) as p")
+    /*
+    
+    
+      println(stream6.asInstanceOf[DataStream[_]].getType())
+      stream6.asInstanceOf[DataStream[_]] print
+    */
+    println("Stream6: "+ stream6)
+    
+    
+    
+    
+    
+    
+    //println(sqlContext.streamsMap)
+    
+    
+    
+    
+    
+    
     env.execute()
     
   }
