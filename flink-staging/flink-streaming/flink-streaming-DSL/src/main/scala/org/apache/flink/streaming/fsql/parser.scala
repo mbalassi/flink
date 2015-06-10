@@ -125,7 +125,7 @@ trait FsqlParser extends RegexParsers with PackratParsers with Ast.Unresolved {
       caseExpr|
         functionExpr |
         stringLit ^^ constS |
-        numericLit ^^ (n => if (n.contains(".")) constD(n.toDouble) else constL(n.toLong))|
+        numericLit ^^ (n => if (n.contains(".")) constD(n.toDouble) else constI(n.toInt))|
         extraTerms|
         allColumns |
         column |

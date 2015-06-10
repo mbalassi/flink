@@ -60,9 +60,8 @@ object Main {
     //println(    stream5.asInstanceOf[DataStream[_]].getType().isBasicType)
     
 
-    val stream6 = sqlContext.sql("select c.price + 1 from (select plate , price from CarStream) as c")
-//    val stream6 = sqlContext.sql("select c.plate from (select plate , price from CarStream)[Size 1] as c")
-
+    val stream6 = sqlContext.sql("select c.pr + 1000/2.0 from (select plate , pr from (select plate , price + 1 as pr from CarStream) as d) as c")
+//  val stream6 = sqlContext.sql("select c.plate from (select plate , price from CarStream)[Size 1] as c")
 
 
     /*
