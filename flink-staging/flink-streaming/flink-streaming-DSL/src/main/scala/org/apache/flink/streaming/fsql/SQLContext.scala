@@ -21,14 +21,20 @@ class SQLContext extends Serializable {
   import scala.language.experimental.macros
   def sql(queryString: String) : Any = macro FsqlMacros.fsqlImpl
 
+  def parse(p : FsqlParser, str :String) : ?[Ast.Statement[Option[String]]]= {
+    p.parseAllWith(p.stmt, str)
+  }
+
+  def validate(queryString: String) : Any = {
+    val result = (for {
+      st <- parse(new FsqlParser{}, queryString)
+      rslv <- resolvedStreams(st)
+
+    } yield rslv).fold( fail => throw new IllegalArgumentException("cannot parser"), rslv => rslv )
+    result.asInstanceOf[Ast.Select[Stream]].getType(self)//.projection.head.expr.asInstanceOf[ArithExpr[Stream]].rhs.asInstanceOf[ArithExpr[Stream]].rhs.getType(self)
+  }
+
 }
-
-
-
-
-
-
-
 
 
 

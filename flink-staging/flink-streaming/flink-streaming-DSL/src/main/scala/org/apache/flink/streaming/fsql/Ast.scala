@@ -272,16 +272,16 @@ object Ast{
         
       val left = lhs.getType(sqlContext)
       val right = rhs.getType(sqlContext)
+      
       val leftPriority = typeMap.get(left.head.dataType.toLowerCase).getOrElse(-10)
       val rightPriority = typeMap.get(right.head.dataType.toLowerCase).getOrElse(-10)
       leftPriority*rightPriority match {
         case 0 if op == "+" => List(StructField(self.exprName, "string"))//left.map(e => e.copy(name = self.exprName ))
         case 0 => throw  new IllegalArgumentException("can do  '"+ op+ "' with String")
-        case _ if leftPriority >= rightPriority => right.map(e => e.copy(name = self.exprName ))
-        case _ if leftPriority < rightPriority => left.map(e => e.copy(name = self.exprName ))
+        case _ if leftPriority >= rightPriority => left.map(e => e.copy(name = self.exprName ))
+        case _ if leftPriority < rightPriority => right.map(e => e.copy(name = self.exprName ))
       }
     }
-
     override def exprName: String = op
   }
   

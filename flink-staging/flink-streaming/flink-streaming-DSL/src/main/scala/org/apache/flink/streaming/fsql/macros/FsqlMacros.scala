@@ -29,9 +29,7 @@ object FsqlMacros {
       st <- parse(new FsqlParser{}, sql)
       rslv <- resolvedStreams(st)
     } yield rslv).fold( fail => c.abort(toPosition(fail), fail.message), rslv => generateCode(c, rslv)  )
-
     result
-
   }
 
   def generateCode  (c: Context, statement : Statement[Stream]): c.Expr[Any] = {
@@ -56,7 +54,6 @@ object FsqlMacros {
     }
 
     statement match {
-
 
       case createSchema@Ast.CreateSchema(_, _, _) =>
         val tpe = weakTypeOf[CreateSchema[Stream]]
