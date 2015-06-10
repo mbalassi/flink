@@ -594,6 +594,98 @@ object Ast{
     } yield groupBy.copy(exprs = t)
     def resolveGroupByOpt(groupBy: Option[GroupBy[Option[String]]]) = sequenceO(groupBy map resolveGroupBy)
   }
+
+
+
+  /**************************************************************************************************
+    * * 
+    *                           REWRITING
+    *
+    * * 
+    * * *************************************************************************************/
+
+
+  def rewriteQuery(rslv : Statement[Stream]): ?[Statement[Stream]]
+  = rslv match {
+    case s@Select(_,_,_,_) => rewriteSelect(s)
+    case cSchema@CreateSchema(s,schema,p) => CreateSchema[Stream](s,schema,p).ok
+    case cStream@CreateStream(n,schema,source) =>cStream.ok //resolveCreateStream(cs)()
+  }
+
+  def rewriteSelect(select: Select[Stream]): ?[Ast.Select[Stream]] = {
+    for {
+      reStreamRef <- rewriteStreamRef(select.streamReference)
+    } yield select.copy(streamReference = reStreamRef)
+  }
+
+
+
+  def rewriteStreamRef(streamRefs: StreamReferences[Stream]): ?[StreamReferences[Stream]]= streamRefs match {
+    case c@ConcreteStream(stream,windowSpec, join) => for {
+      j <- sequenceO(join map rewriteJoin)
+    } yield c.copy( join = j)
+
+    case d@DerivedStream(name,windowSpec, select, join) =>
+      var reQuery = d
+      var newSelect = select
+      newSelect = 
+        if (!windowSpec.isDefined) {
+        newSelect.streamReference match {
+          case subConc@ConcreteStream(_, ws, _) =>
+            if(ws.isDefined){
+              reQuery= reQuery.copy(windowSpec = ws)
+              newSelect.copy(streamReference = subConc.copy(windowSpec = None))
+            } else
+                newSelect
+          case subDer@DerivedStream(_, ws, _, _) =>
+            if(ws.isDefined){
+              reQuery= reQuery.copy(windowSpec = ws)
+              newSelect.copy(streamReference = subDer.copy(windowSpec = None))
+            } else
+              newSelect
+        }
+      } else
+        select
+      
+      for{
+        s <- rewriteSelect(newSelect)
+        j <- sequenceO(join map rewriteJoin)
+    } yield reQuery.copy(subSelect = s, join = j)
+  }
+
+  def rewriteJoin(join: Join[Stream]): ?[Join[Stream]] = {
+    for {
+      s <- rewriteStreamRef(join.stream)
+    } yield join.copy(stream = s)
+  }
+  
+  /*
+  * 
+  * def resolveStreamRef(streamRefs: StreamReferences[Option[String]]) : ?[StreamReferences[Stream]]= streamRefs match {
+      case c@ConcreteStream(stream,windowSpec, join) => for {
+        ws <- resolveWindowSpec(windowSpec,stream)
+        j <- sequenceO(join map resolveJoin)
+      } yield c.copy(windowSpec = ws, join = j)
+      
+
+      case d@DerivedStream(name,windowSpec, select, join) => for{
+        s <- resolveSelect(select)()
+        ws <- resolveWindowSpec(windowSpec,Stream(name,None)) // TODO: this Stream is derived
+        j <- sequenceO(join map resolveJoin)
+      } yield d.copy(subSelect = s,join = j, windowSpec = ws)
+
+    }
+    
+    def resolveJoin(join: Join[Option[String]]): ?[Join[Stream]] = {
+      for {
+        s <- resolveStreamRef(join.stream)
+        j <- sequenceO(join.joinSpec map resolveJoinSpec)
+      } yield join.copy(stream = s, joinSpec = j)
+
+    }* * */
+
+  
 }
+
 
 
