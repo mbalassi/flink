@@ -76,7 +76,7 @@ object Main {
     println(stream6.asInstanceOf[DataStream[_]].getType())
     stream6.asInstanceOf[DataStream[_]] print
 
-    val stream7 = sqlContext.validate("select c.pr + (1000/2.0) from (select plate , pr from (select plate , price + 1 as pr from CarStream) as d) as c")
+    val stream7 = sqlContext.validate("select c.pr + (1000/'string') from (select plate , pr from (select plate , price + 1 as pr from CarStream) as d) as c")
     println(stream7)
 
 
