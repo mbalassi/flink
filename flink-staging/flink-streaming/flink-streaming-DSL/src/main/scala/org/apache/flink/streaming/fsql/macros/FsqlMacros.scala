@@ -322,7 +322,7 @@ object FsqlMacros {
                     tempStream.map(x=> org.apache.flink.streaming.fsql.Row(Array[Any](x)))
                   else
                    
-                    tempStream.map(x=>org.apache.flink.streaming.fsql.Row(x.productIterator.toArray))
+                    tempStream.map(x=>org.apache.flink.streaming.fsql.Row((x,0).productIterator.toArray.head.asInstanceOf[Product].productIterator.toArray))
                 
                 // put 
                 if(${c.prefix.tree}.streamsMap.contains($name))

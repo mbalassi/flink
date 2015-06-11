@@ -60,10 +60,14 @@ object Main {
     //println(    stream5.asInstanceOf[DataStream[_]].getType().isBasicType)
     
 
-    val stream6 = sqlContext.sql("select c.pr + 1000/2.0 from (select plate , pr from (select plate , price + 1 as pr from CarStream) as d) as c")
+    val stream6 = sqlContext.sql("select c.plate + 1000/2.0 from (select  plate from (select plate , price + 1 as pr from CarStream) as d) as c")
 //  val stream6 = sqlContext.sql("select c.plate from (select plate , price from CarStream)[Size 1] as c")
 
+    
+    
+    
 
+    
     /*
           println(stream6.asInstanceOf[DataStream[_]].getType())
           stream6.asInstanceOf[DataStream[_]] print
@@ -76,9 +80,9 @@ object Main {
     println(stream6.asInstanceOf[DataStream[_]].getType())
     stream6.asInstanceOf[DataStream[_]] print
 
-    val stream7 = sqlContext.validate("select c.pr + (1000/'string') from (select plate , pr from (select plate , price + 1 as pr from CarStream) as d) as c")
+    /*val stream7 = sqlContext.validate("select c.pr from (select  pr from (select plate , price + 1 as pr from CarStream) as d) as c")
     println(stream7)
-
+*/
 
 
 

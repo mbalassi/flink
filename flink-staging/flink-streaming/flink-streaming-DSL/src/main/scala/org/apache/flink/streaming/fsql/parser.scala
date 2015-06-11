@@ -429,7 +429,8 @@ object Test2 extends FsqlParser {
       "Select Count(*) From Bid[Size 1] Where item_id >= 100 and item_id <= 200",
       "select count(price) from (select plate , price from CarStream)[Size 1] as c",
       "select count(price) from (select plate , price  from CarStream [Size 1]) as c",
-      "select * from (select plate , price from (select plate , price from (select plate , price from CarStream [Size 1] ) as e ) as d ) as c"
+      "select * from (select plate , price from (select plate , price from (select plate , price from CarStream [Size 1] ) as e ) as d ) as c",
+      "select c.plate + 1000/2.0 from (select  plate as pr from (select plate , price + 1 as pr from CarStream) as d) as c"
 
     )
     
@@ -450,7 +451,7 @@ object Test2 extends FsqlParser {
     println(context.schemas.head)
 
     val result2 = for {
-      st <- timer("parser", 2, parser(new FsqlParser {}, queries(13)))
+      st <- timer("parser", 2, parser(new FsqlParser {}, queries(15)))
 
       reslv <- timer("resolve",3,Ast.resolvedStreams(st))
       x <- timer("rewrite",3,Ast.rewriteQuery(reslv))

@@ -21,7 +21,7 @@ package org.apache.flink.streaming.fsql
  * This is used for executing Table API operations. We use manually generated
  * TypeInfo to check the field types and create serializers and comparators.
  */
- class Row(arity: Int) extends Product {
+class Row(arity: Int) extends Product {
 
   private val fields = new Array[Any](arity)
 
@@ -34,18 +34,30 @@ package org.apache.flink.streaming.fsql
   def canEqual(that: Any) = false
 
   override def toString = fields.mkString(",")
-
 }
 
 object Row {
-  def apply (arr : Array[Any]) = {
+  def apply (arr : Array[Any]) : Row= {
     val row = new Row(arr.length)
     for (i <- 0 to arr.length-1){
       row.setField(i, arr(i))
     }
     row
   }
-  
+
+/*
+  def apply(p: Product) : Row = {
+    val arr = p.productIterator.toArray
+    apply(arr)
+  }
+*/
+
+/*  def apply(value: Any) : Row = {
+    val row = new Row(1)
+    row.setField(0,value)
+    row
+  }*/
+
 }
 
 
