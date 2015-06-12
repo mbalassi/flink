@@ -7,7 +7,7 @@ import org.apache.flink.api.common.typeinfo.BasicTypeInfo
 import scala.reflect.runtime.universe.{Type, typeOf}
 import scala.util.parsing.combinator._
 
-trait FsqlParser extends RegexParsers with PackratParsers with Ast.Unresolved {
+trait FsqlParser extends RegexParsers  with Ast.Unresolved with PackratParsers{
 
   import Ast._
 
@@ -21,50 +21,48 @@ trait FsqlParser extends RegexParsers with PackratParsers with Ast.Unresolved {
   /**
    * * Top statement
    */
-  lazy val stmt = createSchemaStmtSyntax | createStreamStmtSyntax | selectStmtSyntax // | insertStmtSyntax | splitStmt | MergeStmt
-
+  lazy val stmt = (selectStmtSyntax| createSchemaStmtSyntax | createStreamStmtSyntax   )// | insertStmtSyntax | splitStmt | MergeStmt
 
   /**
    * *  STATEMENT: createSchemaStmtSyntax
    * *
    */
 
-  lazy val createSchemaStmtSyntax: Parser[Statement] = "create".i ~> "schema".i ~> ident ~ new_schema ~ opt("extends".i ~> ident) ^^ {
-    case i ~ n ~ e => CreateSchema(i, n, e)
+  lazy val createSchemaStmtSyntax: PackratParser[Statement] = "create".i ~> "schema".i ~> ident ~ new_schema ~ opt("extends".i ~> ident) ^^ {
+    case i ~ n ~ e => CreateSchema[Option[String]](i, n, e)
   }
 
   lazy val typedColumn = (ident ~ dataType) ^^ {
     case n ~ t => StructField(n, t.toLowerCase)
   }
-  lazy val anonymous_schema = "(" ~> rep1sep(typedColumn, ",") <~ ")" ^^ { case columns => Schema(None, columns)}
-  lazy val new_schema = ident ^^ { case i => Schema(Some(i), List())} | anonymous_schema
-
+  lazy val anonymous_schema:Parser[Schema] = "(" ~> rep1sep(typedColumn, ",") <~ ")" ^^ { case columns => Schema(None, columns)}
+  lazy val new_schema: Parser[Schema] =   anonymous_schema|ident ^^ { case i => Schema(Some(i), List())}
 
   /**
    *  STATEMENT: createStreamStmtSyntax
    * *
    */
 
-  lazy val createStreamStmtSyntax: Parser[Statement] =
+  lazy val createStreamStmtSyntax: PackratParser[Statement] =
     "create".i ~> "stream".i ~> ident ~ new_schema ~ opt(source) ^^ {
       case i ~ schema ~ source => CreateStream(i, schema, source)
     }
-  
+
   // source
-  lazy val source: Parser[Source] = raw_source | derived_source
+  lazy val source: PackratParser[Source] = raw_source | derived_source
   lazy val derived_source = "as".i~> subselect ^^ (s => DerivedSource(s.select))
   lazy val raw_source = "source".i ~> (host_source | file_source | stream_source)
   lazy val host_source = "host" ~> "(" ~> stringLit ~ "," ~ integer <~ ")" ^^ {
     case h ~ _ ~ p => HostSource[Option[String]](h, p)
   }
-  
+
   lazy val file_source = "file" ~> "(" ~> stringLit <~ ")" ^^ { //TODO: delimiter
     case path => FileSource[Option[String]](path)
   }
-  
+
   lazy val stream_source = "stream" ~> "(" ~> stringLit <~ ")" ^^ {
     case stream => StreamSource[Option[String]](stream)
-    
+
   }
 
   /**
@@ -77,7 +75,6 @@ trait FsqlParser extends RegexParsers with PackratParsers with Ast.Unresolved {
   // select clause
   lazy val selectClause = "select".i ~> repsep(named, ",")
 
-
   /**
    *  CLAUSE : NAMED  (PROJECTION)
    */
@@ -88,7 +85,7 @@ trait FsqlParser extends RegexParsers with PackratParsers with Ast.Unresolved {
     case (c@Constant(_, _,_)) ~ a     => Named("<constant", a, c)
     case (f@Function(n, _)) ~ a     => Named( n , a, f)
     case (c@Case(_,_)) ~ a          => Named("case", a, c)
-    
+
     // extra
     case (i@Input()) ~ a                 => Named("?", a, i)
   }
@@ -122,18 +119,18 @@ trait FsqlParser extends RegexParsers with PackratParsers with Ast.Unresolved {
   lazy val arithParens: PackratParser[Expr] = "(" ~> arithExpr <~ ")"
 
   lazy val simpleExpr: PackratParser[Expr] = (
-      caseExpr|
-        functionExpr |
-        stringLit ^^ constS |
-        numericLit ^^ (n => if (n.contains(".")) constD(n.toDouble) else constI(n.toInt))|
-        extraTerms|
-        allColumns |
-        column |
-        "?"        ^^^ Input[Option[String]]()|
-        optParens(simpleExpr)
+    caseExpr|
+      functionExpr |
+      stringLit ^^ constS |
+      numericLit ^^ (n => if (n.contains(".")) constD(n.toDouble) else constI(n.toInt))|
+      extraTerms|
+      allColumns |
+      column |
+      "?"        ^^^ Input[Option[String]]()|
+      optParens(simpleExpr)
     )
-  
-  
+
+
   lazy val extraTerms : PackratParser[Expr] = failure("expect an expression")
   lazy val allColumns =
     opt(ident <~ ".") <~ "*" ^^ (schema => AllColumns(schema))
@@ -148,11 +145,11 @@ trait FsqlParser extends RegexParsers with PackratParsers with Ast.Unresolved {
   /**
    *  CLAUSE: FROM
    */
-  lazy val fromClause : PackratParser[StreamReference]= "from".i ~> streamReference
+  lazy val fromClause = "from".i ~> streamReference
 
 
   // stream Reference
-  lazy val streamReference =  derivedStream | joinedWindowStream | rawStream
+  lazy val streamReference : Parser[StreamReference] =  derivedStream | joinedWindowStream | rawStream
 
   // raw (Windowed)Stream
   /*lazy val rawStream = ident ~ opt("as".i ~> ident)  ^^ {
@@ -169,7 +166,7 @@ trait FsqlParser extends RegexParsers with PackratParsers with Ast.Unresolved {
     case w ~ e ~ p => WindowSpec(w, e, p)
   }
 
-  
+
   lazy val window = "size".i ~> policyBased ^^ Window.apply
   lazy val every = "every".i ~> policyBased ^^ Every.apply
   //lazy val policyBased = (countBased | timeBased)
@@ -184,24 +181,23 @@ trait FsqlParser extends RegexParsers with PackratParsers with Ast.Unresolved {
   lazy val derivedStream = subselect ~ opt(windowSpec) ~ opt("as".i) ~ ident ~ opt(joinType) ^^ {
     case s ~ w ~_ ~ i ~ j => DerivedStream(i,w, s.select , j)
   }
-  
-  
+
+
   // TODO: subselect cannot be a WindowStream(must be flattened)
   lazy val subselect = "("~> selectStmtSyntax <~ ")" ^^ SubSelect.apply
-  
+
   // joinedWindowStream
   // TODO: stream/derivedStream
   lazy val joinedWindowStream = rawStream ~ opt(joinType) ^^ {  case c ~ j => c.copy(join = j)}
   lazy val joinType: PackratParser[Join] =  crossJoin | qualifiedJoin
-  
-  //TODO: [note] if streamReference is complex again => error: not support
+
   lazy val crossJoin = ("cross".i ~> "join".i ~> optParens(streamReference)) ^^ {
     s => Join(s, None, Cross)
   }
   lazy val qualifiedJoin = ("left".i ~> "join".i ~> optParens(streamReference) ~ opt(joinSpec)) ^^ {
     case s ~ j => Join(s, j , LeftOuter)
   }
-  
+
   lazy val joinSpec :PackratParser[JoinSpec] = conditionJoin | namedColumnsJoin
   lazy val conditionJoin = "on".i ~> predicate  ^^ QualifiedJoin.apply
   lazy val namedColumnsJoin = "using".i ~> ident ^^ {
@@ -215,7 +211,7 @@ trait FsqlParser extends RegexParsers with PackratParsers with Ast.Unresolved {
 
   lazy val predicate: PackratParser[Predicate] = (simplePredicate | parens | notPredicate) * (
     "and".i ^^^ { (p1: Predicate, p2: Predicate) => And(p1, p2)}
-    | "or".i ^^^ { (p1: Predicate, p2: Predicate) => Or(p1, p2)}
+      | "or".i ^^^ { (p1: Predicate, p2: Predicate) => Or(p1, p2)}
     )
 
   lazy val parens: PackratParser[Predicate] = "(" ~> predicate <~ ")"
@@ -238,7 +234,6 @@ trait FsqlParser extends RegexParsers with PackratParsers with Ast.Unresolved {
       | expr <~ "is".i ~ "not".i ~ "null".i ^^ { t => Comparison1(t, IsNotNull)}
     //| "exists".i ~> subselect             ^^ { t => Comparison1(t, Exists) }
     //| "not" ~> "exists".i ~> subselect    ^^ { t => Comparison1(t, NotExists)}
-
     )
 
   // function
@@ -249,13 +244,13 @@ trait FsqlParser extends RegexParsers with PackratParsers with Ast.Unresolved {
 
   // case
   lazy val caseExpr = "case".i ~> rep(caseCondition) ~ opt(caseElse) <~ "end".i  ^^ {
-      case conds ~ elze => Case(conds, elze)
+    case conds ~ elze => Case(conds, elze)
   }
 
   lazy val caseCondition = "when".i ~> predicate ~ "then".i ~ expr ^^ {
     case p ~ _ ~ e => (p , e)
   }
-  
+
   lazy val caseElse = "else".i ~> expr
 
   /**
@@ -266,7 +261,7 @@ trait FsqlParser extends RegexParsers with PackratParsers with Ast.Unresolved {
     case exprs => GroupBy(exprs)
   }
 
-  
+
   /**
    *  STATEMENT : INSERT //TODO
    *  // insertStmt // merge
@@ -277,10 +272,10 @@ trait FsqlParser extends RegexParsers with PackratParsers with Ast.Unresolved {
   }*/
 
   lazy val colNames = "(" ~> repsep(ident, ",") <~ ")"
-//  lazy val selectValue = optParens(selectStmtSyntax) ^^ SelectedInput.apply
-//  lazy val sourceStream = stream ^^ MergedStream.apply
+  //  lazy val selectValue = optParens(selectStmtSyntax) ^^ SelectedInput.apply
+  //  lazy val sourceStream = stream ^^ MergedStream.apply
 
-  
+
 
 
   /**
@@ -311,7 +306,7 @@ trait FsqlParser extends RegexParsers with PackratParsers with Ast.Unresolved {
       "is".i | "not".i | "null".i | "between".i | "in".i | "exists".i | "values".i | "create".i |
       "set".i | "union".i | "except".i | "intersect".i |
 
-      "window".i | "schema".i| 
+      "window".i | "schema".i|
       "every".i| "size".i| "partitioned".i |
       "cross".i | "join".i | "left".i
       )
@@ -339,7 +334,7 @@ trait FsqlParser extends RegexParsers with PackratParsers with Ast.Unresolved {
   /**
    * basic type
    */
-  lazy val stringLit: Parser[String] = "'" ~ """([^'\p{Cntrl}\\]|\\[\\/bfnrt]|\\u[a-fA-F0-9]{4})*""".r ~ "'" ^^ { case _ ~ s ~ _ => s}
+  lazy val stringLit = "'" ~ """([^'\p{Cntrl}\\]|\\[\\/bfnrt]|\\u[a-fA-F0-9]{4})*""".r ~ "'" ^^ { case _ ~ s ~ _ => s}
   //  ("\""+"""([^"\p{Cntrl}\\]|\\[\\'"bfnrt]|\\u[a-fA-F0-9]{4})*+"""+"\"").r
 
   lazy val numericLit: Parser[String] = """(\d+(\.\d*)?|\d*\.\d+)""".r // decimalNumber
@@ -385,17 +380,8 @@ trait FsqlParser extends RegexParsers with PackratParsers with Ast.Unresolved {
     case Success(r, n) => println(r)
     case _ => print("nothing")
   }
-
 }
 
-/*object TestFsql extends FsqlParser{
-  def main(args: Array[String]) {
-    printCreateSchemaParser
-    printCreateStreamParser
-  }
-
-  
-}*/
 
 object Test2 extends FsqlParser {
 
@@ -403,10 +389,10 @@ object Test2 extends FsqlParser {
 
   def main(args: Array[String]) {
 
-/*
-    println(parseAllWith(stmt, " select (age + p.hight) * 2 from person p where age >3 and hight <1 or weight = 2"))
-    println("-------" * 10)
-    */
+    /*
+        println(parseAllWith(stmt, " select (age + p.hight) * 2 from person p where age >3 and hight <1 or weight = 2"))
+        println("-------" * 10)
+        */
 
     println("#########" * 10)
 
@@ -430,39 +416,38 @@ object Test2 extends FsqlParser {
       "select count(price) from (select plate , price from CarStream)[Size 1] as c",
       "select count(price) from (select plate , price  from CarStream [Size 1]) as c",
       "select * from (select plate , price from (select plate , price from (select plate , price from CarStream [Size 1] ) as e ) as d ) as c",
-      "select c.plate + 1000/2.0 from (select  plate as pr from (select plate , price + 1 as pr from CarStream) as d) as c"
-
+      "select c.plate + 1000/2.0 from (select plate as pr from (select plate , price + 1 as pr from CarStream) as d) as c", //15
+      "select * from stream"
     )
-    
+
     val context = new SQLContext()
+    /*
+        val result = for {
+          st <- timer("parser", 2, parser(new FsqlParser {}, queries(0)))
+          //stmt <- timer("parser", 2,  parser(new FsqlParser {}, "select id from (select p.id from oldStream as p) as q"))
+          //stmt <- parser(new FsqlParser {}, "select id from stream [size 3] as s1 left join suoi [size 3] as s2 on s1.time=s2.thoigian")
+          //x <- timer("resolve",3,Ast.resolvedStreams(st))
+          //y = stmt.streams
 
-    
-    val result = for {
-      st <- timer("parser", 2, parser(new FsqlParser {}, queries(0)))
-      //stmt <- timer("parser", 2,  parser(new FsqlParser {}, "select id from (select p.id from oldStream as p) as q"))
-      //stmt <- parser(new FsqlParser {}, "select id from stream [size 3] as s1 left join suoi [size 3] as s2 on s1.time=s2.thoigian")
-      //x <- timer("resolve",3,Ast.resolvedStreams(st))
-      //y = stmt.streams
+        } yield st
 
-    } yield st
+        //println(result.getOrElse("fail"))
+        println(result.getOrElse("fail").asInstanceOf[Ast.CreateSchema[Option[String]]].getSchema(context))
+        println(context.schemas.head)*/
 
-    //println(result.getOrElse("fail"))
-    println(result.getOrElse("fail").asInstanceOf[Ast.CreateSchema[Option[String]]].getSchema(context))
-    println(context.schemas.head)
+    (16 to queries.size-1).map { i =>
+      var result2 = for {
+        st <- timer("parser", 2, parser(new FsqlParser {}, queries(i)))
+        reslv <- timer("resolve", 2, Ast.resolvedStreams(st))
+        x <- timer("rewrite", 2, Ast.rewriteQuery(reslv))
+        
+      } yield x
 
-    val result2 = for {
-      st <- timer("parser", 2, parser(new FsqlParser {}, queries(15)))
-
-      reslv <- timer("resolve",3,Ast.resolvedStreams(st))
-      x <- timer("rewrite",3,Ast.rewriteQuery(reslv))
-
-    } yield x
-
-//    println(result.getOrElse("fail"))
-    println(result2.fold( fail => "fail", 
-      rslv => rslv ))
-    
+      // println(result.getOrElse("fail"))
+      println(result2.fold(fail => throw new Exception("fail"), rslv => rslv))
+    }
     //asInstanceOf[Ast.Select[Stream]].streamReference.asInstanceOf[Ast.DerivedStream[Stream]].subSelect.
-    
+
+
   }
 }

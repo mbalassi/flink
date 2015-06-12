@@ -6,6 +6,7 @@ import org.apache.flink.streaming.api.scala._
 import org.apache.flink.streaming.fsql.macros.ArrMappable
 
 
+
 object Main {
 //  case class SimpleCarEvent( speed: Int, time: Long) extends Serializable
   case class Car (plate: Int, price: Int) extends Serializable
@@ -15,8 +16,6 @@ object Main {
 
     val env = StreamExecutionEnvironment.getExecutionEnvironment
 
-    
-    
     val cars = getTextDataStream(env)
 
       /**
@@ -64,21 +63,20 @@ object Main {
 //  val stream6 = sqlContext.sql("select c.plate from (select plate , price from CarStream)[Size 1] as c")
 
     
+    
     /*
           println(stream6.asInstanceOf[DataStream[_]].getType())
           stream6.asInstanceOf[DataStream[_]] print
 
         println("Stream6: "+ stream6)
         */
-    
-
 
     println(stream6.asInstanceOf[DataStream[_]].getType())
     stream6.asInstanceOf[DataStream[_]] print
 
-    /*val stream7 = sqlContext.validate("select c.pr from (select  pr from (select plate , price + 1 as pr from CarStream) as d) as c")
+    val stream7 = sqlContext.validate("select c.pr from (select  pr from (select plate , price + 1 as pr from CarStream) as d) as c")
     println(stream7)
-*/
+
 
 
 
@@ -93,7 +91,8 @@ object Main {
   }
   
   def getCarStream (env : StreamExecutionEnvironment) : DataStream [Car] = {
-    Seq(Car(8888,2)).toStream
+    Seq(Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2))
+      .toStream
   }
 
   private val inputPath: String = "./flink-staging/flink-streaming/flink-streaming-DSL/src/main/scala/org/apache/flink/streaming/util/carEvent.txt"

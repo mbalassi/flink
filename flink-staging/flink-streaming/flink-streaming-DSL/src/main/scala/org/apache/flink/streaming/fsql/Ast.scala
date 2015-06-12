@@ -15,7 +15,6 @@ object Ast{
     type Named  = Ast.Named[Option[String]]
     type Statement = Ast.Statement[Option[String]]
     type Source = Ast.Source[Option[String]]
-    //type WindowedStream = Ast.WindowedStream[Option[String]]
     type Select = Ast.Select[Option[String]]
     type Predicate = Ast.Predicate[Option[String]]
     type PolicyBased = Ast.PolicyBased[Option[String]]
@@ -377,8 +376,6 @@ object Ast{
   
   //case class  Insert[T](stream: WindowedStream[T], colNames: Option[List[String]], source: Source[T])
 
-
-
   /**************************************************************************************************
    * * 
    *                            RESOLVE
@@ -390,7 +387,6 @@ object Ast{
     type Named  = Ast.Named[Stream]
     type Statement = Ast.Statement[Stream]
     type Source = Ast.Source[Stream]
-    //type WindowedStream = Ast.WindowedStream[Schema]
     type Select = Ast.Select[Stream]
     type Predicate = Ast.Predicate[Stream]
     type PolicyBased = Ast.PolicyBased[Stream]
@@ -449,7 +445,7 @@ object Ast{
       case Constant(tpe, value, typeName) => Constant[Stream](tpe, value, typeName).ok
       case (c@Case(_, _)) => resolveCase(c)
       case Input() => Input[Stream]().ok
-        
+      case _ => fail("not support!")
     }
 
     def resolveNamed(n: Named[Option[String]]): ?[Named[Stream]] =
@@ -464,7 +460,7 @@ object Ast{
       env find {
         s =>
           (col.stream, s.alias) match {
-            case (Some(ref), None) => println(ref, s.name, ref == s.name); ref == s.name
+            case (Some(ref), None) =>  ref == s.name
             case (Some(ref), Some(alias)) => (ref == s.name) || (ref == alias)
             case (None, _) => true // assume that we take the first stream
             // if there are more than 1, not working

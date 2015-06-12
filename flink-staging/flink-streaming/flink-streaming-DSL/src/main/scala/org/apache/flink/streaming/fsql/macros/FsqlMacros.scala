@@ -18,17 +18,17 @@ object FsqlMacros {
              (sqlExpr: c.Tree): c.Expr[Any] = {
     
     import c.universe._
-
- 
+    
     def toPosition(f: Failure[_]) = {
       val lineOffset = sql.split("\n").take(f.line - 1).map(_.length).sum
       c.enclosingPosition.withPoint(wrappingPos(List(c.prefix.tree)).startOrPoint + f.column + lineOffset)
     }
-    
+    val timer = Timer(true)
     val result = (for {
-      st <- parse(new FsqlParser{}, sql)
-      rslv <- resolvedStreams(st)
-    } yield rslv).fold( fail => c.abort(toPosition(fail), fail.message), rslv => generateCode(c, rslv)  )
+      st <- timer("parser", 2, parse(new FsqlParser{}, sql))
+      rslv <- timer("resolve", 2, resolvedStreams(st))
+      rw <- timer("rewrite", 2, rewriteQuery(rslv))
+    } yield rslv).fold( fail => c.abort(toPosition(fail), fail.message), rw => timer("gencode", 2, generateCode(c, rw))  )
     result
   }
 
@@ -229,6 +229,7 @@ object FsqlMacros {
                 case Le => q"${genProject(lsh)} <= ${genProject(rsh)}"
                 case Gt => q"${genProject(lsh)} > ${genProject(rsh)}"
                 case Ge => q"${genProject(lsh)} >= ${genProject(rsh)}"
+                case _ => throw new Exception("not support yet") //TODO
               }
             }
             case And(p1,p2) => q"${genPredicate(p1)} && ${genPredicate(p2)} "
@@ -277,7 +278,7 @@ object FsqlMacros {
                    ${c.prefix.tree}.streamsMap(${s.name}).filter(${mapFunc(List(predicateTree))}).map(${mapFunc(elements)})
 
                """
-            //                   ${c.prefix.tree}.streamsMap(${s.name}).map($mapFunc)
+            //${c.prefix.tree}.streamsMap(${s.name}).map($mapFunc)
 
             /*val window = TermName("window")
             c.Expr[Any](
@@ -295,7 +296,6 @@ object FsqlMacros {
             // gen subSelect -> add to SQLContext
             val subStreamTree = generateCode(c,subSelect).tree
 
-            //TODO: productIterator not working with isBasicType
             val fieldNames = subSelect.projection.map(x=> x.aliasName)
             val subQueryTree = 
               q"""
@@ -372,7 +372,6 @@ object FsqlMacros {
 
 }
 
-
 /**
  * 
  *  using mirror in macro, String -> symbol
@@ -392,8 +391,3 @@ object Macros {
   }
 } 
  */
-
-
-
-
-
