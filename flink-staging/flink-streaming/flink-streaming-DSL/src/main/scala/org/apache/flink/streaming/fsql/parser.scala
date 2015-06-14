@@ -407,10 +407,13 @@ object Test2 extends FsqlParser {
       "create stream CarStream carSchema source stream ('cars')",
       // select
       "select id, s.speed, stream.time from stream [size 3]as s cross join stream2[size 3]",
+      "select id, s.speed, stream.time from stream [size 3]as s cross join stream2[size 3]",
+      "select id from stream [size 3] as s1 left join suoi [size 3] as s2 on s1.time=s2.thoigian",
       "select id from stream [size 3] as s1 left join suoi [size 3] as s2 on s1.time=s2.thoigian",
       "create stream myStream(time long) as (select p.id from oldStream as p)",
       "select id from (select p.id as id from oldStream as p) as q",
       "select id from stream [size 3] as s1 left join suoi [size 3] as s2 on s1.time=s2.thoigian",
+      "Select count(*) From (Select * From Bid Where item_id >= 100 and item_id <= 200) [Size 1] p",
       "Select count(*) From (Select * From Bid Where item_id >= 100 and item_id <= 200) [Size 1] p",
       "Select Count(*) From Bid[Size 1] Where item_id >= 100 and item_id <= 200",
       "select count(price) from (select plate , price from CarStream)[Size 1] as c",
@@ -420,6 +423,7 @@ object Test2 extends FsqlParser {
       "select * from stream"
     )
 
+    
     val context = new SQLContext()
     /*
         val result = for {
@@ -435,13 +439,14 @@ object Test2 extends FsqlParser {
         println(result.getOrElse("fail").asInstanceOf[Ast.CreateSchema[Option[String]]].getSchema(context))
         println(context.schemas.head)*/
 
-    (16 to queries.size-1).map { i =>
-      var result2 = for {
-        st <- timer("parser", 2, parser(new FsqlParser {}, queries(i)))
-        reslv <- timer("resolve", 2, Ast.resolvedStreams(st))
-        x <- timer("rewrite", 2, Ast.rewriteQuery(reslv))
-        
-      } yield x
+    
+    (0 to 2*queries.size-1).map { i =>
+      timer(queries(i%(queries.size-1))+"\n",2,"")
+      val result2 = for {
+        st <- timer("parser", 2, parser(new FsqlParser {}, queries(i%(queries.size-1))))
+        rw <- timer("rewrite", 2, Ast.rewriteQuery(st))
+        reslv <- timer("resolve", 2, Ast.resolvedStreams(rw))
+      } yield reslv
 
       // println(result.getOrElse("fail"))
       println(result2.fold(fail => throw new Exception("fail"), rslv => rslv))

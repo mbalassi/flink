@@ -601,14 +601,14 @@ object Ast{
     * * *************************************************************************************/
 
 
-  def rewriteQuery(rslv : Statement[Stream]): ?[Statement[Stream]]
+  def rewriteQuery(rslv : Statement[Option[String]]): ?[Statement[Option[String]]]
   = rslv match {
     case s@Select(_,_,_,_) => rewriteSelect(s)
-    case cSchema@CreateSchema(s,schema,p) => CreateSchema[Stream](s,schema,p).ok
+    case cSchema@CreateSchema(s,schema,p) => CreateSchema[Option[String]](s,schema,p).ok
     case cStream@CreateStream(n,schema,source) =>cStream.ok //resolveCreateStream(cs)()
   }
 
-  def rewriteSelect(select: Select[Stream]): ?[Ast.Select[Stream]] = {
+  def rewriteSelect(select: Select[Option[String]]): ?[Ast.Select[Option[String]]] = {
     for {
       reStreamRef <- rewriteStreamRef(select.streamReference)
     } yield select.copy(streamReference = reStreamRef)
@@ -616,7 +616,7 @@ object Ast{
 
 
 
-  def rewriteStreamRef(streamRefs: StreamReferences[Stream]): ?[StreamReferences[Stream]]= streamRefs match {
+  def rewriteStreamRef(streamRefs: StreamReferences[Option[String]]): ?[StreamReferences[Option[String]]]= streamRefs match {
     case c@ConcreteStream(stream,windowSpec, join) => for {
       j <- sequenceO(join map rewriteJoin)
     } yield c.copy( join = j)
@@ -649,7 +649,7 @@ object Ast{
     } yield reQuery.copy(subSelect = s, join = j)
   }
 
-  def rewriteJoin(join: Join[Stream]): ?[Join[Stream]] = {
+  def rewriteJoin(join: Join[Option[String]]): ?[Join[Option[String]]] = {
     for {
       s <- rewriteStreamRef(join.stream)
     } yield join.copy(stream = s)
@@ -657,7 +657,7 @@ object Ast{
   
   /*
   * 
-  * def resolveStreamRef(streamRefs: StreamReferences[Option[String]]) : ?[StreamReferences[Stream]]= streamRefs match {
+  * def resolveStreamRef(streamRefs: StreamReferences[Option[String]]) : ?[StreamReferences[Option[String]]]= streamRefs match {
       case c@ConcreteStream(stream,windowSpec, join) => for {
         ws <- resolveWindowSpec(windowSpec,stream)
         j <- sequenceO(join map resolveJoin)
@@ -672,7 +672,7 @@ object Ast{
 
     }
     
-    def resolveJoin(join: Join[Option[String]]): ?[Join[Stream]] = {
+    def resolveJoin(join: Join[Option[String]]): ?[Join[Option[String]]] = {
       for {
         s <- resolveStreamRef(join.stream)
         j <- sequenceO(join.joinSpec map resolveJoinSpec)

@@ -94,6 +94,7 @@ object Main {
     Seq(Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2))
       .toStream
   }
+  
 
   private val inputPath: String = "./flink-staging/flink-streaming/flink-streaming-DSL/src/main/scala/org/apache/flink/streaming/util/carEvent.txt"
 

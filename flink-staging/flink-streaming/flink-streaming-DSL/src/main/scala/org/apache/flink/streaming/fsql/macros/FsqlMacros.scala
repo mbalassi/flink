@@ -26,8 +26,8 @@ object FsqlMacros {
     val timer = Timer(true)
     val result = (for {
       st <- timer("parser", 2, parse(new FsqlParser{}, sql))
-      rslv <- timer("resolve", 2, resolvedStreams(st))
-      rw <- timer("rewrite", 2, rewriteQuery(rslv))
+      rw <- timer("rewrite", 2, rewriteQuery(st))
+      rslv <- timer("resolve", 2, resolvedStreams(rw))
     } yield rslv).fold( fail => c.abort(toPosition(fail), fail.message), rw => timer("gencode", 2, generateCode(c, rw))  )
     result
   }
