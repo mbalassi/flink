@@ -381,8 +381,13 @@ object Ast{
     def streams : List[Stream] = Stream(stream,None) :: source.streams
   }
 
+  /**
+   *  SPIT 
+   */
+  case class Split[T](s: String, insertStmts: List[Insert[T]]) extends Statement[T] {
+    def streams : List[Stream] = insertStmts.foldLeft(List[Stream]()) {(l,i) => l ::: i.streams}
+  }
 
-  
   //case class  Insert[T](stream: WindowedStream[T], colNames: Option[List[String]], source: Source[T])
 
   /**************************************************************************************************
@@ -408,7 +413,8 @@ object Ast{
     type Function       = Ast.Function[Stream]
   }
   object Resolved extends  Resolved
-  
+
+
 
   def resolvedStreams(stmt : Statement[Option[String]]): ?[Statement[Stream]]
   = stmt match {
@@ -417,6 +423,7 @@ object Ast{
     case Merge(streams) => Merge[Stream](streams).ok
     case i@Insert(_,_) => resolveInsert(i)()
     case cs@CreateStream(n,schema,source) => resolveCreateStream(cs)()
+    case split@Split(_,_) => resolveSplit(split)()
   }
   
   def resolveSelect (select: Select[Option[String]])(env: List[Stream] = select.streams)= {
@@ -436,15 +443,30 @@ object Ast{
     resolveSourceOpt(createStream.source) map (s => createStream.copy(source = s))
   }
   
-  def resolveInsert( insertStmt: Insert[Option[String]] )(env: List[Stream] = insertStmt.streams) ={
+  def resolveInsert( insertStmt: Ast.Insert[Option[String]] )(env: List[Stream] = insertStmt.streams): ?[Ast.Insert[Stream]] ={
     val r = new ResolveEnv(env)
-    resolveSource(insertStmt.source) map (s => insertStmt.copy(source = s))
+    for {
+      s <- resolveSource(insertStmt.source)
+    } yield insertStmt.copy(source = s)
+  }
+
+  def resolveSplit(splitStmts: Ast.Split[Option[String]])(env: List[Stream]=splitStmts.streams) = {
+    val r = new ResolveEnv(env)
+    for {
+      i <-sequence(splitStmts.insertStmts map (x=>resolveInsert(x)())) 
+    } yield  splitStmts.copy( insertStmts =  i)
   }
   
+  /*
+  * 
+    def resolveProj(proj: List[Named[Option[String]]]): ?[List[Named[Stream]]]
+    = sequence(proj map resolveNamed) * */
+
+
   def resolveSourceOpt (sourceOpt: Option[Source[Option[String]]])= 
     sequenceO(sourceOpt map resolveSource)
   
-  def resolveSource(source: Source[Option[String]])  = source match{
+  def resolveSource(source: Source[Option[String]]): ?[Source[Stream]]  = source match{
     case host@HostSource(h,p,d) => HostSource[Stream](h,p,d).ok
     case file@FileSource(path,d) => FileSource[Stream](path,d).ok
     case stream@StreamSource(streamName) => StreamSource[Stream](streamName).ok
@@ -534,7 +556,7 @@ object Ast{
 
     //projection
     def resolveProj(proj: List[Named[Option[String]]]): ?[List[Named[Stream]]]
-    = sequence(proj map resolveNamed)
+    = sequence(proj map resolveNamed) 
 
 
     //StreamReference
@@ -625,9 +647,10 @@ object Ast{
   = rslv match {
     case s@Select(_,_,_,_) => rewriteSelect(s)
     case m@Merge(_) => m.ok
-    case i@Insert(_,_) => i.ok //TODO: source can be a derived, need to rewrite subselect
     case cSchema@CreateSchema(s,schema,p) => cSchema.ok
+    case i@Insert(_,_) => i.ok //TODO: source can be a derived, need to rewrite subselect
     case cStream@CreateStream(n,schema,source) =>cStream.ok  //TODO: source can be a derived, need to rewrite subselect
+    case split@Split(_,_) => split.ok //TODO: source can be a derived, need to rewrite subselect
   }
 
   def rewriteSelect(select: Select[Option[String]]): ?[Ast.Select[Option[String]]] = {

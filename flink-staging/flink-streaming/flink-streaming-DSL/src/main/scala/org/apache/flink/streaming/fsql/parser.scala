@@ -21,7 +21,7 @@ trait FsqlParser extends RegexParsers  with Ast.Unresolved with PackratParsers{
   /**
    * * Top statement
    */
-  lazy val stmt = (selectStmtSyntax| createSchemaStmtSyntax | createStreamStmtSyntax | MergeStmtSyntax  | insertStmtSyntax)// |  | splitStmt | MergeStmt
+  lazy val stmt = (selectStmtSyntax| createSchemaStmtSyntax | createStreamStmtSyntax | MergeStmtSyntax  | insertStmtSyntax| splitStmtSyntax)// |  | splitStmt | MergeStmt
 
   /**
    * *  STATEMENT: createSchemaStmtSyntax
@@ -62,7 +62,6 @@ trait FsqlParser extends RegexParsers  with Ast.Unresolved with PackratParsers{
 
   lazy val stream_source = "stream" ~> "(" ~> stringLit <~ ")" ^^ {
     case stream => StreamSource[Option[String]](stream)
-
   }
 
   /**
@@ -261,12 +260,10 @@ trait FsqlParser extends RegexParsers  with Ast.Unresolved with PackratParsers{
 
 
   /**
-   *  STATEMENT : INSERT //TODO
-   *  // insertStmt // merge
-	    insertStmt ::= "insert" "into" IDENT (IDENT| typedColumns)? selectStmt*
+   *  STATEMENT : INSERT 
    * */
-  lazy val insertStmtSyntax : PackratParser[Statement]= "insert".i ~> "into".i ~> ident ~ opt("as".i) ~ derived_source ^^ {
-    case i ~ _ ~ s => Insert(i,s)
+  lazy val insertStmtSyntax : PackratParser[Statement]= "insert".i ~> "into".i ~> ident  ~ derived_source ^^ {
+    case i  ~ s => Insert(i,s)
   }
 
   lazy val colNames = "(" ~> repsep(ident, ",") <~ ")"
@@ -278,8 +275,17 @@ trait FsqlParser extends RegexParsers  with Ast.Unresolved with PackratParsers{
    * * STATEMENT : MERGE 
    */
   
-    lazy val MergeStmtSyntax : PackratParser[Statement]= "merge".i ~> ident ~"," ~ rep1sep(ident, ",") ^^ { // make sure there are at least 2 stream
+    lazy val MergeStmtSyntax : PackratParser[Statement]= "merge".i ~> ident ~ "," ~ rep1sep(ident, ",") ^^ { // make sure there are at least 2 stream
     case head ~_~ tail => Merge[Option[String]](head::tail)
+  }
+
+
+
+  /**
+   *  STATEMENT: SPLIT
+   */
+  lazy val splitStmtSyntax : PackratParser[Statement] = "on" ~> ident ~ rep1sep(insertStmtSyntax, ";") ^^ {
+    case i ~ branches => Split(i, branches.map(_.asInstanceOf[Insert[Option[String]]]))
   }
   
   /**
@@ -402,7 +408,7 @@ object Test2 extends FsqlParser {
 
     val timer = Timer(true)
     val queries = Array (
-      // create schema
+/*      // create schema
       "create schema mySchema0 (speed int, time long)",
       "create schema mySchema1 mySchema0",
       "create schema mySchema2 (id int) extends mySchema0",
@@ -421,14 +427,15 @@ object Test2 extends FsqlParser {
       "select id from stream [size 3] as s1 left join suoi [size 3] as s2 on s1.time=s2.thoigian",
       "select id from (select p.id as id from oldStream2 as p) [size 3 partitioned on s] as q",
       "select id from stream [size 3] as s1 left join suoi [size 3] as s2 on s1.time=s2.thoigian",
-      "Select count(*) From (Select * From Bid Where item_id >= 100 and item_id <= 200) [Size 1] p",
-      "Select count(*) From (Select * From Bid Where item_id >= 100 and item_id <= 200) [Size 1] p",
-      "Select Count(*) From Bid[Size 1] Where item_id >= 100 and item_id <= 200",
+      "Select Count(*) From Bid[Size 1] Where  item_id <= 200 or item_id >= 100",
       "select count(price) from (select plate , price from CarStream)[Size 1] as c",
       "select count(price) from (select plate , price  from CarStream [Size 1]) as c",
       "select * from (select plate , price from (select plate , price from (select plate , price from CarStream [Size 1] ) as e ) as d ) as c",
-      "select c.plate + 1000/2.0 from (select plate as pr from (select plate , price + 1 as pr from CarStream) as d) as c", //15
-      "select * from stream"
+      "select c.plate + 1000/2.0 from (select plate as pr from (select plate , price + 1 as pr from CarStream) as d) as c",
+      "Select count(*) From (Select * From Bid Where item_id >= 100 and item_id <= 200) [Size 1] p",
+      "Select count(*) From (Select * From Bid Where item_id >= 100 and item_id <= 200) [Size 1] p",
+      "select * from stream",*/
+      "on x insert into x1 as select f1 from x where f1 = 3; insert into x1  as select f1 from x where f1 = 5"
     
     )
 
@@ -449,9 +456,9 @@ object Test2 extends FsqlParser {
 
     
     (0 to 2*queries.size-1).map { i =>
-      timer(queries(i%(queries.size-1))+"\n",2,"")
+      //timer(queries(i%(queries.size-1))+"\n",2,"")
       val result2 = for {
-        st <- timer("parser", 2, parser(new FsqlParser {}, queries(i%(queries.size-1))))
+        st <- timer("parser", 2, parser(new FsqlParser {}, queries(0)))//i%(queries.size-1)
         rw <- timer("rewrite", 2, Ast.rewriteQuery(st))
         reslv <- timer("resolve", 2, Ast.resolvedStreams(rw))
       } yield reslv
