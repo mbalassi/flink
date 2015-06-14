@@ -114,11 +114,11 @@ object Ast{
   sealed  trait Source[T] {
     def streams: List[Stream]
   }
-  case class HostSource[T](host: String, port : Int) extends Source[T] {
+  case class HostSource[T](host: String, port : Int, delimiter: Option[String]) extends Source[T] {
     def streams = Nil
     
   }
-  case class FileSource[T](fileName: String) extends Source[T] {
+  case class FileSource[T](fileName: String, delimiter: Option[String]) extends Source[T] {
     def streams = Nil
     
   }

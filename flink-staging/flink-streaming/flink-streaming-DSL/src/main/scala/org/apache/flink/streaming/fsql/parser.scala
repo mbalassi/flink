@@ -52,12 +52,12 @@ trait FsqlParser extends RegexParsers  with Ast.Unresolved with PackratParsers{
   lazy val source: PackratParser[Source] = raw_source | derived_source
   lazy val derived_source = "as".i~> subselect ^^ (s => DerivedSource(s.select))
   lazy val raw_source = "source".i ~> (host_source | file_source | stream_source)
-  lazy val host_source = "host" ~> "(" ~> stringLit ~ "," ~ integer <~ ")" ^^ {
-    case h ~ _ ~ p => HostSource[Option[String]](h, p)
+  lazy val host_source = "host" ~> "(" ~> stringLit ~ "," ~ integer ~ opt(","~> stringLit) <~ ")" ^^ {
+    case host ~ _ ~ port ~ delimiter=> HostSource[Option[String]](host, port, delimiter)
   }
 
-  lazy val file_source = "file" ~> "(" ~> stringLit <~ ")" ^^ { //TODO: delimiter
-    case path => FileSource[Option[String]](path)
+  lazy val file_source = "file" ~> "(" ~> stringLit ~ opt(","~> stringLit) <~ ")" ^^ { //TODO: delimiter
+    case path ~ delimiter => FileSource[Option[String]](path, delimiter)
   }
 
   lazy val stream_source = "stream" ~> "(" ~> stringLit <~ ")" ^^ {
@@ -130,7 +130,6 @@ trait FsqlParser extends RegexParsers  with Ast.Unresolved with PackratParsers{
       optParens(simpleExpr)
     )
 
-
   lazy val extraTerms : PackratParser[Expr] = failure("expect an expression")
   lazy val allColumns =
     opt(ident <~ ".") <~ "*" ^^ (schema => AllColumns(schema))
@@ -169,8 +168,6 @@ trait FsqlParser extends RegexParsers  with Ast.Unresolved with PackratParsers{
 
   lazy val window = "size".i ~> policyBased ^^ Window.apply
   lazy val every = "every".i ~> policyBased ^^ Every.apply
-  //lazy val policyBased = (countBased | timeBased)
-  //lazy val countBased : PackratParser[CountBased]= integer <~ "rows" ^^ CountBased.apply
   lazy val policyBased: PackratParser[PolicyBased] = integer ~ opt(timeUnit) ~ opt("on".i ~> column) ^^ { //TODO: should be multiple columns
     case i ~ t ~ c => PolicyBased(i, t, c)
   }
