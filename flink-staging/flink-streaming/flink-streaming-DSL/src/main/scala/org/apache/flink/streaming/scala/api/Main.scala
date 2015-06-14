@@ -64,11 +64,11 @@ object Main {
 
     
     
-    /*
+        /*
           println(stream6.asInstanceOf[DataStream[_]].getType())
           stream6.asInstanceOf[DataStream[_]] print
 
-        println("Stream6: "+ stream6)
+          println("Stream6: "+ stream6)
         */
 
     println(stream6.asInstanceOf[DataStream[_]].getType())
@@ -76,9 +76,6 @@ object Main {
 
     val stream7 = sqlContext.validate("select c.pr from (select  pr from (select plate , price + 1 as pr from CarStream) as d) as c")
     println(stream7)
-
-
-
 
 
 

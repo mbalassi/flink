@@ -21,7 +21,7 @@ trait FsqlParser extends RegexParsers  with Ast.Unresolved with PackratParsers{
   /**
    * * Top statement
    */
-  lazy val stmt = (selectStmtSyntax| createSchemaStmtSyntax | createStreamStmtSyntax   )// | insertStmtSyntax | splitStmt | MergeStmt
+  lazy val stmt = (selectStmtSyntax| createSchemaStmtSyntax | createStreamStmtSyntax | MergeStmtSyntax  )// | insertStmtSyntax | splitStmt | MergeStmt
 
   /**
    * *  STATEMENT: createSchemaStmtSyntax
@@ -274,8 +274,15 @@ trait FsqlParser extends RegexParsers  with Ast.Unresolved with PackratParsers{
   //  lazy val sourceStream = stream ^^ MergedStream.apply
 
 
-
-
+  /**
+   * * STATEMENT : MERGE 
+   */
+  
+    lazy val MergeStmtSyntax = "merge".i ~> ident ~"," ~ rep1sep(ident, ",") ^^ { // make sure there are at least 2 stream
+    case head ~_~ tail => Merge[Option[String]](head::tail)
+    
+  }
+  
   /**
    * ==============================================
    * Utilities
@@ -403,6 +410,8 @@ object Test2 extends FsqlParser {
       // creat stream 
       "create stream CarStream (speed int) source stream ('cars')",
       "create stream CarStream carSchema source stream ('cars')",
+      //merge
+      "merge x1, x2, x3",
       // select
       "select id, s.speed, stream.time from stream [size 3]as s cross join stream2[size 3]",
       "select id, s.speed, stream.time from stream [size 3]as s cross join stream2[size 3]",
@@ -419,6 +428,7 @@ object Test2 extends FsqlParser {
       "select * from (select plate , price from (select plate , price from (select plate , price from CarStream [Size 1] ) as e ) as d ) as c",
       "select c.plate + 1000/2.0 from (select plate as pr from (select plate , price + 1 as pr from CarStream) as d) as c", //15
       "select * from stream"
+    
     )
 
     
@@ -447,7 +457,7 @@ object Test2 extends FsqlParser {
       } yield reslv
 
       // println(result.getOrElse("fail"))
-      println(result2.fold(fail => throw new Exception("fail"), rslv => rslv))
+      println(result2.fold(fail => throw new Exception(fail.message), rslv => rslv))
     }
     //asInstanceOf[Ast.Select[Stream]].streamReference.asInstanceOf[Ast.DerivedStream[Stream]].subSelect.
 

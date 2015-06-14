@@ -90,15 +90,7 @@ object Ast{
     //override def toString : String = s"StructField($name, ${dataType.scalaType}, $nullable )"
 
   }*/
-  
-  /*
-  object StructField {
-    implicit val lift = Liftable[StructField] { s =>
-      q"_root_.org.apache.flink.streaming.fsql.StructField(${s.name}, ${s.dataType}, ${s.nullable})"
-      
-    }
-    
-  }*/
+
   case class Schema(name: Option[String], fields: List[StructField])
 
 
@@ -370,9 +362,20 @@ object Ast{
   
   case class GroupBy[T](fields: List[Column[T]])
 
+
+  /**
+   * * MERGE
+   */
+  case class Merge[T](subStreams: List[String]) extends  Statement[T] {
+    def streams : List[Stream] = subStreams.map(Stream(_, None))
+  }
+  
   /**
    *  INSERT 
    */
+
+
+
   
   //case class  Insert[T](stream: WindowedStream[T], colNames: Option[List[String]], source: Source[T])
 
@@ -405,6 +408,7 @@ object Ast{
   = stmt match {
     case s@Select(_,_,_,_) => resolveSelect(s)(stmt.streams)
     case CreateSchema(s,schema,p) => CreateSchema[Stream](s,schema,p).ok
+    case Merge(streams) => Merge[Stream](streams).ok
     case cs@CreateStream(n,schema,source) => resolveCreateStream(cs)()
   }
   
@@ -605,8 +609,10 @@ object Ast{
   def rewriteQuery(rslv : Statement[Option[String]]): ?[Statement[Option[String]]]
   = rslv match {
     case s@Select(_,_,_,_) => rewriteSelect(s)
-    case cSchema@CreateSchema(s,schema,p) => CreateSchema[Option[String]](s,schema,p).ok
-    case cStream@CreateStream(n,schema,source) =>cStream.ok //resolveCreateStream(cs)()
+    case m@Merge(_) => m.ok
+    case cSchema@CreateSchema(s,schema,p) => cSchema.ok
+    case cStream@CreateStream(n,schema,source) =>cStream.ok  //TODO: source can be a derived, need to rewrite subselect
+    
   }
 
   def rewriteSelect(select: Select[Option[String]]): ?[Ast.Select[Option[String]]] = {
@@ -655,33 +661,7 @@ object Ast{
       s <- rewriteStreamRef(join.stream)
     } yield join.copy(stream = s)
   }
-  
-  /*
-  * 
-  * def resolveStreamRef(streamRefs: StreamReferences[Option[String]]) : ?[StreamReferences[Option[String]]]= streamRefs match {
-      case c@ConcreteStream(stream,windowSpec, join) => for {
-        ws <- resolveWindowSpec(windowSpec,stream)
-        j <- sequenceO(join map resolveJoin)
-      } yield c.copy(windowSpec = ws, join = j)
-      
 
-      case d@DerivedStream(name,windowSpec, select, join) => for{
-        s <- resolveSelect(select)()
-        ws <- resolveWindowSpec(windowSpec,Stream(name,None)) // TODO: this Stream is derived
-        j <- sequenceO(join map resolveJoin)
-      } yield d.copy(subSelect = s,join = j, windowSpec = ws)
-
-    }
-    
-    def resolveJoin(join: Join[Option[String]]): ?[Join[Option[String]]] = {
-      for {
-        s <- resolveStreamRef(join.stream)
-        j <- sequenceO(join.joinSpec map resolveJoinSpec)
-      } yield join.copy(stream = s, joinSpec = j)
-
-    }* * */
-
-  
 }
 
 
