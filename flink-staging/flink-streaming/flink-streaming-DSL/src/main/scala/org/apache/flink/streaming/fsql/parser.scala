@@ -56,7 +56,7 @@ trait FsqlParser extends RegexParsers  with Ast.Unresolved with PackratParsers{
     case host ~ _ ~ port ~ delimiter=> HostSource[Option[String]](host, port, delimiter)
   }
 
-  lazy val file_source = "file" ~> "(" ~> stringLit ~ opt(","~> stringLit) <~ ")" ^^ { //TODO: delimiter
+  lazy val file_source = "file" ~> "(" ~> stringLit ~ opt(","~> stringLit) <~ ")" ^^ { 
     case path ~ delimiter => FileSource[Option[String]](path, delimiter)
   }
 
@@ -172,8 +172,11 @@ trait FsqlParser extends RegexParsers  with Ast.Unresolved with PackratParsers{
     case i ~ t ~ c => PolicyBased(i, t, c)
   }
 
-  lazy val partition = "partitioned".i ~> "on".i ~> column ^^ Partition.apply
+  lazy val partition = "partitioned".i ~> "on".i ~> rep1sep(column, ",") ^^ Partition.apply
 
+  /*  lazy val groupBy = "group".i ~> "by".i ~> rep1sep(expr, ",")  ^^ {
+    case exprs => GroupBy(exprs)
+  }*/
 
   lazy val derivedStream = subselect ~ opt(windowSpec) ~ opt("as".i) ~ ident ~ opt(joinType) ^^ {
     case s ~ w ~_ ~ i ~ j => DerivedStream(i,w, s.select , j)
@@ -229,8 +232,6 @@ trait FsqlParser extends RegexParsers  with Ast.Unresolved with PackratParsers{
       | expr ~ "not".i ~ "between".i ~ expr ~ "and".i ~ expr ^^ { case t1 ~ _ ~ _ ~ t2 ~ _ ~ t3 => Comparison3(t1, NotBetween, t2, t3)}
       | expr <~ "is".i ~ "null".i ^^ { t => Comparison1(t, IsNull)}
       | expr <~ "is".i ~ "not".i ~ "null".i ^^ { t => Comparison1(t, IsNotNull)}
-    //| "exists".i ~> subselect             ^^ { t => Comparison1(t, Exists) }
-    //| "not" ~> "exists".i ~> subselect    ^^ { t => Comparison1(t, NotExists)}
     )
 
   // function
@@ -254,8 +255,8 @@ trait FsqlParser extends RegexParsers  with Ast.Unresolved with PackratParsers{
    *  CLAUSE: GROUPBY
    *  Not supported yet: with rollup, collate
    */
-  lazy val groupBy = "group".i ~> "by".i ~> rep1sep(expr, ",")  ^^ {
-    case exprs => GroupBy(exprs)
+  lazy val groupBy = "group".i ~> "by".i ~> rep1sep(column, ",")  ^^ {
+    case fields => GroupBy(fields)
   }
 
 
@@ -405,10 +406,10 @@ object Test2 extends FsqlParser {
       // select
       "select id, s.speed, stream.time from stream [size 3]as s cross join stream2[size 3]",
       "select id, s.speed, stream.time from stream [size 3]as s cross join stream2[size 3]",
-      "select id from stream [size 3] as s1 left join suoi [size 3] as s2 on s1.time=s2.thoigian",
+      "select id from stream [size 3] as s1 left join suoi [size 3 partitioned on s] as s2 on s1.time=s2.thoigian" ,
       "select id from stream [size 3] as s1 left join suoi [size 3] as s2 on s1.time=s2.thoigian",
       "create stream myStream(time long) as (select p.id from oldStream as p)",
-      "select id from (select p.id as id from oldStream as p) as q",
+      "select id from (select p.id as id from oldStream2 as p) [size 3 partitioned on s] as q",
       "select id from stream [size 3] as s1 left join suoi [size 3] as s2 on s1.time=s2.thoigian",
       "Select count(*) From (Select * From Bid Where item_id >= 100 and item_id <= 200) [Size 1] p",
       "Select count(*) From (Select * From Bid Where item_id >= 100 and item_id <= 200) [Size 1] p",

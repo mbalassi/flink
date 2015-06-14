@@ -184,7 +184,7 @@ object Ast{
   case class WindowSpec[T](window: Window[T], every: Option[Every[T]], partition: Option[Partition[T]])
   case class Window[T](policyBased: PolicyBased[T])
   case class Every[T](policyBased: PolicyBased[T])
-  case class Partition[T](field: Column[T])
+  case class Partition[T](fields: List[Column[T]])
   case class PolicyBased[T] (value: Int, timeUnit: Option[String], onField: Option[Column[T]])
 
 
@@ -368,7 +368,7 @@ object Ast{
   case class Comparison3[T](t: Expr[T], op: Operator3, value1: Expr[T], value2: Expr[T]) extends SimplePredicate[T]
 
   
-  case class GroupBy[T](exprs: List[Expr[T]])
+  case class GroupBy[T](fields: List[Column[T]])
 
   /**
    *  INSERT 
@@ -427,8 +427,8 @@ object Ast{
     sequenceO(sourceOpt map resolveSource)
   
   def resolveSource(source: Source[Option[String]])  = source match{
-    case host@HostSource(h,p) => HostSource[Stream](h,p).ok
-    case file@FileSource(path) => FileSource[Stream](path).ok
+    case host@HostSource(h,p,d) => HostSource[Stream](h,p,d).ok
+    case file@FileSource(path,d) => FileSource[Stream](path,d).ok
     case stream@StreamSource(streamName) => StreamSource[Stream](streamName).ok
     case d@DerivedSource(s)   => resolveSelect(s)() map ( s => DerivedSource(s))
   }
@@ -546,15 +546,16 @@ object Ast{
         def resolveEvery(maybeEvery: Option[Every[Option[String]]]): ?[Option[Every[Stream]]] =
           sequenceO(maybeEvery map { e => resolvePolicyBased(e.policyBased) map (p => e.copy(policyBased = p))})
 
-        def resolvePartition(maybePartition: Option[Partition[Option[String]]]): ?[Option[Partition[Stream]]] =
-          sequenceO(maybePartition map { p => resolveColumn(p.field)(thisStream.name) map Partition.apply})
-
+        def resolvePartition(partition: Partition[Option[String]]) = for {
+          t <- sequence(partition.fields map { f => resolveColumn(f)(thisStream.name)})
+        } yield partition.copy(fields = t)
+        def resolvePartitionOpt(partitionOpt: Option[Partition[Option[String]]]) = sequenceO(partitionOpt map resolvePartition)
 
       sequenceO(winSpec map {
           spec => for {
             w <- resolveWindowing(spec.window)
             e <- resolveEvery(spec.every)
-            p <- resolvePartition(spec.partition)
+            p <- resolvePartitionOpt(spec.partition)
           } yield (spec.copy(window = w, every = e, partition = p))
         }
         )
@@ -586,8 +587,8 @@ object Ast{
     
     //groupBy
     def resolveGroupBy(groupBy: GroupBy[Option[String]]) = for {
-      t <- sequence(groupBy.exprs map resolve)
-    } yield groupBy.copy(exprs = t)
+      t <- sequence(groupBy.fields map resolveColumn)
+    } yield groupBy.copy(fields = t)
     def resolveGroupByOpt(groupBy: Option[GroupBy[Option[String]]]) = sequenceO(groupBy map resolveGroupBy)
   }
 
