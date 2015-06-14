@@ -119,8 +119,12 @@ object Ast{
     def streams = Nil
   }
   
-  case class DerivedSource[T](subSelect: Select[T]) extends Source[T]{
+  case class SubSelectSource[T](subSelect: Select[T]) extends Source[T]{
     def streams = subSelect.streams
+  }
+  
+  case class MergedSource[T](merged: Merge[T]) extends Source[T]{
+    def streams = merged.streams
   }
   
   
@@ -373,7 +377,9 @@ object Ast{
   /**
    *  INSERT 
    */
-
+  case class Insert[T](stream: String, source: Source[T]) extends Statement[T]{
+    def streams : List[Stream] = Stream(stream,None) :: source.streams
+  }
 
 
   
@@ -409,6 +415,7 @@ object Ast{
     case s@Select(_,_,_,_) => resolveSelect(s)(stmt.streams)
     case CreateSchema(s,schema,p) => CreateSchema[Stream](s,schema,p).ok
     case Merge(streams) => Merge[Stream](streams).ok
+    case i@Insert(_,_) => resolveInsert(i)()
     case cs@CreateStream(n,schema,source) => resolveCreateStream(cs)()
   }
   
@@ -422,9 +429,16 @@ object Ast{
     } yield select.copy(projection =  p, streamReference =  s, where = w, groupBy = g)
   }
   
+  
+  
   def resolveCreateStream(createStream : CreateStream[Option[String]])(env: List[Stream] = createStream.streams)  = {
     val r = new ResolveEnv(env)
     resolveSourceOpt(createStream.source) map (s => createStream.copy(source = s))
+  }
+  
+  def resolveInsert( insertStmt: Insert[Option[String]] )(env: List[Stream] = insertStmt.streams) ={
+    val r = new ResolveEnv(env)
+    resolveSource(insertStmt.source) map (s => insertStmt.copy(source = s))
   }
   
   def resolveSourceOpt (sourceOpt: Option[Source[Option[String]]])= 
@@ -434,7 +448,8 @@ object Ast{
     case host@HostSource(h,p,d) => HostSource[Stream](h,p,d).ok
     case file@FileSource(path,d) => FileSource[Stream](path,d).ok
     case stream@StreamSource(streamName) => StreamSource[Stream](streamName).ok
-    case d@DerivedSource(s)   => resolveSelect(s)() map ( s => DerivedSource(s))
+    case subselect@SubSelectSource(s)   => resolveSelect(s)() map ( s => SubSelectSource(s))
+    case merged@MergedSource(m) => MergedSource[Stream](m.asInstanceOf[Merge[Stream]]).ok
   }
 
   private class ResolveEnv (env : List[Stream]) {
@@ -602,7 +617,7 @@ object Ast{
     * * 
     *                           REWRITING
     *
-    * * 
+
     * * *************************************************************************************/
 
 
@@ -610,9 +625,9 @@ object Ast{
   = rslv match {
     case s@Select(_,_,_,_) => rewriteSelect(s)
     case m@Merge(_) => m.ok
+    case i@Insert(_,_) => i.ok //TODO: source can be a derived, need to rewrite subselect
     case cSchema@CreateSchema(s,schema,p) => cSchema.ok
     case cStream@CreateStream(n,schema,source) =>cStream.ok  //TODO: source can be a derived, need to rewrite subselect
-    
   }
 
   def rewriteSelect(select: Select[Option[String]]): ?[Ast.Select[Option[String]]] = {
@@ -620,8 +635,6 @@ object Ast{
       reStreamRef <- rewriteStreamRef(select.streamReference)
     } yield select.copy(streamReference = reStreamRef)
   }
-
-
 
   def rewriteStreamRef(streamRefs: StreamReferences[Option[String]]): ?[StreamReferences[Option[String]]]= streamRefs match {
     case c@ConcreteStream(stream,windowSpec, join) => for {

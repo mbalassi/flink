@@ -21,7 +21,7 @@ trait FsqlParser extends RegexParsers  with Ast.Unresolved with PackratParsers{
   /**
    * * Top statement
    */
-  lazy val stmt = (selectStmtSyntax| createSchemaStmtSyntax | createStreamStmtSyntax | MergeStmtSyntax  )// | insertStmtSyntax | splitStmt | MergeStmt
+  lazy val stmt = (selectStmtSyntax| createSchemaStmtSyntax | createStreamStmtSyntax | MergeStmtSyntax  | insertStmtSyntax)// |  | splitStmt | MergeStmt
 
   /**
    * *  STATEMENT: createSchemaStmtSyntax
@@ -50,7 +50,7 @@ trait FsqlParser extends RegexParsers  with Ast.Unresolved with PackratParsers{
 
   // source
   lazy val source: PackratParser[Source] = raw_source | derived_source
-  lazy val derived_source = "as".i~> subselect ^^ (s => DerivedSource(s.select))
+  lazy val derived_source = "as".i ~> ((selectStmtSyntax ^^ (s => SubSelectSource(s)))| (MergeStmtSyntax ^^ (m => MergedSource(m.asInstanceOf[Merge[Option[String]]]))))
   lazy val raw_source = "source".i ~> (host_source | file_source | stream_source)
   lazy val host_source = "host" ~> "(" ~> stringLit ~ "," ~ integer ~ opt(","~> stringLit) <~ ")" ^^ {
     case host ~ _ ~ port ~ delimiter=> HostSource[Option[String]](host, port, delimiter)
@@ -265,9 +265,9 @@ trait FsqlParser extends RegexParsers  with Ast.Unresolved with PackratParsers{
    *  // insertStmt // merge
 	    insertStmt ::= "insert" "into" IDENT (IDENT| typedColumns)? selectStmt*
    * */
-  /*lazy val insertStmtSyntax = "insert".i ~> "into".i ~> stream ~ opt(colNames) ~ source ^^ {
-    case stream ~ cols ~ source => Insert(stream,cols,source)
-  }*/
+  lazy val insertStmtSyntax : PackratParser[Statement]= "insert".i ~> "into".i ~> ident ~ opt("as".i) ~ derived_source ^^ {
+    case i ~ _ ~ s => Insert(i,s)
+  }
 
   lazy val colNames = "(" ~> repsep(ident, ",") <~ ")"
   //  lazy val selectValue = optParens(selectStmtSyntax) ^^ SelectedInput.apply
@@ -278,9 +278,8 @@ trait FsqlParser extends RegexParsers  with Ast.Unresolved with PackratParsers{
    * * STATEMENT : MERGE 
    */
   
-    lazy val MergeStmtSyntax = "merge".i ~> ident ~"," ~ rep1sep(ident, ",") ^^ { // make sure there are at least 2 stream
+    lazy val MergeStmtSyntax : PackratParser[Statement]= "merge".i ~> ident ~"," ~ rep1sep(ident, ",") ^^ { // make sure there are at least 2 stream
     case head ~_~ tail => Merge[Option[String]](head::tail)
-    
   }
   
   /**
@@ -410,6 +409,9 @@ object Test2 extends FsqlParser {
       // creat stream 
       "create stream CarStream (speed int) source stream ('cars')",
       "create stream CarStream carSchema source stream ('cars')",
+      "create stream myStream(time long) as select p.id from oldStream as p",
+      "create stream myStream(time long) as merge x1, x2, x3",
+
       //merge
       "merge x1, x2, x3",
       // select
@@ -417,7 +419,6 @@ object Test2 extends FsqlParser {
       "select id, s.speed, stream.time from stream [size 3]as s cross join stream2[size 3]",
       "select id from stream [size 3] as s1 left join suoi [size 3 partitioned on s] as s2 on s1.time=s2.thoigian" ,
       "select id from stream [size 3] as s1 left join suoi [size 3] as s2 on s1.time=s2.thoigian",
-      "create stream myStream(time long) as (select p.id from oldStream as p)",
       "select id from (select p.id as id from oldStream2 as p) [size 3 partitioned on s] as q",
       "select id from stream [size 3] as s1 left join suoi [size 3] as s2 on s1.time=s2.thoigian",
       "Select count(*) From (Select * From Bid Where item_id >= 100 and item_id <= 200) [Size 1] p",
@@ -431,7 +432,6 @@ object Test2 extends FsqlParser {
     
     )
 
-    
     val context = new SQLContext()
     /*
         val result = for {
