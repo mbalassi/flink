@@ -1016,7 +1016,7 @@ public abstract class StreamExecutionEnvironment {
 		clean(function);
 		StreamOperator<OUT> sourceOperator = new StreamSource<OUT>(function);
 
-		return new DataStreamSource<OUT>(this, sourceName, typeInfo, sourceOperator,
+		return new DataStreamSource<OUT>(this, typeInfo, sourceOperator,
 				isParallel, sourceName);
 	}
 

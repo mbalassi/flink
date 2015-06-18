@@ -58,8 +58,8 @@ public class IterativeDataStream<IN> extends
 	 * 
 	 */
 	public DataStream<IN> closeWith(DataStream<IN> iterationTail, boolean keepPartitioning) {
-		DataStream<IN> iterationSink = new DataStreamSink<IN>(environment, "Iteration Sink", null,
-				null);
+		DataStream<IN> iterationSink = new DataStreamSink<IN>(environment, null,
+				null, "Iteration Sink");
 
 		// We add an iteration sink to the tail which will send tuples to the
 		// iteration head

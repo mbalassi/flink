@@ -29,9 +29,10 @@ import org.apache.flink.streaming.api.operators.OneInputStreamOperator;
  */
 public class DataStreamSink<IN> extends SingleOutputStreamOperator<IN, DataStreamSink<IN>> {
 
-	protected DataStreamSink(StreamExecutionEnvironment environment, String operatorType,
-			TypeInformation<IN> outTypeInfo, OneInputStreamOperator<IN, ?> operator) {
+	protected DataStreamSink(StreamExecutionEnvironment environment,
+			TypeInformation<IN> outTypeInfo, OneInputStreamOperator<IN, ?> operator, String sinkName) {
 		super(environment, outTypeInfo, operator);
+		this.name(sinkName);
 	}
 
 	protected DataStreamSink(DataStream<IN> dataStream) {

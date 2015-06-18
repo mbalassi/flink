@@ -1333,8 +1333,8 @@ public class DataStream<OUT> {
 
 		OneInputStreamOperator<OUT, Object> sinkOperator = new StreamSink<OUT>(clean(sinkFunction));
 
-		DataStreamSink<OUT> returnStream = new DataStreamSink<OUT>(environment, "sink", getType(),
-				sinkOperator);
+		DataStreamSink<OUT> returnStream = new DataStreamSink<OUT>(environment, getType(),
+				sinkOperator, "Stream Sink");
 
 		streamGraph.addOperator(returnStream.getId(), sinkOperator, getType(), null, "Stream Sink");
 
