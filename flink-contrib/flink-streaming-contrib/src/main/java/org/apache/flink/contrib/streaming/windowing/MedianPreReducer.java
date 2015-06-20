@@ -15,12 +15,15 @@
  * limitations under the License.
  */
 
-package org.apache.flink.streaming.api.windowing.windowbuffer;
+package org.apache.flink.contrib.streaming.windowing;
 
+import com.google.common.base.Preconditions;
 import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.streaming.api.windowing.StreamWindow;
+import org.apache.flink.streaming.api.windowing.windowbuffer.PreAggregator;
+import org.apache.flink.streaming.api.windowing.windowbuffer.WindowBuffer;
 import org.apache.flink.util.Collector;
 import org.apache.flink.streaming.util.FieldAccessor;
 
@@ -46,7 +49,7 @@ public class MedianPreReducer<T> extends WindowBuffer<T> implements PreAggregato
 	// These contain lower-than-median and higher-than-median elements.
 	// Elements that compare equal to the median can be in either.
 	// The invariant is that low always contains the same amount or one more element than high.
-	//   (see the assert in updateMedian)
+	//   (see the precondition in updateMedian)
 	TreeMultiset<T>
 			low = new TreeMultiset<T>(new CompareOnField()),
 			high = new TreeMultiset<T>(new CompareOnField());
@@ -74,10 +77,12 @@ public class MedianPreReducer<T> extends WindowBuffer<T> implements PreAggregato
 	}
 
 	private void updateMedian() {
-		assert low.size() == high.size() || low.size() == high.size() + 1;
-		if(low.size() == 0) {
+		Preconditions.checkArgument(low.size() == high.size() || low.size() == high.size() + 1,
+				"Invalid element distribution in data structure. Low size is %s, while high size is %s.",
+				low.size, high.size);
+		if (low.size() == 0) {
 			median = null;
-		} else if(low.size() == high.size()) {
+		} else if (low.size() == high.size()) {
 			// This is essentially  (low.last + high.first) / 2,  but we have to drill down to the double field
 			median = serializer.copy(elements.getLast());
 			median = fieldAccessor.set(median, (fieldAccessor.get(low.last()) + fieldAccessor.get(high.first())) / 2);
@@ -89,24 +94,24 @@ public class MedianPreReducer<T> extends WindowBuffer<T> implements PreAggregato
 	}
 
 	private void moveUpIfNeccessary() {
-		if(low.size() > high.size() + 1) {
+		if (low.size() > high.size() + 1) {
 			high.add(low.pollLast());
 		}
 	}
 	private void moveDownIfNeccessary() {
-		if(low.size() < high.size()) {
+		if (low.size() < high.size()) {
 			low.add(high.pollFirst());
 		}
 	}
 
 	@Override
 	public void store(T elem) throws Exception {
-		if(median == null) {
+		if (median == null) {
 			low.add(elem);
 		} else if(fieldAccessor.get(elem) <= fieldAccessor.get(median)) {
 			low.add(elem);
 			moveUpIfNeccessary();
-		} else if(fieldAccessor.get(elem) > fieldAccessor.get(median)) {
+		} else if (fieldAccessor.get(elem) > fieldAccessor.get(median)) {
 			high.add(elem);
 			moveDownIfNeccessary();
 		}
@@ -116,15 +121,15 @@ public class MedianPreReducer<T> extends WindowBuffer<T> implements PreAggregato
 
 	@Override
 	public void evict(int n) {
-		for(int i = 0; i < n; i++) {
+		for (int i = 0; i < n; i++) {
 			T elem = elements.pollFirst();
 			if(elem == null) {
 				break;
 			}
-			if(low.contains(elem)) {
+			if (low.contains(elem)) {
 				low.removeOne(elem);
 				moveDownIfNeccessary();
-			} else if(high.contains(elem)){
+			} else if (high.contains(elem)) {
 				high.removeOne(elem);
 				moveUpIfNeccessary();
 			} else {
@@ -188,11 +193,11 @@ public class MedianPreReducer<T> extends WindowBuffer<T> implements PreAggregato
 		}
 
 		T pollFirst() {
-			if(!isEmpty()) {
+			if (!isEmpty()) {
 				size--;
 			}
 			Entry<T, Integer> first = firstEntry();
-			if(first.getValue() > 1) {
+			if (first.getValue() > 1) {
 				put(first.getKey(), first.getValue() - 1);
 				return first.getKey();
 			} else {
@@ -201,11 +206,11 @@ public class MedianPreReducer<T> extends WindowBuffer<T> implements PreAggregato
 		}
 
 		T pollLast() {
-			if(!isEmpty()) {
+			if (!isEmpty()) {
 				size--;
 			}
 			Entry<T, Integer> last = lastEntry();
-			if(last.getValue() > 1) {
+			if (last.getValue() > 1) {
 				put(last.getKey(), last.getValue() - 1);
 				return last.getKey();
 			} else {
@@ -216,7 +221,7 @@ public class MedianPreReducer<T> extends WindowBuffer<T> implements PreAggregato
 		void add(T elem) {
 			size++;
 			Integer oldCount = get(elem);
-			if(oldCount == null) {
+			if (oldCount == null) {
 				oldCount = 0;
 			}
 			put(elem, oldCount + 1);
@@ -227,11 +232,10 @@ public class MedianPreReducer<T> extends WindowBuffer<T> implements PreAggregato
 		}
 
 		void removeOne(T elem) {
-			assert contains(elem);
-
+			Preconditions.checkArgument(contains(elem), "Data structure does not contain element %s", elem);
 			size--;
 			Integer oldCount = get(elem);
-			if(oldCount > 1) {
+			if (oldCount > 1) {
 				put(elem, oldCount - 1);
 			} else {
 				remove(elem);

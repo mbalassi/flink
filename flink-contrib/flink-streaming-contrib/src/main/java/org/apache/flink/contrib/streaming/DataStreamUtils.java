@@ -23,8 +23,10 @@ import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.util.Iterator;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
+import org.apache.flink.contrib.streaming.windowing.WindowedDataStreamStatistics;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.DataStreamSink;
+import org.apache.flink.streaming.api.datastream.WindowedDataStream;
 import org.apache.flink.streaming.api.environment.RemoteStreamEnvironment;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.runtime.net.NetUtils;
@@ -82,5 +84,12 @@ public class DataStreamUtils {
 				throw new RuntimeException("Exception in execute()", e);
 			}
 		}
+	}
+
+	/**
+	 * Gets the extended statistical functionality for a {@link WindowedDataStream}.
+	 */
+	public static <OUT> WindowedDataStreamStatistics<OUT> getStatistics(WindowedDataStream<OUT> windowedDataStream) {
+		return new WindowedDataStreamStatistics<OUT>(windowedDataStream);
 	}
 }

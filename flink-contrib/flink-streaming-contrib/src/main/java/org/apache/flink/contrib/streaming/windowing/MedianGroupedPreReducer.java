@@ -15,13 +15,15 @@
  * limitations under the License.
  */
 
-package org.apache.flink.streaming.api.windowing.windowbuffer;
+package org.apache.flink.contrib.streaming.windowing;
 
 import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.api.java.functions.KeySelector;
 import org.apache.flink.streaming.api.windowing.StreamWindow;
+import org.apache.flink.streaming.api.windowing.windowbuffer.PreAggregator;
+import org.apache.flink.streaming.api.windowing.windowbuffer.WindowBuffer;
 import org.apache.flink.streaming.util.FieldAccessor;
 import org.apache.flink.util.Collector;
 
@@ -80,7 +82,7 @@ public class MedianGroupedPreReducer<T> extends WindowBuffer<T> implements PreAg
 	public void store(T elem) throws Exception {
 		Object key = keySelector.getKey(elem);
 		MedianPreReducer<T> groupPreReducer = groupPreReducers.get(key);
-		if(groupPreReducer == null) { // Group doesn't exist yet, create it.
+		if (groupPreReducer == null) { // Group doesn't exist yet, create it.
 			groupPreReducer = new MedianPreReducer<T>(fieldAccessor, serializer);
 			groupPreReducers.put(key, groupPreReducer);
 		}
@@ -92,7 +94,7 @@ public class MedianGroupedPreReducer<T> extends WindowBuffer<T> implements PreAg
 	public void evict(int n) {
 		for (int i = 0; i < n; i++) {
 			MedianPreReducer<T> groupPreReducer = groupPreReducerPerElement.poll();
-			if(groupPreReducer == null) {
+			if (groupPreReducer == null) {
 				break;
 			}
 			groupPreReducer.evict(1);
@@ -105,13 +107,13 @@ public class MedianGroupedPreReducer<T> extends WindowBuffer<T> implements PreAg
 		for(Iterator<MedianPreReducer<T>> it = groupPreReducers.values().iterator(); it.hasNext(); ) {
 			MedianPreReducer<T> groupPreReducer = it.next();
 			T groupMedian = groupPreReducer.getMedian();
-			if(groupMedian != null) {
+			if (groupMedian != null) {
 				currentWindow.add(groupMedian);
 			} else {
 				it.remove(); // Remove groups that don't contain elements, to not leak memory for long ago seen groups.
 			}
 		}
-		if(!currentWindow.isEmpty() || emitEmpty) {
+		if (!currentWindow.isEmpty() || emitEmpty) {
 			collector.collect(currentWindow);
 		}
 	}

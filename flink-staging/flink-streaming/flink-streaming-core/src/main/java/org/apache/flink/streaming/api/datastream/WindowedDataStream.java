@@ -71,8 +71,6 @@ import org.apache.flink.streaming.api.windowing.windowbuffer.SlidingTimePreReduc
 import org.apache.flink.streaming.api.windowing.windowbuffer.TumblingGroupedPreReducer;
 import org.apache.flink.streaming.api.windowing.windowbuffer.TumblingPreReducer;
 import org.apache.flink.streaming.api.windowing.windowbuffer.WindowBuffer;
-import org.apache.flink.streaming.api.windowing.windowbuffer.MedianPreReducer;
-import org.apache.flink.streaming.api.windowing.windowbuffer.MedianGroupedPreReducer;
 import org.apache.flink.streaming.util.keys.KeySelectorUtil;
 
 /**
@@ -383,7 +381,7 @@ public class WindowedDataStream<OUT> {
 				outType);
 	}
 
-	private DiscretizedStream<OUT> discretize(WindowTransformation transformation,
+	protected DiscretizedStream<OUT> discretize(WindowTransformation transformation,
 			WindowBuffer<OUT> windowBuffer) {
 
 		OneInputStreamOperator<OUT, WindowEvent<OUT>> discretizer = getDiscretizer();
@@ -590,55 +588,6 @@ public class WindowedDataStream<OUT> {
 		} else {
 			return new BasicWindowBuffer<OUT>();
 		}
-	}
-
-	/**
-	 * Gives the median of the current window at the specified field at every trigger.
-	 * The type of the field can only be Double (as the median of integers might be a fractional number).
-	 *
-	 * The median is updated online as the window changes, and the runtime of
-	 * one update is logarithmic with the current window size.
-	 *
-	 * @param pos
-	 *            The position in the tuple/array to calculate the median of
-	 * @return The transformed DataStream.
-	 */
-	@SuppressWarnings("unchecked")
-	public DiscretizedStream<OUT> median(int pos) {
-		WindowBuffer<OUT> windowBuffer;
-		if (groupByKey == null) {
-			windowBuffer = new MedianPreReducer(pos, getType(), getExecutionConfig());
-		} else {
-			windowBuffer = new MedianGroupedPreReducer(pos, getType(), getExecutionConfig(), groupByKey);
-		}
-		return discretize(WindowTransformation.MEDIAN, windowBuffer);
-	}
-
-	/**
-	 * Gives the median of the current window at the specified field at every trigger.
-	 * The type of the field can only be Double (as the median of integers might be a fractional number).
-	 *
-	 * The field is given by a field expression that is either
-	 * the name of a public field or a getter method with parentheses of the
-	 * stream's underlying type. A dot can be used to drill down into objects,
-	 * as in {@code "field1.getInnerField2()" }.
-	 *
-	 * The median is updated online as the window changes, and the runtime of
-	 * one update is logarithmic with the current window size.
-	 *
-	 * @param field
-	 *            The field to calculate the median of
-	 * @return The transformed DataStream.
-	 */
-	@SuppressWarnings("unchecked")
-	public DiscretizedStream<OUT> median(String field) {
-		WindowBuffer<OUT> windowBuffer;
-		if (groupByKey == null) {
-			windowBuffer = new MedianPreReducer(field, getType(), getExecutionConfig());
-		} else {
-			windowBuffer = new MedianGroupedPreReducer(field, getType(), getExecutionConfig(), groupByKey);
-		}
-		return discretize(WindowTransformation.MEDIAN, windowBuffer);
 	}
 
 	/**

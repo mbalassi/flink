@@ -335,30 +335,4 @@ class WindowedDataStream[T](javaStream: JavaWStream[T]) {
       javaStream.getDiscretizedStream.getExecutionEnvironment).scalaClean(f)
   }
 
-  /**
-   * Gives the median of the current window at the specified field at every trigger.
-   * The type of the field can only be Double (as the median of integers might be a
-   * fractional number).
-   *
-   * The median is updated online as the window changes, and the runtime of
-   * one update is logarithmic with the current window size.
-   *
-   */
-  def median(pos: Int): WindowedDataStream[T] = {
-    javaStream.median(pos)
-  }
-
-  /**
-   * Gives the median of the current window at the specified field at every trigger.
-   * The type of the field can only be Double (as the median of integers might be a
-   * fractional number).
-   *
-   * The median is updated online as the window changes, and the runtime of
-   * one update is logarithmic with the current window size.
-   *
-   */
-  def median(field: String): WindowedDataStream[T] = {
-    javaStream.median(field)
-  }
-
 }
