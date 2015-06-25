@@ -52,11 +52,11 @@ trait FsqlParser extends RegexParsers  with Ast.Unresolved with PackratParsers{
   lazy val source: PackratParser[Source] = raw_source | derived_source
   lazy val derived_source = "as".i ~> ((selectStmtSyntax ^^ (s => SubSelectSource(s)))| (MergeStmtSyntax ^^ (m => MergedSource(m.asInstanceOf[Merge[Option[String]]]))))
   lazy val raw_source = "source".i ~> (host_source | file_source | stream_source)
-  lazy val host_source = "host" ~> "(" ~> stringLit ~ "," ~ integer ~ opt(","~> stringLit) <~ ")" ^^ {
+  lazy val host_source = "socket" ~> "(" ~> stringLit ~ "," ~ integer ~ opt(","~> stringLit) <~ ")" ^^ {
     case host ~ _ ~ port ~ delimiter=> HostSource[Option[String]](host, port, delimiter)
   }
 
-  lazy val file_source = "file" ~> "(" ~> stringLit ~ opt(","~> stringLit) <~ ")" ^^ { 
+  lazy val file_source = "file" ~> "(" ~> stringLit ~ opt(","~> stringLit) <~ ")" ^^ {
     case path ~ delimiter => FileSource[Option[String]](path, delimiter)
   }
 
@@ -78,15 +78,15 @@ trait FsqlParser extends RegexParsers  with Ast.Unresolved with PackratParsers{
    *  CLAUSE : NAMED  (PROJECTION)
    */
   lazy val named = expr ~ opt(opt("as".i) ~> ident) ^^ {
-    case (c@Column(n, _)) ~ a       => Named(n, a, c)
-    case (c@AllColumns(_)) ~ a      => Named("*", a, c)
-    case (e@ArithExpr(_, _, _)) ~ a => Named("<constant>", a, e)
-    case (c@Constant(_, _,_)) ~ a     => Named("<constant", a, c)
-    case (f@Function(n, _)) ~ a     => Named( n , a, f)
-    case (c@Case(_,_)) ~ a          => Named("case", a, c)
+    case (c@Column(n, _)) ~ a       => Entry(n, a, c)
+    case (c@AllColumns(_)) ~ a      => Entry("*", a, c)
+    case (e@ArithExpr(_, _, _)) ~ a => Entry("<constant>", a, e)
+    case (c@Constant(_, _,_)) ~ a     => Entry("<constant", a, c)
+    case (f@Function(n, _)) ~ a     => Entry( n , a, f)
+    case (c@Case(_,_)) ~ a          => Entry("case", a, c)
 
     // extra
-    case (i@Input()) ~ a                 => Named("?", a, i)
+    case (i@Input()) ~ a                 => Entry("?", a, i)
   }
   /*lazy val named = opt("distinct".i) ~> (comparison | arith | simpleTerm) ~ opt(opt("as".i) ~> ident) ^^ {
     case (c@Constant(_, _)) ~ a          => Named("<constant>", a, c)
@@ -274,8 +274,8 @@ trait FsqlParser extends RegexParsers  with Ast.Unresolved with PackratParsers{
   /**
    * * STATEMENT : MERGE 
    */
-  
-    lazy val MergeStmtSyntax : PackratParser[Statement]= "merge".i ~> ident ~ "," ~ rep1sep(ident, ",") ^^ { // make sure there are at least 2 stream
+
+  lazy val MergeStmtSyntax : PackratParser[Statement]= "merge".i ~> ident ~ "," ~ rep1sep(ident, ",") ^^ { // make sure there are at least 2 stream
     case head ~_~ tail => Merge[Option[String]](head::tail)
   }
 
@@ -287,7 +287,7 @@ trait FsqlParser extends RegexParsers  with Ast.Unresolved with PackratParsers{
   lazy val splitStmtSyntax : PackratParser[Statement] = "on" ~> ident ~ rep1sep(insertStmtSyntax, ";") ^^ {
     case i ~ branches => Split(i, branches.map(_.asInstanceOf[Insert[Option[String]]]))
   }
-  
+
   /**
    * ==============================================
    * Utilities
@@ -316,9 +316,10 @@ trait FsqlParser extends RegexParsers  with Ast.Unresolved with PackratParsers{
       "is".i | "not".i | "null".i | "between".i | "in".i | "exists".i | "values".i | "create".i |
       "set".i | "union".i | "except".i | "intersect".i |
 
-      "window".i | "schema".i|
+      "window".i | "schema".i|"stream".i|
       "every".i| "size".i| "partitioned".i |
-      "cross".i | "join".i | "left".i
+      "cross".i | "join".i | "left".i|
+      "socket".i|"host".i|"file".i
       )
 
   implicit class KeywordOpts(kw: String) {
@@ -392,7 +393,6 @@ trait FsqlParser extends RegexParsers  with Ast.Unresolved with PackratParsers{
   }
 }
 
-
 object Test2 extends FsqlParser {
 
   def parser: (FsqlParser, String) => ?[Ast.Statement[Option[String]]] = (p: FsqlParser, s: String) => p.parseAllWith(p.stmt, s)
@@ -407,11 +407,13 @@ object Test2 extends FsqlParser {
     println("#########" * 10)
 
     val timer = Timer(true)
-    val queries = Array (
-/*      // create schema
+    
+    val queries_0 = Array (
+      // create schema
       "create schema mySchema0 (speed int, time long)",
       "create schema mySchema1 mySchema0",
       "create schema mySchema2 (id int) extends mySchema0",
+
       // creat stream 
       "create stream CarStream (speed int) source stream ('cars')",
       "create stream CarStream carSchema source stream ('cars')",
@@ -420,54 +422,90 @@ object Test2 extends FsqlParser {
 
       //merge
       "merge x1, x2, x3",
-      // select
-      "select id, s.speed, stream.time from stream [size 3]as s cross join stream2[size 3]",
-      "select id, s.speed, stream.time from stream [size 3]as s cross join stream2[size 3]",
-      "select id from stream [size 3] as s1 left join suoi [size 3 partitioned on s] as s2 on s1.time=s2.thoigian" ,
-      "select id from stream [size 3] as s1 left join suoi [size 3] as s2 on s1.time=s2.thoigian",
+      // split
+      "on x insert into x1 as select f1 from x where f1 = 3; insert into x1  as select f1 from x where f1 = 5",
+    
+    // select
+      "select s.Quantity * Price, StockTick.Symbol from StockTick as s",
+      "select id, s.speed, stream1.time from stream1 [size 3] as s cross join stream2 [size 3]",
+      "select id from stream1 [size 3] as s1 left join suoi [size 3 partitioned on s] as s2 on s1.time=s2.thoigian" ,
+      "select id from stream1 [size 3] as s1 left join suoi [size 3] as s2 on s1.time=s2.thoigian",
       "select id from (select p.id as id from oldStream2 as p) [size 3 partitioned on s] as q",
-      "select id from stream [size 3] as s1 left join suoi [size 3] as s2 on s1.time=s2.thoigian",
+      "select id from stream1 [size 3] as s1 left join suoi [size 3] as s2 on s1.time=s2.thoigian",
       "Select Count(*) From Bid[Size 1] Where  item_id <= 200 or item_id >= 100",
       "select count(price) from (select plate , price from CarStream)[Size 1] as c",
       "select count(price) from (select plate , price  from CarStream [Size 1]) as c",
       "select * from (select plate , price from (select plate , price from (select plate , price from CarStream [Size 1] ) as e ) as d ) as c",
       "select c.plate + 1000/2.0 from (select plate as pr from (select plate , price + 1 as pr from CarStream) as d) as c",
-      "Select count(*) From (Select * From Bid Where item_id >= 100 and item_id <= 200) [Size 1] p",
-      "Select count(*) From (Select * From Bid Where item_id >= 100 and item_id <= 200) [Size 1] p",
-      "select * from stream",*/
-      "on x insert into x1 as select f1 from x where f1 = 3; insert into x1  as select f1 from x where f1 = 5"
+      "Select count(*) From (Select * From Bid Where item_id >= 100 and item_id <= 200) [Size 1] p"
     
     )
 
+    val queries_1 = Array (
+      "create schema mySchema0 (speed int, time long)",
+      "create schema mySchema1 mySchema0",
+      "create schema mySchema2 (id int) extends mySchema0",
+      "CREATE SCHEMA StockTickSchema (symbol String, sourceTimestamp Long, price Double, quantity Int, exchange String)",
+      "CREATE SCHEMA StockTickSchema2 StockTickSchema",
+      "CREATE SCHEMA StockTickSchema3 (id Int) EXTENDS StockTickSchema"
+    )
+
+    val queries_2 = Array (
+      "create stream CarStream (speed int) source stream ('cars')",
+      "create stream CarStream carSchema source stream ('cars')",
+      "create stream myStream(time long) as select p.id from oldStream as p",
+      "create stream myStream(time long) as merge x1, x2, x3",
+      "CREATE STREAM StockTick StockTickSchema",
+      "CREATE STREAM StockTick (symbol String, price Double, quantity Int)",
+      "CREATE STREAM StockTick StockTickSchema source SOCKET ('98.138.253.109', 2000,';')",
+      "CREATE STREAM StockTick StockTickSchema source Stream ('stockDataStream')",
+      "CREATE STREAM StockTick (symbol String, price Double, quantity Int) source file ('//server/file.txt')",
+      "CREATE STREAM StockPrice (symbol String, price Double) AS SELECT symbol, price FROM StockTick"
+    )
+
+    val queries_3 = Array (
+      "select s.Quantity * Price + 10.2, StockTick.Symbol from StockTick as s",
+      "select s.Quantity * Price + 10.2, s.Symbol from StockTick as s where s.price > 90.5 and Quantity <= 100000",
+      "select c.price * 1000 from (select plate , price  from CarStream ) as c",
+      "select max(s1.price), avg(s2.quantity) from stream1 [size 3 sec] as s1 cross join stream2 [size 3 sec] as s2",
+      "select time, min(price)+1 from stream1 [size 3] as s1 left join stream2 [size 3] as s2 on s1.time=s2.time",
+      "select id from (select p.id as id from oldStream2 as p) [size 3 partitioned on s] as q",
+      "select  from stream1 [size 3 on s] as s1 left join stream2 [size 3 on s] as s2 on s1.time=s2.thoigian",
+      "select id from stream1 [size 3 min] as s1 left join stream2 [size 3 min] as s2 using time",
+      "Select Count(*) From Bid[Size 1 partitioned on field1] Where  item_id <= 200 or item_id >= 100 group by item_id",
+      "select count(price) from (select plate , price  from CarStream [Size 1]) as c",
+      "select count(price) from (select plate , price  from CarStream) [Size 1] as c",
+      "select * from (select plate , price from (select plate , price from (select plate , price from CarStream [Size 1] ) as e ) as d ) as c",
+      "select c.plate + 1000/2.0 from (select plate as pr from (select plate , price + 1 as pr from CarStream) as d) as c",
+      "Select count(*), max(item_id) From (Select * From Bid Where item_id >= 100 and item_id <= 200) [Size 10] p"
+    )
+
+    val queries_4 = Array (
+      "MERGE stockTickFromNYSE, stockTickFromAMEX, stockTickFromNASDAQ",
+      "merge x1, x2, x3"
+    )
+
+    val queries_5 = Array (
+      "INSERT INTO StockTick AS MERGE stockTickFromNYSE, stockTickFromAMEX",
+      "INSERT INTO StockTick AS SELECT symbol, price FROM StockTick where quantity > 100000"
+    )
+
+    val queries_6 = Array (
+      "on x insert into x1 as select f1 from x where f1 > 3 or f1 < 1 ; insert into x1  as select f1 from x where f1 <=3 and f >=1"
+    )
+
     val context = new SQLContext()
-    /*
-        val result = for {
-          st <- timer("parser", 2, parser(new FsqlParser {}, queries(0)))
-          //stmt <- timer("parser", 2,  parser(new FsqlParser {}, "select id from (select p.id from oldStream as p) as q"))
-          //stmt <- parser(new FsqlParser {}, "select id from stream [size 3] as s1 left join suoi [size 3] as s2 on s1.time=s2.thoigian")
-          //x <- timer("resolve",3,Ast.resolvedStreams(st))
-          //y = stmt.streams
 
-        } yield st
-
-        //println(result.getOrElse("fail"))
-        println(result.getOrElse("fail").asInstanceOf[Ast.CreateSchema[Option[String]]].getSchema(context))
-        println(context.schemas.head)*/
-
-    
-    (0 to 2*queries.size-1).map { i =>
-      //timer(queries(i%(queries.size-1))+"\n",2,"")
+    (0 to 2*queries_3.size-1).map { i =>
+      timer(queries_3(i%(queries_3.size))+"\n",2,"")
       val result2 = for {
-        st <- timer("parser", 2, parser(new FsqlParser {}, queries(0)))//i%(queries.size-1)
+        st <- timer("parser_"+i%(queries_3.size), 2, parser(new FsqlParser {}, queries_3(i%(queries_3.size))))//i%(queries.size-1)
         rw <- timer("rewrite", 2, Ast.rewriteQuery(st))
         reslv <- timer("resolve", 2, Ast.resolvedStreams(rw))
-      } yield reslv
+      } yield st
 
-      // println(result.getOrElse("fail"))
-      println(result2.fold(fail => throw new Exception(fail.message), rslv => rslv))
+       println(result2.fold(fail => throw new Exception(fail.message), rslv => rslv))
     }
     //asInstanceOf[Ast.Select[Stream]].streamReference.asInstanceOf[Ast.DerivedStream[Stream]].subSelect.
-
-
   }
 }

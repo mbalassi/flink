@@ -33,9 +33,7 @@ class SQLContext extends Serializable {
     } yield rslv).fold( fail => throw new IllegalArgumentException("cannot parser"), rslv => rslv )
     result.asInstanceOf[Ast.Select[Stream]].getType(self)//.projection.head.expr.asInstanceOf[ArithExpr[Stream]].rhs.asInstanceOf[ArithExpr[Stream]].rhs.getType(self)
   }
-
 }
-
 
 
 

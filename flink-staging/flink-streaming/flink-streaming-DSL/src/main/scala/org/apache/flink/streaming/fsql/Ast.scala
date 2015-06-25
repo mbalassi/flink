@@ -12,7 +12,7 @@ object Ast{
 
   trait Unresolved {
     type Expr = Ast.Expr[Option[String]]
-    type Named  = Ast.Named[Option[String]]
+    type Named  = Ast.Entry[Option[String]]
     type Statement = Ast.Statement[Option[String]]
     type Source = Ast.Source[Option[String]]
     type Select = Ast.Select[Option[String]]
@@ -145,7 +145,7 @@ object Ast{
   
   case class Stream(name : String, alias: Option[String], isTemp:Boolean = false)
   //case class WindowedStream[T](stream: Stream, windowSpec: Option[WindowSpec[T]])
-  case class Named[T](name: String, alias: Option[String], expr: Expr[T]){
+  case class Entry[T](name: String, alias: Option[String], expr: Expr[T]){
     def aliasName = alias getOrElse expr.exprName
     
   }
@@ -154,7 +154,7 @@ object Ast{
            *    SELECT
            * */
 
-  case class Select[T](projection: List[Named[T]] ,
+  case class Select[T](projection: List[Entry[T]] ,
                        streamReference: StreamReferences[T],
                        where: Option[Where[T]],
                        groupBy: Option[GroupBy[T]]
@@ -398,7 +398,7 @@ object Ast{
 
   trait Resolved {
     type Expr = Ast.Expr[Stream]
-    type Named  = Ast.Named[Stream]
+    type Named  = Ast.Entry[Stream]
     type Statement = Ast.Statement[Stream]
     type Source = Ast.Source[Stream]
     type Select = Ast.Select[Stream]
@@ -489,7 +489,7 @@ object Ast{
       case _ => fail("not support!")
     }
 
-    def resolveNamed(n: Named[Option[String]]): ?[Named[Stream]] =
+    def resolveNamed(n: Entry[Option[String]]): ?[Entry[Stream]] =
       resolve(n.expr) map (e => n.copy(expr = e))
 
     /*def resolveColumn(col: Column[Option[String]]  , streamName :String): ?[Column[Stream]] = {
@@ -555,7 +555,7 @@ object Ast{
     }
 
     //projection
-    def resolveProj(proj: List[Named[Option[String]]]): ?[List[Named[Stream]]]
+    def resolveProj(proj: List[Entry[Option[String]]]): ?[List[Entry[Stream]]]
     = sequence(proj map resolveNamed) 
 
 

@@ -9,7 +9,7 @@ import org.apache.flink.streaming.fsql.macros.ArrMappable
 
 object Main {
 //  case class SimpleCarEvent( speed: Int, time: Long) extends Serializable
-  case class Car (plate: Int, price: Int) extends Serializable
+  case class Car (carID: Int, price: Int) extends Serializable
 
   def main(args: Array[String]) {
     val sqlContext = new SQLContext()
@@ -22,7 +22,7 @@ object Main {
        * * create stream
        */
     // create schema
-     println(sqlContext.sql("create schema carSchema (plate Int)"))
+     println(sqlContext.sql("create schema carSchema (carID Int, price Int)"))
     // create real DataStream
     val simpleCars = getCarStream(env)
 
@@ -30,11 +30,11 @@ object Main {
     val rowCar = simpleCars
 //
 //    // register a new stream from source stream
-    val newStream = sqlContext.sql("create stream CarStream (plate Int, price Int) source stream ('rowCar')")
+    val newStream = sqlContext.sql("create stream CarStream carSchema source stream ('rowCar')")
     //println(sqlContext.sql("create schema carSchema3 (pedal String)"))
 
     println(newStream)
-    //val newStream2 = sqlContext.sql("create stream CarStream (plate Int) source stream ('rowCar')")
+    //val newStream2 = sqlContext.sql("create stream CarStream (carID Int) source stream ('rowCar')")
     
   // newStream2.asInstanceOf[DataStream[_]] print
 
@@ -44,25 +44,24 @@ object Main {
      * */
     
     
-    /*val dStream = sqlContext.sql("select plate, price + 1 from CarStream")
+    /*val dStream = sqlContext.sql("select carID, price + 1 from CarStream")
     
     
     println(dStream.asInstanceOf[DataStream[_]].getType())
 
-    val fStream = sqlContext.sql("select plate from CarStream where plate < price and plate > price")
+    val fStream = sqlContext.sql("select carID from CarStream where carID < price and carID > price")
 
 
     fStream.asInstanceOf[DataStream[_]] print*/
 
-    val stream5 = sqlContext.sql("select plate, price from CarStream")
+    val stream5 = sqlContext.sql("select carID, c.price * 0.05 as tax from CarStream as c")
     //println(stream5.asInstanceOf[DataStream[_]].getType().getGenericParameters.toArray.toList.map(x => x.toString))
     //println(    stream5.asInstanceOf[DataStream[_]].getType().isBasicType)
     
 
-    val stream6 = sqlContext.sql("select c.pr + 1000/2.0 from (select  plate as pr from (select plate , price + 1 as pr from CarStream) as d) as c")
-//  val stream6 = sqlContext.sql("select c.plate from (select plate , price from CarStream)[Size 1] as c")
+    val stream6 = sqlContext.sql("select c.pr * 1.05 as fullTax from (select pr from (select carID , price  as pr from CarStream) as d) as c")
+//  val stream6 = sqlContext.sql("select c.carID from (select carID , price from CarStream)[Size 1] as c")
 
-    
     
         /*
           println(stream6.asInstanceOf[DataStream[_]].getType())
@@ -71,12 +70,11 @@ object Main {
           println("Stream6: "+ stream6)
         */
 
-    println(stream6.asInstanceOf[DataStream[_]].getType())
-    stream6.asInstanceOf[DataStream[_]] print
+    //println(stream6.asInstanceOf[DataStream[_]].getType())
+    //stream6.asInstanceOf[DataStream[_]] print
 
-    val stream7 = sqlContext.validate("select c.pr from (select  pr from (select plate , price + 1 as pr from CarStream) as d) as c")
-    println(stream7)
-
+    //val stream7 = sqlContext.validate("select c.pr from (select  pr from (select carID , price + 1 as pr from CarStream) as d) as c")
+    //println(stream7)
 
 
     env.execute()

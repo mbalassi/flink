@@ -344,16 +344,12 @@ object FsqlMacros {
                 $subQueryTree
                 $allTree
               """
-            
             )
-            
-
           } // end Derived Stream
           case _ => c.abort(c.enclosingPosition, "concrete Stream only")
         }
       }
       case _ => c.abort(c.enclosingPosition, "not a case")
-
     }
   }
 
