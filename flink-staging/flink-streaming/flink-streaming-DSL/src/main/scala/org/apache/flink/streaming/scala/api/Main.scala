@@ -63,6 +63,7 @@ object Main {
 //  val stream6 = sqlContext.sql("select c.carID from (select carID , price from CarStream)[Size 1] as c")
 
     
+    
         /*
           println(stream6.asInstanceOf[DataStream[_]].getType())
           stream6.asInstanceOf[DataStream[_]] print
@@ -76,6 +77,11 @@ object Main {
     //val stream7 = sqlContext.validate("select c.pr from (select  pr from (select carID , price + 1 as pr from CarStream) as d) as c")
     //println(stream7)
 
+    
+    val stream8 = sqlContext.sql("select sum(price) from CarStream [size 5] as c")
+    stream8.asInstanceOf[DataStream[_]] print
+
+    println(stream8.asInstanceOf[DataStream[_]].getType())
 
     env.execute()
     
@@ -86,10 +92,9 @@ object Main {
   }
   
   def getCarStream (env : StreamExecutionEnvironment) : DataStream [Car] = {
-    Seq(Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2))
+    Seq(Car(8888,1),Car(8888,2),Car(8888,3),Car(8888,4),Car(8888,5),Car(8888,6),Car(8888,7),Car(8888,8),Car(8888,9),Car(8888,10),Car(8888,11),Car(8888,12),Car(8888,13),Car(8888,14),Car(8888,15),Car(8888,16),Car(8888,17),Car(8888,18),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2),Car(8888,2))
       .toStream
   }
-  
 
   private val inputPath: String = "./flink-staging/flink-streaming/flink-streaming-DSL/src/main/scala/org/apache/flink/streaming/util/carEvent.txt"
 

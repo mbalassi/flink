@@ -477,7 +477,8 @@ object Test2 extends FsqlParser {
       "select count(price) from (select plate , price  from CarStream) [Size 1] as c",
       "select * from (select plate , price from (select plate , price from (select plate , price from CarStream [Size 1] ) as e ) as d ) as c",
       "select c.plate + 1000/2.0 from (select plate as pr from (select plate , price + 1 as pr from CarStream) as d) as c",
-      "Select count(*), max(item_id) From (Select * From Bid Where item_id >= 100 and item_id <= 200) [Size 10] p"
+      "Select count(*), max(item_id) From (Select * From Bid Where item_id >= 100 and item_id <= 200) [Size 10] p",
+      "select sum(c.price) from CarStream [size 10] as c"
     )
 
     val queries_4 = Array (
@@ -502,7 +503,7 @@ object Test2 extends FsqlParser {
         st <- timer("parser_"+i%(queries_3.size), 2, parser(new FsqlParser {}, queries_3(i%(queries_3.size))))//i%(queries.size-1)
         rw <- timer("rewrite", 2, Ast.rewriteQuery(st))
         reslv <- timer("resolve", 2, Ast.resolvedStreams(rw))
-      } yield st
+      } yield reslv
 
        println(result2.fold(fail => throw new Exception(fail.message), rslv => rslv))
     }

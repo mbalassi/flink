@@ -40,7 +40,7 @@ object MyCar {
   
   val ts: CarEvent => Long = (x: CarEvent) => x.time
   
-  val mapFun : (Iterable[CarEvent],Collector[Double]) => Unit = {
+  val mapFun : (Iterable[CarEvent],Collector[Any]) => Unit = {
     case x => {
       val count = x._1.toIterator.length.toDouble
       val sum = x._1.toIterator.map(_.speed).sum.toDouble
@@ -55,13 +55,14 @@ object MyCar {
       //.map(c => (c.speed + c.time))
       .window(Time.of(10, ts, 0 ))
       .groupBy(0,1)
+      .mapWindow(mapFun).flatten
       //.every(Time.of(1, MICROSECONDS))
       //.mapWindow(mapFun).flatten
       //.reduceWindow((e1,e2)=>new CarEvent(e1.speed+e2.speed,e1.time)).flatten()
      /* .window(Count.of(3))
       .every(Time.of(10, ts ))
       .mapWindow(mapFun).flatten*/
-    //cars print
+    cars print
     
     println(cars.getType())
 

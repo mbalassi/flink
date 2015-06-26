@@ -246,7 +246,6 @@ object Ast{
       }
       
     }
-
     override def exprName: String = name
   }
   case class ArithExpr[T](lhs:Expr[T], op: String, rhs:Expr[T]) extends Expr[T] {

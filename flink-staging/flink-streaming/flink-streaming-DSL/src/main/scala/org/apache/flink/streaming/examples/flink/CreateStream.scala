@@ -3,6 +3,7 @@ package org.apache.flink.streaming.examples.flink
 import org.apache.flink.api.common.typeinfo.{TypeInformation, BasicTypeInfo}
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.streaming.api.scala._
+import org.apache.flink.streaming.api.windowing.helper.Count
 import org.apache.flink.streaming.experimental.Tuples
 import org.apache.flink.streaming.fsql.Row
 import scala.reflect.runtime.universe._
@@ -40,7 +41,6 @@ object CreateStream {
     //val e = cars.map(r => r.productElement(3))
     //e print
 
-    
     
     /**
      * * From Socket to Row stream

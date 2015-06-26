@@ -104,7 +104,7 @@ object FsqlMacros {
                               val newRowStream = $realStream.map(x=>toTuple(x))
                               ${c.prefix.tree}.streamsMap += ($streamName -> newRowStream)
                               newRowStream
-                             """
+                          """
 
 
         // well done with add stream of case class
@@ -113,7 +113,6 @@ object FsqlMacros {
             val classfieldsType = $realStream.getType.getTypeClass.getDeclaredFields.toList.map(_.getType.toString.toLowerCase.take(3))
             val schemaFieldsType = ${c.prefix.tree}.schemas($schemaName).fields.map(_.dataType.toString.toLowerCase.take(3))
             if (classfieldsType == schemaFieldsType){
-
 
               $putSchemaStreamToMap
 
@@ -134,9 +133,9 @@ object FsqlMacros {
         def genProject(expr: Ast.Expr[Stream]): c.Tree = {
           expr match {
             case col@Ast.Column(name, stream) => {
-
+               //todo: Int ?, can use pattern matching for fieldType
               q"""
-                  val schemaName = ${c.prefix.tree}.streamSchemaMap(${stream.asInstanceOf[Stream].name})
+                 val schemaName = ${c.prefix.tree}.streamSchemaMap(${stream.asInstanceOf[Stream].name})
                  val schema = ${c.prefix.tree}.schemas(schemaName)
                  val position = schema.fields.map(_.name).indexOf($name)
                  val fieldType = schema.fields.find(_.name == $name).get.dataType
@@ -198,14 +197,13 @@ object FsqlMacros {
 
               }
             }
-            case _ => c.abort(c.enclosingPosition, "not support not column")
+            case _ => c.abort(c.enclosingPosition, "not support not column !")
           }
 
           /*
           val iType  = tq"Int"
           q"r.asInstanceOf[Row].productElement(0).asInstanceOf[$iType] + 1"*/
         }
-        val elements = proj.map( p => genProject(p.expr))
 
         def mapFunc (elements: List[c.Tree]) : c.Tree=
           q"""
@@ -237,13 +235,11 @@ object FsqlMacros {
 
             case _ => c.abort(c.enclosingPosition, "do not support other predicate")
           }
-          
         }
         
         val defaultPre = Comparison0[Stream](Ast.Constant((scala.reflect.runtime.universe.typeOf[Boolean] , 
                           BasicTypeInfo.BOOLEAN_TYPE_INFO), true).asInstanceOf[Ast.Expr[Stream]])
         val predicateTree = genPredicate(where.getOrElse(Where(defaultPre)).predicate)
-
 
         /**
          *      groupBy
@@ -271,23 +267,54 @@ object FsqlMacros {
           /**
            *  Concrete Stream 
            */
-          case conc@Ast.ConcreteStream(s, w, None) =>
+          case conc@Ast.ConcreteStream(s, None, None) =>
+
+            val elements = proj.map( p => genProject(p.expr))
 
             val dstreamTree = 
               q"""
                    ${c.prefix.tree}.streamsMap(${s.name}).filter(${mapFunc(List(predicateTree))}).map(${mapFunc(elements)})
-
                """
-            //${c.prefix.tree}.streamsMap(${s.name}).map($mapFunc)
-
-            /*val window = TermName("window")
-            c.Expr[Any](
-              q"$dstreamTree.$window(${genOptWindow(w)})"
-            )*/
-
-            //c.Expr[Any](q"$sel.getType(${c.prefix.tree})")
             c.Expr[Any](q"$dstreamTree")
 
+
+          case Ast.ConcreteStream(s, w, None) if w.isDefined   =>
+
+            val window = TermName("window")
+
+            val dstreamTree2 =
+              q"""
+                   ${c.prefix.tree}.streamsMap(${s.name}).filter(${mapFunc(List(predicateTree))})
+               """
+
+            val windowedStream = q"$dstreamTree2.$window(${genOptWindow(w)})"
+
+
+            val resultTree = proj.head.expr match {
+              case f@Ast.Function(n,params) if n == "sum" =>
+                val Column(name,stream) = params.head.asInstanceOf[Column[Stream]]
+                val sum = TermName("max")
+                
+                q"""
+                  val schemaName = ${c.prefix.tree}.streamSchemaMap(${stream.asInstanceOf[Stream].name})
+                  val schema = ${c.prefix.tree}.schemas(schemaName)
+                  val position = schema.fields.map(_.name).indexOf($name)
+                  val mapFun : (Iterable[Row],org.apache.flink.util.Collector[Any]) => Unit = {
+                  case x => {
+                    val sum = x._1.toIterator.map(_.productElement(position).asInstanceOf[Int]).$sum
+                    x._2.collect(sum)
+                  }
+                }
+                
+                  $windowedStream.mapWindow(mapFun).flatten
+                """
+              case _ =>
+                throw new Exception("do not support Not Aggregation func")
+            }
+
+            c.Expr[Any](
+              q"$resultTree"
+            )
 
           /**
            * * Derived Stream
