@@ -132,14 +132,30 @@ object FsqlMacros {
          */
         def genProject(expr: Ast.Expr[Stream]): c.Tree = {
           expr match {
+            //TODO: need to check Pattern-matching again
             case col@Ast.Column(name, stream) => {
-               //todo: Int ?, can use pattern matching for fieldType
               q"""
+                 {
                  val schemaName = ${c.prefix.tree}.streamSchemaMap(${stream.asInstanceOf[Stream].name})
                  val schema = ${c.prefix.tree}.schemas(schemaName)
                  val position = schema.fields.map(_.name).indexOf($name)
-                 val fieldType = schema.fields.find(_.name == $name).get.dataType
+                 val fieldType = schema.fields.find(_.name == $name).get.dataType.toLowerCase
+                 val result = fieldType match {
+                    case "int" => r.productElement(position).asInstanceOf[Int]
+                    case "integer" => r.productElement(position).asInstanceOf[Int]
+                    case "short" => r.productElement(position).asInstanceOf[Short]
+                    case "byte" => r.productElement(position).asInstanceOf[Byte]
+                    case "boolean" => r.productElement(position).asInstanceOf[Boolean]
+                    case "long" => r.productElement(position).asInstanceOf[Long]
+                    case "char" => r.productElement(position).asInstanceOf[Char]
+                    case "string" => r.productElement(position).asInstanceOf[String]
+                    case "float" => r.productElement(position).asInstanceOf[Float]
+                    case "double" => r.productElement(position).asInstanceOf[Double]
+                    case _ => throw new IllegalArgumentException("this '"+ fieldType +"' type is not supported!")
+                 }
+                 result
                  r.productElement(position).asInstanceOf[Int]
+                 }
               """
             }
 
@@ -163,7 +179,6 @@ object FsqlMacros {
                   q"""
                       ${value.asInstanceOf[Int]}.asInstanceOf[Int]
                   """
-
                 case BasicTypeInfo.BYTE_TYPE_INFO =>
                   q"""
                       ${value.asInstanceOf[Byte]}.asInstanceOf[Byte]
@@ -185,7 +200,6 @@ object FsqlMacros {
                       ${value.asInstanceOf[String]}
                   """
               }
-              
             }
 
             case arth@Ast.ArithExpr(lsh, op, rsh) => {
@@ -194,9 +208,9 @@ object FsqlMacros {
                 case "-" => q"${genProject(lsh)} - ${genProject(rsh)} "
                 case "*" => q"${genProject(lsh)} * ${genProject(rsh)} "
                 case "/" => q"${genProject(lsh)} / ${genProject(rsh)} "
-
               }
             }
+              
             case _ => c.abort(c.enclosingPosition, "not support not column !")
           }
 
@@ -305,7 +319,6 @@ object FsqlMacros {
                     x._2.collect(sum)
                   }
                 }
-                
                   $windowedStream.mapWindow(mapFun).flatten
                 """
               case _ =>

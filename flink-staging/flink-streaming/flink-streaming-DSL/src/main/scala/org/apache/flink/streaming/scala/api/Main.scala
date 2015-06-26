@@ -5,8 +5,6 @@ import org.apache.flink.streaming.api.scala.{DataStream, StreamExecutionEnvironm
 import org.apache.flink.streaming.api.scala._
 import org.apache.flink.streaming.fsql.macros.ArrMappable
 
-
-
 object Main {
 //  case class SimpleCarEvent( speed: Int, time: Long) extends Serializable
   case class Car (carID: Int, price: Int) extends Serializable
@@ -26,6 +24,7 @@ object Main {
     // create real DataStream
     val simpleCars = getCarStream(env)
 
+    
     
     val rowCar = simpleCars
 //
@@ -49,21 +48,19 @@ object Main {
     
     println(dStream.asInstanceOf[DataStream[_]].getType())
 
-    val fStream = sqlContext.sql("select carID from CarStream where carID < price and carID > price")
 
+    val fStream = sqlContext.sql("select carID from CarStream where carID < price and carID > price")
 
     fStream.asInstanceOf[DataStream[_]] print*/
 
     val stream5 = sqlContext.sql("select carID, c.price * 0.05 as tax from CarStream as c")
     //println(stream5.asInstanceOf[DataStream[_]].getType().getGenericParameters.toArray.toList.map(x => x.toString))
     //println(    stream5.asInstanceOf[DataStream[_]].getType().isBasicType)
-    
+
 
     val stream6 = sqlContext.sql("select c.pr * 1.05 as fullTax from (select pr from (select carID , price  as pr from CarStream) as d) as c")
 //  val stream6 = sqlContext.sql("select c.carID from (select carID , price from CarStream)[Size 1] as c")
 
-    
-    
         /*
           println(stream6.asInstanceOf[DataStream[_]].getType())
           stream6.asInstanceOf[DataStream[_]] print
@@ -76,12 +73,16 @@ object Main {
 
     //val stream7 = sqlContext.validate("select c.pr from (select  pr from (select carID , price + 1 as pr from CarStream) as d) as c")
     //println(stream7)
-
     
-    val stream8 = sqlContext.sql("select sum(price) from CarStream [size 5] as c")
+    val stream8 = sqlContext.sql("select * from CarStream where price > 10 and price < 15")
     stream8.asInstanceOf[DataStream[_]] print
 
-    println(stream8.asInstanceOf[DataStream[_]].getType())
+
+    val stream9 = sqlContext.sql("select sum(price) from CarStream [size 5] as c")
+    //stream9.asInstanceOf[DataStream[_]] print
+    
+    
+    
 
     env.execute()
     
