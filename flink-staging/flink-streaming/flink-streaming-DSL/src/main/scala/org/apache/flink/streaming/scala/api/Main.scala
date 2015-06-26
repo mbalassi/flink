@@ -75,11 +75,11 @@ object Main {
     //println(stream7)
     
     val stream8 = sqlContext.sql("select * from CarStream where price > 10 and price < 15")
-    stream8.asInstanceOf[DataStream[_]] print
+    //stream8.asInstanceOf[DataStream[_]] print
 
 
-    val stream9 = sqlContext.sql("select sum(price) from CarStream [size 5] as c")
-    //stream9.asInstanceOf[DataStream[_]] print
+    val stream9 = sqlContext.sql("select sum(price) from CarStream [size 5 partitioned on price] as c")
+    stream9.asInstanceOf[DataStream[_]] print
     
     
     

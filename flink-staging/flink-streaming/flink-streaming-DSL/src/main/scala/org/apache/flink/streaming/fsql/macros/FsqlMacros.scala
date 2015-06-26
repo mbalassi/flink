@@ -265,16 +265,25 @@ object FsqlMacros {
          *  Window Spec 
          */
         
-        def genWindow (windowSpec: Ast.WindowSpec[Stream]): c.Tree = {
+        def genWindowSpec (windowSpec: Ast.WindowSpec[Stream]): c.Tree = {
           val value = windowSpec.window.policyBased.value
           val window = TermName("window")
           q"org.apache.flink.streaming.api.windowing.helper.Count.of($value)"
         }
-        
-        
+
         
         def genOptWindow (ws : Option[Ast.WindowSpec[Stream]]): c.Tree = {
-          ws.fold(q"")(w => genWindow(w))
+          ws.fold(q"")(w => genWindowSpec(w))
+        }
+        
+        
+        def genPartitionedBy (par:  Partition[Stream]): c.Tree = {
+          q"${mapFunc(par.fields.map(p => genProject(p)))}"
+        }
+        
+        def genOptPartionedBy(optPar: Option[Ast.Partition[Stream]]): c.Tree = {
+          optPar.fold(q"")(p => genPartitionedBy(p))
+          
         }
         
         streamRefs match {
@@ -301,13 +310,15 @@ object FsqlMacros {
                    ${c.prefix.tree}.streamsMap(${s.name}).filter(${mapFunc(List(predicateTree))})
                """
 
-            val windowedStream = q"$dstreamTree2.$window(${genOptWindow(w)})"
+            var windowedStream = q"$dstreamTree2.$window(${genOptWindow(w)})"
 
 
+            windowedStream = w.get.partition.fold(q"$windowedStream")(p => q"$windowedStream.groupBy(${genPartitionedBy(p)})")
+            
             val resultTree = proj.head.expr match {
               case f@Ast.Function(n,params) if n == "sum" =>
                 val Column(name,stream) = params.head.asInstanceOf[Column[Stream]]
-                val sum = TermName("max")
+                val sum = TermName("sum")
                 
                 q"""
                   val schemaName = ${c.prefix.tree}.streamSchemaMap(${stream.asInstanceOf[Stream].name})
@@ -372,8 +383,6 @@ object FsqlMacros {
                 ${c.prefix.tree}.schemas    +=($name -> schema)
                 
                 ${c.prefix.tree}.streamSchemaMap    +=($name -> $name)
-
-                
                 """
            
             val x = ConcreteStream(Stream(name,None,true), winSpec, join)
