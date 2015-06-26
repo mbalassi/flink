@@ -266,16 +266,18 @@ object FsqlMacros {
          */
         
         def genWindowSpec (windowSpec: Ast.WindowSpec[Stream]): c.Tree = {
-          val value = windowSpec.window.policyBased.value
-          val window = TermName("window")
-          q"org.apache.flink.streaming.api.windowing.helper.Count.of($value)"
+          genPolicyBased(windowSpec.window.policyBased)
         }
 
-        
         def genOptWindow (ws : Option[Ast.WindowSpec[Stream]]): c.Tree = {
           ws.fold(q"")(w => genWindowSpec(w))
         }
         
+        def genPolicyBased (policy: PolicyBased[Stream]) :c.Tree = {
+          val value = policy.value
+          q"org.apache.flink.streaming.api.windowing.helper.Count.of($value)"
+
+        }
         
         def genPartitionedBy (par:  Partition[Stream]): c.Tree = {
           q"${mapFunc(par.fields.map(p => genProject(p)))}"
@@ -310,9 +312,9 @@ object FsqlMacros {
                    ${c.prefix.tree}.streamsMap(${s.name}).filter(${mapFunc(List(predicateTree))})
                """
 
-            var windowedStream = q"$dstreamTree2.$window(${genOptWindow(w)})"
+            var windowedStream = q"$dstreamTree2.window(${genOptWindow(w)})"
 
-
+            windowedStream = w.get.every.fold(q"$windowedStream")(e => q"$windowedStream.every(${genOptWindow(w)})")
             windowedStream = w.get.partition.fold(q"$windowedStream")(p => q"$windowedStream.groupBy(${genPartitionedBy(p)})")
             
             val resultTree = proj.head.expr match {
