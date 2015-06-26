@@ -357,7 +357,7 @@ trait FsqlParser extends RegexParsers  with Ast.Unresolved with PackratParsers{
    */
 
   lazy val dataType = "int".i | "string".i | "double".i | "date".i | "byte".i | "short".i | "long".i | "float".i | "char".i | "boolean".i
-  lazy val timeUnit = "microsec".i | "milisec".i | "sec".i | "min".i | "h".i | "d".i
+  lazy val timeUnit = "millisec".i | "sec".i | "min".i | "h".i | "d".i
 
   /**
    * Constant

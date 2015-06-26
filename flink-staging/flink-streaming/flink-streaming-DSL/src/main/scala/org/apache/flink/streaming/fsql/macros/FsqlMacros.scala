@@ -1,6 +1,8 @@
 package org.apache.flink.streaming.fsql.macros
 
 
+import java.util.concurrent.TimeUnit
+
 import org.apache.flink.api.common.typeinfo.BasicTypeInfo
 import org.apache.flink.streaming.fsql._
 
@@ -275,8 +277,21 @@ object FsqlMacros {
         
         def genPolicyBased (policy: PolicyBased[Stream]) :c.Tree = {
           val value = policy.value
-          q"org.apache.flink.streaming.api.windowing.helper.Count.of($value)"
+          
+          
+          var policyTree = q"org.apache.flink.streaming.api.windowing.helper.Count.of($value)"
 
+          policyTree = policy.timeUnit.fold(policyTree)(
+            //  lazy val timeUnit = "microsec".i | "milisec".i | "sec".i | "min".i | "h".i | "d".i
+            unit => unit match {
+              case "millisec" => q"org.apache.flink.streaming.api.windowing.helper.Time.of($value, java.util.concurrent.TimeUnit.MILLISECONDS)"
+              case "sec" => q"org.apache.flink.streaming.api.windowing.helper.Time.of($value, java.util.concurrent.TimeUnit.SECONDS)"
+              case "min" => q"org.apache.flink.streaming.api.windowing.helper.Time.of($value, java.util.concurrent.TimeUnit.MINUTES)"
+              case "h" => q"org.apache.flink.streaming.api.windowing.helper.Time.of($value, java.util.concurrent.TimeUnit.HOURS)"
+              case "d" => q"org.apache.flink.streaming.api.windowing.helper.Time.of($value, java.util.concurrent.TimeUnit.DAYS)"
+            }
+          )
+          policyTree
         }
         
         def genPartitionedBy (par:  Partition[Stream]): c.Tree = {

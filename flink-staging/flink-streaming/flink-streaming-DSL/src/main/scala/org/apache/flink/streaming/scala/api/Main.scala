@@ -79,10 +79,9 @@ object Main {
     //stream8.asInstanceOf[DataStream[_]] print
 
 
-    val stream9 = sqlContext.sql("select sum(price) from CarStream [size 5 every 2 partitioned on carID] as c")
+    val stream9 = sqlContext.sql("select sum(price) from CarStream [size 5 every 2 millisec partitioned on carID] as c")
     stream9.asInstanceOf[DataStream[_]] print
-    
-    
+
     
 
     env.execute()
