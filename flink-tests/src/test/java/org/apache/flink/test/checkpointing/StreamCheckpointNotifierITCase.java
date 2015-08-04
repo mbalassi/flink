@@ -22,28 +22,21 @@ import org.apache.flink.api.common.functions.FilterFunction;
 import org.apache.flink.api.common.functions.RichMapFunction;
 import org.apache.flink.api.common.functions.RichReduceFunction;
 import org.apache.flink.api.common.state.OperatorState;
-import org.apache.flink.configuration.ConfigConstants;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.checkpoint.CheckpointNotifier;
 import org.apache.flink.streaming.api.checkpoint.Checkpointed;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.co.RichCoFlatMapFunction;
-import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
+import org.apache.flink.streaming.api.functions.sink.SinkFunction;
 import org.apache.flink.streaming.api.functions.source.ParallelSourceFunction;
 import org.apache.flink.streaming.api.functions.source.RichSourceFunction;
-import org.apache.flink.test.util.ForkableFlinkMiniCluster;
 import org.apache.flink.util.Collector;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Test;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Random;
 
 import static org.junit.Assert.assertFalse;
@@ -62,44 +55,9 @@ import static org.junit.Assert.fail;
  * successfully completed checkpoint.
  */
 @SuppressWarnings("serial")
-public class StreamCheckpointNotifierITCase {
+public class StreamCheckpointNotifierITCase extends StreamFaultToleranceTestBase {
 
-	private static final int NUM_TASK_MANAGERS = 2;
-	private static final int NUM_TASK_SLOTS = 3;
-	private static final int PARALLELISM = NUM_TASK_MANAGERS * NUM_TASK_SLOTS;
-
-	private static ForkableFlinkMiniCluster cluster;
-
-	@BeforeClass
-	public static void startCluster() {
-		try {
-			Configuration config = new Configuration();
-			config.setInteger(ConfigConstants.LOCAL_INSTANCE_MANAGER_NUMBER_TASK_MANAGER, NUM_TASK_MANAGERS);
-			config.setInteger(ConfigConstants.TASK_MANAGER_NUM_TASK_SLOTS, NUM_TASK_SLOTS);
-			config.setString(ConfigConstants.DEFAULT_EXECUTION_RETRY_DELAY_KEY, "0 ms");
-			config.setInteger(ConfigConstants.TASK_MANAGER_MEMORY_SIZE_KEY, 12);
-
-			cluster = new ForkableFlinkMiniCluster(config, false);
-		}
-		catch (Exception e) {
-			e.printStackTrace();
-			fail("Failed to start test cluster: " + e.getMessage());
-		}
-	}
-
-	@AfterClass
-	public static void shutdownCluster() {
-		try {
-			cluster.shutdown();
-			cluster = null;
-		}
-		catch (Exception e) {
-			e.printStackTrace();
-			fail("Failed to stop test cluster: " + e.getMessage());
-		}
-	}
-
-
+	final long NUM_STRINGS = 10000000L;
 
 	/**
 	 * Runs the following program:
@@ -108,99 +66,53 @@ public class StreamCheckpointNotifierITCase {
 	 *     [ (source)->(filter)->(map) ] -> [ (co-map) ] -> [ (map) ] -> [ (groupBy/reduce)->(sink) ]
 	 * </pre>
 	 */
-	@Test
-	public void runCheckpointedProgram() {
+	@Override
+	public void testProgram(StreamExecutionEnvironment env) {
 
-		final long NUM_STRINGS = 10000000L;
 		assertTrue("Broken test setup", NUM_STRINGS % 40 == 0);
 
-		try {
-			StreamExecutionEnvironment env = StreamExecutionEnvironment.createRemoteEnvironment(
-					"localhost", cluster.getJobManagerRPCPort());
-			env.setParallelism(PARALLELISM);
-			env.enableCheckpointing(500);
-			env.getConfig().disableSysoutLogging();
+		DataStream<String> stream = env.addSource(new StringGeneratingSourceFunction(NUM_STRINGS));
 
-			DataStream<String> stream = env.addSource(new StringGeneratingSourceFunction(NUM_STRINGS));
+		stream
+				// -------------- first vertex, chained to the src ----------------
+				.filter(new StringRichFilterFunction())
 
-			stream
-					// -------------- first vertex, chained to the src ----------------
-					.filter(new StringRichFilterFunction())
+						// -------------- second vertex, applying the co-map ----------------
+				.connect(stream).flatMap(new LeftIdentityCoRichFlatMapFunction())
 
-					// -------------- second vertex, applying the co-map ----------------
-					.connect(stream).flatMap(new LeftIdentityCoRichFlatMapFunction())
+				// -------------- third vertex - the stateful one that also fails ----------------
+				.map(new StringPrefixCountRichMapFunction())
+				.startNewChain()
+				.map(new IdentityMapFunction())
 
-					// -------------- third vertex - the stateful one that also fails ----------------
-					.map(new StringPrefixCountRichMapFunction())
-					.startNewChain()
-					.map(new IdentityMapFunction())
-
-							// -------------- fourth vertex - reducer and the sink ----------------
-					.groupBy("prefix")
-					.reduce(new OnceFailingReducer(NUM_STRINGS))
-					.addSink(new RichSinkFunction<PrefixCount>() {
-
-						private Map<Character, Long> counts = new HashMap<Character, Long>();
-
-						@Override
-						public void invoke(PrefixCount value) {
-							Character first = value.prefix.charAt(0);
-							Long previous = counts.get(first);
-							if (previous == null) {
-								counts.put(first, value.count);
-							} else {
-								counts.put(first, Math.max(previous, value.count));
-							}
-						}
-					});
-
-			env.execute();
-
-			List[][] checkList = new List[][]{	StringGeneratingSourceFunction.completedCheckpoints,
-												IdentityMapFunction.completedCheckpoints,
-												StringPrefixCountRichMapFunction.completedCheckpoints,
-												LeftIdentityCoRichFlatMapFunction.completedCheckpoints};
-
-			for(List[] parallelNotifications : checkList) {
-				for (int i = 0; i < PARALLELISM; i++){
-					List<Long> notifications = parallelNotifications[i];
-					assertTrue("No checkpoint notification was received.",
-							notifications.size() > 0);
-					assertFalse("Failure checkpoint was marked as completed.",
-							notifications.contains(OnceFailingReducer.failureCheckpointID));
-					assertTrue("Checkpoint notification was received multiple times",
-							notifications.size() == new HashSet<Long>(notifications).size());
-				}
-			}
-
-		}
-		catch (Exception e) {
-			e.printStackTrace();
-			fail(e.getMessage());
-		}
+						// -------------- fourth vertex - reducer and the sink ----------------
+				.groupBy("prefix")
+				.reduce(new OnceFailingReducer(NUM_STRINGS))
+				.addSink(new SinkFunction<PrefixCount>() {
+					@Override
+					public void invoke(PrefixCount value) {
+						// do nothing
+					}
+				});
 	}
 
-	// --------------------------------------------------------------------------------------------
-	//  Custom Type Classes
-	// --------------------------------------------------------------------------------------------
+	@Override
+	public void postSubmit() {
+		List[][] checkList = new List[][]{	StringGeneratingSourceFunction.completedCheckpoints,
+				IdentityMapFunction.completedCheckpoints,
+				StringPrefixCountRichMapFunction.completedCheckpoints,
+				LeftIdentityCoRichFlatMapFunction.completedCheckpoints};
 
-	public static class PrefixCount {
-
-		public String prefix;
-		public String value;
-		public long count;
-
-		public PrefixCount() {}
-
-		public PrefixCount(String prefix, String value, long count) {
-			this.prefix = prefix;
-			this.value = value;
-			this.count = count;
-		}
-
-		@Override
-		public String toString() {
-			return prefix + " / " + value;
+		for(List[] parallelNotifications : checkList) {
+			for (int i = 0; i < PARALLELISM; i++){
+				List<Long> notifications = parallelNotifications[i];
+				assertTrue("No checkpoint notification was received.",
+						notifications.size() > 0);
+				assertFalse("Failure checkpoint was marked as completed.",
+						notifications.contains(OnceFailingReducer.failureCheckpointID));
+				assertTrue("Checkpoint notification was received multiple times",
+						notifications.size() == new HashSet<Long>(notifications).size());
+			}
 		}
 	}
 
