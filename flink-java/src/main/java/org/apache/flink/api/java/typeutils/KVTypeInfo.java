@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.flink.streaming.api.KVStore;
+package org.apache.flink.api.java.typeutils;
 
 import java.io.IOException;
 
@@ -24,8 +24,7 @@ import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.core.memory.DataInputView;
 import org.apache.flink.core.memory.DataOutputView;
-
-import com.amazonaws.services.sqs.model.UnsupportedOperationException;
+import org.apache.flink.types.KV;
 
 public class KVTypeInfo<K, V> extends TypeInformation<KV<K, V>> {
 
@@ -36,6 +35,14 @@ public class KVTypeInfo<K, V> extends TypeInformation<KV<K, V>> {
 	public KVTypeInfo(TypeInformation<K> keyType, TypeInformation<V> valueType) {
 		this.keyType = keyType;
 		this.valueType = valueType;
+	}
+	
+	public TypeInformation<K> getKeyType(){
+		return keyType;
+	}
+	
+	public TypeInformation<V> getValueType(){
+		return valueType;
 	}
 
 	@Override
@@ -156,6 +163,12 @@ public class KVTypeInfo<K, V> extends TypeInformation<KV<K, V>> {
 		public void copy(DataInputView source, DataOutputView target) throws IOException {
 			throw new UnsupportedOperationException("Not implemented yet!");
 		}
+	}
+
+	@Override
+	public String toString() {
+		return this.getClass().getCanonicalName() + "[" + keyType.toString() + "," + valueType.toString()
+				+ "]";
 	}
 
 }

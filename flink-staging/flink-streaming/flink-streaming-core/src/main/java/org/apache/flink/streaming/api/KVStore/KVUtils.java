@@ -30,11 +30,12 @@ import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.KVStore.KVOperation.KVOperationType;
 import org.apache.flink.streaming.api.collector.selector.OutputSelector;
+import org.apache.flink.types.KV;
 import org.apache.flink.util.Collector;
 
 public class KVUtils {
 
-	public static class KVKeySelector<K, V> implements KeySelector<KVOperation<K, V>, K> {
+	public static class KVOpKeySelector<K, V> implements KeySelector<KVOperation<K, V>, K> {
 
 		private static final long serialVersionUID = 1L;
 
@@ -45,7 +46,7 @@ public class KVUtils {
 
 	}
 
-	public static class ToPut<K, V> extends RichMapFunction<Tuple2<K, V>, KVOperation<K, V>> {
+	public static class ToPut<K, V> extends RichMapFunction<KV<K, V>, KVOperation<K, V>> {
 		private static final long serialVersionUID = 1L;
 		private int index;
 		private KVOperation<K, V> reuse;
@@ -55,9 +56,9 @@ public class KVUtils {
 		}
 
 		@Override
-		public KVOperation<K, V> map(Tuple2<K, V> next) throws Exception {
-			reuse.setKey(next.f0);
-			reuse.setValue(next.f1);
+		public KVOperation<K, V> map(KV<K, V> next) throws Exception {
+			reuse.setKey(next.getKey());
+			reuse.setValue(next.getValue());
 			return reuse;
 		}
 
@@ -88,7 +89,7 @@ public class KVUtils {
 		public void open(Configuration c) {
 			reuse = new KVOperation<>();
 			reuse.setQueryID(index);
-			reuse.setType(KVOperationType.PUT);
+			reuse.setType(KVOperationType.GET);
 		}
 	}
 
@@ -153,7 +154,7 @@ public class KVUtils {
 
 		@Override
 		public void open(Configuration c) {
-			reuse = new KV<>();
+			reuse = new KV();
 		}
 	}
 
@@ -248,6 +249,17 @@ public class KVUtils {
 			merged = getRuntimeContext().getOperatorState("merged", Tuple2.<Integer, KV[]> of(null, null),
 					true);
 		}
+	}
+	
+	public static class KVKeySelector<K,V> implements KeySelector<KV<K,V>, K> {
+
+		private static final long serialVersionUID = 1L;
+
+		@Override
+		public K getKey(KV<K, V> value) throws Exception {
+			return value.getKey();
+		}
+		
 	}
 
 	public static class SelfKeyExtractor<K> implements KeySelector<K, K> {

@@ -26,14 +26,16 @@ import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.functions.KeySelector;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.tuple.Tuple3;
+import org.apache.flink.api.java.typeutils.KVTypeInfo;
 import org.apache.flink.api.java.typeutils.TupleTypeInfo;
-import org.apache.flink.streaming.api.KVStore.KVUtils.KVKeySelector;
+import org.apache.flink.streaming.api.KVStore.KVUtils.KVOpKeySelector;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.SplitDataStream;
+import org.apache.flink.types.KV;
 
 @SuppressWarnings("rawtypes")
 public class KVStore<K, V> {
-	private List<Tuple2<DataStream<Tuple2<K, V>>, Integer>> put = new ArrayList<>();
+	private List<Tuple2<DataStream<KV<K, V>>, Integer>> put = new ArrayList<>();
 	private List<Tuple2<DataStream<K>, Integer>> get = new ArrayList<>();
 	private List<Tuple2<DataStream<K>, Integer>> remove = new ArrayList<>();
 	private List<Tuple3<DataStream, KeySelector, Integer>> sget = new ArrayList<>();
@@ -44,7 +46,7 @@ public class KVStore<K, V> {
 
 	private int queryCount = 0;
 
-	public void put(DataStream<Tuple2<K, V>> stream) {
+	public void put(DataStream<KV<K, V>> stream) {
 		checkNotFinalized();
 		put.add(Tuple2.of(stream, ++queryCount));
 	}
@@ -54,7 +56,7 @@ public class KVStore<K, V> {
 		get.add(Tuple2.of(stream, ++queryCount));
 		return queryCount;
 	}
-	
+
 	public int remove(DataStream<K> stream) {
 		checkNotFinalized();
 		remove.add(Tuple2.of(stream, ++queryCount));
@@ -80,34 +82,35 @@ public class KVStore<K, V> {
 	}
 
 	@SuppressWarnings("unchecked")
-	public KVOperationOutputs<K, V> getOutputs() {
+	public KVStoreOutput<K, V> getOutputs() {
 		finalized = true;
 		if (put.isEmpty()) {
 			throw new RuntimeException("At least one Put stream needs to be added.");
 		}
-		final TupleTypeInfo<Tuple2<K, V>> tupleType = (TupleTypeInfo<Tuple2<K, V>>) put.get(0).f0.getType();
-		final KVOperationTypeInfo<K, V> kvType = new KVOperationTypeInfo<K, V>(
-				(TypeInformation<K>) tupleType.getTypeAt(0), (TypeInformation<V>) tupleType.getTypeAt(1));
+		final KVTypeInfo<K, V> kvType = (KVTypeInfo<K, V>) put.get(0).f0.getType();
+		final KVOperationTypeInfo<K, V> kvOpType = new KVOperationTypeInfo<K, V>(kvType.getKeyType(),
+				kvType.getValueType());
 
-		for (Tuple2<DataStream<Tuple2<K, V>>, Integer> query : put) {
-			opStream.add(query.f0.groupBy(0).map(new KVUtils.ToPut<K, V>(query.f1)).returns(kvType));
+		for (Tuple2<DataStream<KV<K, V>>, Integer> query : put) {
+			opStream.add(query.f0.groupBy(new KVUtils.KVKeySelector<K, V>())
+					.map(new KVUtils.ToPut<K, V>(query.f1)).returns(kvOpType));
 		}
 		for (Tuple2<DataStream<K>, Integer> query : get) {
 			opStream.add(query.f0.groupBy(new KVUtils.SelfKeyExtractor<K>())
-					.map(new KVUtils.ToGet<K, V>(query.f1)).returns(kvType));
+					.map(new KVUtils.ToGet<K, V>(query.f1)).returns(kvOpType));
 		}
 		for (Tuple2<DataStream<K>, Integer> query : remove) {
 			opStream.add(query.f0.groupBy(new KVUtils.SelfKeyExtractor<K>())
-					.map(new KVUtils.ToRemove<K, V>(query.f1)).returns(kvType));
+					.map(new KVUtils.ToRemove<K, V>(query.f1)).returns(kvOpType));
 		}
 		for (Tuple3<DataStream, KeySelector, Integer> query : sget) {
-			kvType.registerExtractor(query.f2, query.f0.getType(), query.f1);
-			opStream.add(query.f0.groupBy(query.f1).map(new KVUtils.ToSGet<>(query.f2)).returns(kvType));
+			kvOpType.registerExtractor(query.f2, query.f0.getType(), query.f1);
+			opStream.add(query.f0.groupBy(query.f1).map(new KVUtils.ToSGet<>(query.f2)).returns(kvOpType));
 		}
 		for (Tuple2<DataStream<K[]>, Integer> query : multiGet) {
 
-			opStream.add(query.f0.flatMap(new KVUtils.ToMGet<K, V>(query.f1)).returns(kvType)
-					.groupBy(new KVKeySelector<K, V>()));
+			opStream.add(query.f0.flatMap(new KVUtils.ToMGet<K, V>(query.f1)).returns(kvOpType)
+					.groupBy(new KVOpKeySelector<K, V>()));
 		}
 
 		DataStream<KVOperation<K, V>> input = opStream.get(0);
@@ -115,7 +118,7 @@ public class KVStore<K, V> {
 			input = input.union(opStream.get(i));
 		}
 
-		SplitDataStream<KVOperation<K, V>> split = input.transform("KVStore", kvType,
+		SplitDataStream<KVOperation<K, V>> split = input.transform("KVStore", kvOpType,
 				new KVStoreOperator<K, V>()).split(new KVUtils.IDOutputSelector<K, V>());
 
 		Map<Integer, DataStream<KV<K, V>>> kvStreams = new HashMap<>();
@@ -124,43 +127,40 @@ public class KVStore<K, V> {
 
 		for (Tuple2<DataStream<K>, Integer> query : get) {
 			DataStream<KV<K, V>> projected = split.select(query.f1.toString()).map(new KVUtils.ToKV<K, V>())
-					.returns(new KVTypeInfo<K, V>(kvType.keyType, kvType.valueType));
+					.returns(new KVTypeInfo<K, V>(kvOpType.keyType, kvOpType.valueType));
 			kvStreams.put(query.f1, projected);
 		}
-		
+
 		for (Tuple2<DataStream<K>, Integer> query : remove) {
 			DataStream<KV<K, V>> projected = split.select(query.f1.toString()).map(new KVUtils.ToKV<K, V>())
-					.returns(new KVTypeInfo<K, V>(kvType.keyType, kvType.valueType));
+					.returns(kvType);
 			kvStreams.put(query.f1, projected);
 		}
 
 		for (Tuple3<DataStream, KeySelector, Integer> query : sget) {
 			DataStream projected = split.select(query.f2.toString()).map(new KVUtils.ToSKV<K, V>())
-					.returns(new KVTypeInfo(query.f0.getType(), kvType.valueType));
+					.returns(new KVTypeInfo(query.f0.getType(), kvOpType.valueType));
 			skvStreams.put(query.f2, projected);
 		}
 
 		for (Tuple2<DataStream<K[]>, Integer> query : multiGet) {
-			DataStream<KV<K, V>[]> projected = split
-					.select(query.f1.toString())
-					.groupBy(new KVUtils.OperationIDSelector<K, V>())
-					.flatMap(new KVUtils.MGetMerge<K, V>())
-					.returns(
-							new KVArrayTypeInfo<K, V>(new KVTypeInfo<K, V>(kvType.keyType, kvType.valueType)));
+			DataStream<KV<K, V>[]> projected = split.select(query.f1.toString())
+					.groupBy(new KVUtils.OperationIDSelector<K, V>()).flatMap(new KVUtils.MGetMerge<K, V>())
+					.returns(new KVArrayTypeInfo<K, V>(kvType));
 			mkvStreams.put(query.f1, projected);
 		}
 
-		return new KVOperationOutputs<K, V>(kvStreams, skvStreams, mkvStreams);
+		return new KVStoreOutput<K, V>(kvStreams, skvStreams, mkvStreams);
 
 	}
 
-	public static class KVOperationOutputs<K, V> {
+	public static class KVStoreOutput<K, V> {
 
 		private Map<Integer, DataStream<KV<K, V>>> kvStreams;
 		private Map<Integer, DataStream> skvStreams;
 		private Map<Integer, DataStream<KV<K, V>[]>> mkvStreams;
 
-		public KVOperationOutputs(Map<Integer, DataStream<KV<K, V>>> kvStreams,
+		public KVStoreOutput(Map<Integer, DataStream<KV<K, V>>> kvStreams,
 				Map<Integer, DataStream> skvStreams, Map<Integer, DataStream<KV<K, V>[]>> mkvStreams) {
 			this.kvStreams = kvStreams;
 			this.skvStreams = skvStreams;

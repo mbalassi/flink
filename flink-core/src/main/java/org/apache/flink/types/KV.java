@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.flink.streaming.api.KVStore;
+package org.apache.flink.types;
 
 import java.io.Serializable;
 import java.util.Arrays;
@@ -71,7 +71,7 @@ public class KV<K, V> implements Serializable {
 		this.value = value;
 	}
 	
-	protected KV(){}
+	public KV(){}
 
 	@Override
 	public boolean equals(Object other) {

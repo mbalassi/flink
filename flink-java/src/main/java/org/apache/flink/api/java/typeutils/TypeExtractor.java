@@ -53,6 +53,7 @@ import org.apache.flink.api.common.typeutils.CompositeType;
 import org.apache.flink.api.java.functions.KeySelector;
 import org.apache.flink.api.java.tuple.Tuple;
 import org.apache.flink.api.java.tuple.Tuple0;
+import org.apache.flink.types.KV;
 import org.apache.flink.types.Value;
 import org.apache.flink.util.Collector;
 import org.apache.hadoop.io.Writable;
@@ -477,6 +478,54 @@ public class TypeExtractor {
 			}
 			
 			return new TupleTypeInfo(tAsClass, tupleSubTypes);
+			
+		} else if (isClassType(t) && KV.class.isAssignableFrom(typeToClass(t))) {
+						
+			typeHierarchy.add(t);
+						
+			ParameterizedType tupleChild = (ParameterizedType) t;
+			
+			Type[] subtypes = new Type[tupleChild.getActualTypeArguments().length];
+			
+			// materialize possible type variables
+			for (int i = 0; i < subtypes.length; i++) {
+				// materialize immediate TypeVariables
+				if (tupleChild.getActualTypeArguments()[i] instanceof TypeVariable<?>) {
+					subtypes[i] = materializeTypeVariable(typeHierarchy, (TypeVariable<?>) tupleChild.getActualTypeArguments()[i]);
+				}
+				// class or parameterized type
+				else {
+					subtypes[i] = tupleChild.getActualTypeArguments()[i];
+				}
+			}
+			
+			TypeInformation<?>[] kvSubTypes = new TypeInformation<?>[subtypes.length];
+			for (int i = 0; i < subtypes.length; i++) {
+				ArrayList<Type> subTypeHierarchy = new ArrayList<Type>(typeHierarchy);
+				subTypeHierarchy.add(subtypes[i]);
+				// sub type could not be determined with materializing
+				// try to derive the type info of the TypeVariable from the immediate base child input as a last attempt
+				if (subtypes[i] instanceof TypeVariable<?>) {
+					kvSubTypes[i] = createTypeInfoFromInputs((TypeVariable<?>) subtypes[i], subTypeHierarchy, in1Type, in2Type);
+					
+					// variable could not be determined
+					if (kvSubTypes[i] == null) {
+						throw new InvalidTypesException("Type of TypeVariable '" + ((TypeVariable<?>) subtypes[i]).getName() + "' in '"
+								+ ((TypeVariable<?>) subtypes[i]).getGenericDeclaration()
+								+ "' could not be determined. This is most likely a type erasure problem. "
+								+ "The type extraction currently supports types with generic variables only in cases where "
+								+ "all variables in the return type can be deduced from the input type(s).");
+					}
+				} else {
+					kvSubTypes[i] = createTypeInfoWithTypeHierarchy(subTypeHierarchy, subtypes[i], in1Type, in2Type);
+				}
+			}
+			
+			if (kvSubTypes.length != 2) {
+				throw new InvalidTypesException("Not a proper KV type!");
+			}
+			
+			return (TypeInformation<OUT>) new KVTypeInfo<>(kvSubTypes[0], kvSubTypes[1]);
 			
 		}
 		// type depends on another type

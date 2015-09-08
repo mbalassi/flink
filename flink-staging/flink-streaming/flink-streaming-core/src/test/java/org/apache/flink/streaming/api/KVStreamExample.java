@@ -22,12 +22,12 @@ import java.util.Arrays;
 import org.apache.flink.api.common.functions.FlatMapFunction;
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.java.tuple.Tuple2;
-import org.apache.flink.streaming.api.KVStore.KV;
 import org.apache.flink.streaming.api.KVStore.KVStore;
-import org.apache.flink.streaming.api.KVStore.KVStore.KVOperationOutputs;
+import org.apache.flink.streaming.api.KVStore.KVStore.KVStoreOutput;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.SinkFunction;
+import org.apache.flink.types.KV;
 import org.apache.flink.util.Collector;
 
 public class KVStreamExample {
@@ -35,52 +35,68 @@ public class KVStreamExample {
 	public static void main(String[] args) throws Exception {
 
 		StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+
+		// Create a new Key-Value store
 		KVStore<String, Integer> store = new KVStore<>();
 
-		DataStream<Tuple2<String, Integer>> putStream = env.socketTextStream("localhost", 9999).flatMap(
-				new Parser());
+		// Create query streams
+		DataStream<KV<String, Integer>> putStream = env.socketTextStream("localhost", 9999).flatMap(
+				new KVParser());
 		DataStream<String> getStream1 = env.socketTextStream("localhost", 9998);
-		DataStream<String[]> getStream2 = env.socketTextStream("localhost", 9997).map(
-				new MapFunction<String, String[]>() {
+		DataStream<String[]> getStream2 = env.socketTextStream("localhost", 9997).flatMap(new KArrayParser());
 
-					@Override
-					public String[] map(String value) throws Exception {
-						return value.split(",");
-					}
-
-				});
-
+		// Apply the query streams to the kv store
 		store.put(putStream);
-		int id1 = store.remove(getStream1);
+		int id1 = store.get(getStream1);
 		int id2 = store.multiGet(getStream2);
 
-		KVOperationOutputs<String, Integer> storeOutputs = store.getOutputs();
+		// Finalize the KV store operations and get the result streams
+		KVStoreOutput<String, Integer> storeOutputs = store.getOutputs();
 
+		// Fetch the result streams for the 2 get queries using the assigned IDs
+		// and print the results
 		storeOutputs.getKVStream(id1).print();
-		storeOutputs.getKVArrayStream(id2).addSink(new SinkFunction<KV<String, Integer>[]>() {
-
-			@Override
-			public void invoke(KV<String, Integer>[] value) throws Exception {
-				System.out.println(Arrays.toString(value));
-			}
-		});
+		storeOutputs.getKVArrayStream(id2).addSink(new PrintArray());
 
 		env.execute();
-
 	}
 
-	public static class Parser implements FlatMapFunction<String, Tuple2<String, Integer>> {
+	public static class KVParser implements FlatMapFunction<String, KV<String, Integer>> {
 
 		private static final long serialVersionUID = 1L;
 
 		@Override
-		public void flatMap(String value, Collector<Tuple2<String, Integer>> out) throws Exception {
+		public void flatMap(String value, Collector<KV<String, Integer>> out) throws Exception {
 			try {
 				String[] split = value.split(",");
-				out.collect(Tuple2.of(split[0], Integer.valueOf(split[1])));
+				out.collect(KV.of(split[0], Integer.valueOf(split[1])));
 			} catch (Exception e) {
 
 			}
 		}
+	}
+
+	public static class KArrayParser implements FlatMapFunction<String, String[]> {
+		private static final long serialVersionUID = 1L;
+
+		@Override
+		public void flatMap(String value, Collector<String[]> out) throws Exception {
+			try {
+				out.collect(value.split(","));
+			} catch (Exception e) {
+
+			}
+		}
+	}
+
+	public static class PrintArray implements SinkFunction<KV<String, Integer>[]> {
+
+		private static final long serialVersionUID = 1L;
+
+		@Override
+		public void invoke(KV<String, Integer>[] value) throws Exception {
+			System.out.println(Arrays.toString(value));
+		}
+
 	}
 }

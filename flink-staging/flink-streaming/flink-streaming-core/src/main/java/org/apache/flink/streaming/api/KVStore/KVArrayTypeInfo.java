@@ -21,6 +21,8 @@ import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.api.common.typeutils.base.GenericArraySerializer;
+import org.apache.flink.api.java.typeutils.KVTypeInfo;
+import org.apache.flink.types.KV;
 
 public class KVArrayTypeInfo<K, V> extends TypeInformation<KV<K, V>[]> {
 
