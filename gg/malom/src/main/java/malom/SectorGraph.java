@@ -3,6 +3,7 @@ package malom;
 import org.apache.flink.api.common.functions.FilterFunction;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
+import org.apache.flink.core.fs.FileSystem;
 import org.apache.flink.graph.Edge;
 import org.apache.flink.graph.Graph;
 import org.apache.flink.graph.Vertex;
@@ -15,6 +16,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * This class represents the subdivision of the state space into sectors, and drives the computation,
@@ -25,7 +27,7 @@ import java.util.Set;
  * The computation will go one work unit at a time. A work unit is either one non-twin sector (see sectorId.hasTwin), or
  * two sectors that are twins of each other. (Assuming a more general sector graph, the work units should be the
  * strongly connected components. This is the case here: the only loops are self-edges and back-and-forth edges between
- * twin nodes. (note: in practice, graphFunc removes self-edges)).
+ * twin nodes.).
  */
 public class SectorGraph {
 
@@ -54,7 +56,9 @@ public class SectorGraph {
 			Set<SectorId> mainSectors = new HashSet<>(Arrays.asList(u, u.negate()));
 			Set<SectorId> chdSectors = new HashSet<>();
 			for(SectorId mainSec: mainSectors) {
-				chdSectors.addAll(graphFunc(mainSec));
+				chdSectors.addAll(graphFunc(mainSec).
+						stream().filter(chdSec -> !mainSectors.contains(chdSec)).
+						collect(Collectors.toList()));
 			}
 			List<SectorId> sectorFamily = new ArrayList<>();
 			sectorFamily.addAll(mainSectors);
@@ -93,35 +97,46 @@ public class SectorGraph {
 			g = Retrograde.iterate(g);
 
 			// We need a result DataSet for each of the main sectors.
-			results.put(u, g.getVertices().filter(new FilterFunction<Vertex<GameState, ValueCount>>() {
-				@Override
-				public boolean filter(Vertex<GameState, ValueCount> v) throws Exception {
-					return v.getId().sid.equals(u);
-				}
-			}));
+			results.put(u, g.getVertices().filter(new FilterToOneSector(u)));
 			if(u.hasTwin()) {
-				results.put(u.negate(), g.getVertices().filter(new FilterFunction<Vertex<GameState, ValueCount>>() {
-					@Override
-					public boolean filter(Vertex<GameState, ValueCount> v) throws Exception {
-						return v.getId().sid.equals(u.negate());
-					}
-				}));
+				results.put(u.negate(), g.getVertices().filter(new FilterToOneSector(u.negate())));
 			}
+
+			// Write the result files
+			results.get(u).writeAsText(Config.resultOutPath(u), FileSystem.WriteMode.OVERWRITE);
+			if(u.hasTwin()) {
+				results.get(u.negate()).writeAsText(Config.resultOutPath(u.negate()), FileSystem.WriteMode.OVERWRITE);
+			}
+
+			// Compute verify and write it
+			Verify.verify(g, u, u.hasTwin() ? u.negate() : null);
 		}
 		return results.get(u);
 	}
 
 
+	public static class FilterToOneSector implements FilterFunction<Vertex<GameState, ValueCount>> {
+
+		SectorId s;
+
+		public FilterToOneSector(SectorId s) {
+			this.s = s;
+		}
+
+		@Override
+		public boolean filter(Vertex<GameState, ValueCount> value) throws Exception {
+			return value.getId().sid.equals(s);
+		}
+	}
+
+
 	// Returns the outgoing edges from a sector
-	// (self-edges are eliminated)
 	private List<SectorId> graphFunc(SectorId u) {
 		List<SectorId> r0 = graphFunc0(u);
 		List<SectorId> r = new ArrayList<>();
 		for (SectorId x : r0) {
 			x.negateInPlace(); // Game states are negated after each move. (see comment in SectorId.java)
-			if(!u.equals(x)) { // Eliminate self-edges
-				r.add(x);
-			}
+			r.add(x);
 		}
 		return r;
 	}

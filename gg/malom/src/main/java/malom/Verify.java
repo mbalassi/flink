@@ -1,6 +1,7 @@
 package malom;
 
 
+import org.apache.flink.api.common.functions.FilterFunction;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.tuple.Tuple4;
@@ -13,10 +14,9 @@ import org.apache.flink.graph.Vertex;
 import org.apache.flink.types.NullValue;
 import org.apache.flink.util.Collector;
 
-// Verifies the result of a Retrograde run.
-// Warning: If the graph is wrong (eg. induced sectors are not present), it might not catch it.
+// Verifies the result of a Retrograde run for a sector family
 public class Verify {
-	static public void verify(Graph<GameState, ValueCount, NullValue> g, String verifOutPath) {
+	static public void verify(Graph<GameState, ValueCount, NullValue> g, SectorId mainSec1, SectorId mainSec2) {
 		DataSet<Tuple4<GameState, ValueCount, ValueCount, GameState>> verif = g.groupReduceOnNeighbors(
 				new NeighborsFunctionWithVertexValue<GameState, ValueCount, NullValue, Tuple4<GameState, ValueCount, ValueCount, GameState>>() {
 			@Override
@@ -24,6 +24,10 @@ public class Verify {
 					Vertex<GameState, ValueCount> vertex,
 					Iterable<Tuple2<Edge<GameState, NullValue>, Vertex<GameState, ValueCount>>> neighbors,
 					Collector<Tuple4<GameState, ValueCount, ValueCount, GameState>> out) throws Exception {
+
+				if(!vertex.getId().sid.equals(mainSec1) && (mainSec2 == null || !vertex.getId().sid.equals(mainSec2))) {
+					return;
+				}
 
 				ValueCount vv = vertex.getValue();
 
@@ -87,6 +91,21 @@ public class Verify {
 				}
 			}
 		}, EdgeDirection.IN);
-		verif.writeAsText(verifOutPath, FileSystem.WriteMode.OVERWRITE);
+
+		verif.filter(new FilterFunction<Tuple4<GameState, ValueCount, ValueCount, GameState>>() {
+			@Override
+			public boolean filter(Tuple4<GameState, ValueCount, ValueCount, GameState> v) throws Exception {
+				return v.f0.sid.equals(mainSec1);
+			}
+		}).writeAsText(Config.verifyOutPath(mainSec1), FileSystem.WriteMode.OVERWRITE);
+		if(mainSec2 != null) {
+			verif.filter(new FilterFunction<Tuple4<GameState, ValueCount, ValueCount, GameState>>() {
+				@Override
+				public boolean filter(Tuple4<GameState, ValueCount, ValueCount, GameState> v) throws Exception {
+					return v.f0.sid.equals(mainSec2);
+				}
+			}).writeAsText(Config.verifyOutPath(mainSec2), FileSystem.WriteMode.OVERWRITE);
+		}
+
 	}
 }

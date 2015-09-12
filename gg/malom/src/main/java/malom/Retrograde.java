@@ -72,7 +72,7 @@ public class Retrograde implements Serializable {
 	 *  @param g		A graph of a sector family, where vertices of the main sectors are not initialized
 	 *  @param mainSec1	One of the main sectors
 	 *  @param mainSec2 The other main sector (null, if not twin)
-	 *  @returns		g transformed, by initializing the vertices of the main sectors.
+	 *  @return		g transformed, by initializing the vertices of the main sectors.
  	 */
 	public static Graph<GameState, ValueCount, NullValue> countChdAndInitBlocked(
 			Graph<GameState, ValueCount, NullValue> g,
