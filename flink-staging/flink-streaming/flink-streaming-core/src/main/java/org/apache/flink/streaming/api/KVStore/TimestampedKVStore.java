@@ -17,22 +17,12 @@
 
 package org.apache.flink.streaming.api.KVStore;
 
-import org.apache.flink.api.java.functions.KeySelector;
-import org.apache.flink.streaming.api.datastream.DataStream;
-import org.apache.flink.types.KV;
+import org.apache.flink.streaming.api.operators.OneInputStreamOperator;
 
-public interface KVStore<K, V> {
+public class TimestampedKVStore<K, V> extends AsyncKVStore<K, V> {
 
-	public abstract void put(DataStream<KV<K, V>> stream);
-
-	public abstract int get(DataStream<K> stream);
-
-	public abstract int remove(DataStream<K> stream);
-
-	public abstract <X> int getWithKeySelector(DataStream<X> stream, KeySelector<X, K> keySelector);
-
-	public abstract int multiGet(DataStream<K[]> stream);
-
-	public abstract KVStoreOutput<K, V> getOutputs();
-
+	@Override
+	protected OneInputStreamOperator<KVOperation<K, V>, KVOperation<K, V>> getKVOperator() {
+		return new TimestampedKVStoreOperator<K, V>();
+	}
 }

@@ -154,7 +154,7 @@ public class KVUtils {
 
 		@Override
 		public void open(Configuration c) {
-			reuse = new KV();
+			reuse = new KV<K, V>();
 		}
 	}
 
@@ -250,8 +250,8 @@ public class KVUtils {
 					true);
 		}
 	}
-	
-	public static class KVKeySelector<K,V> implements KeySelector<KV<K,V>, K> {
+
+	public static class KVKeySelector<K, V> implements KeySelector<KV<K, V>, K> {
 
 		private static final long serialVersionUID = 1L;
 
@@ -259,7 +259,7 @@ public class KVUtils {
 		public K getKey(KV<K, V> value) throws Exception {
 			return value.getKey();
 		}
-		
+
 	}
 
 	public static class SelfKeyExtractor<K> implements KeySelector<K, K> {

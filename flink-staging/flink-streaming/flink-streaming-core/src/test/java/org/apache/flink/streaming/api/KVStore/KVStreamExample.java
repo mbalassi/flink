@@ -15,15 +15,14 @@
  * limitations under the License.
  */
 
-package org.apache.flink.streaming.api;
+package org.apache.flink.streaming.api.KVStore;
 
 import java.util.Arrays;
 
 import org.apache.flink.api.common.functions.FlatMapFunction;
-import org.apache.flink.api.common.functions.MapFunction;
-import org.apache.flink.api.java.tuple.Tuple2;
+import org.apache.flink.streaming.api.KVStore.AsyncKVStore;
 import org.apache.flink.streaming.api.KVStore.KVStore;
-import org.apache.flink.streaming.api.KVStore.KVStore.KVStoreOutput;
+import org.apache.flink.streaming.api.KVStore.KVStoreOutput;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.SinkFunction;
@@ -37,7 +36,7 @@ public class KVStreamExample {
 		StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
 		// Create a new Key-Value store
-		KVStore<String, Integer> store = new KVStore<>();
+		KVStore<String, Integer> store = new AsyncKVStore<>();
 
 		// Create query streams
 		DataStream<KV<String, Integer>> putStream = env.socketTextStream("localhost", 9999).flatMap(

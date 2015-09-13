@@ -31,7 +31,7 @@ import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
 
 import com.amazonaws.services.sqs.model.UnsupportedOperationException;
 
-public class KVStoreOperator<K, V> extends AbstractStreamOperator<KVOperation<K, V>> implements
+public class AsyncKVStoreOperator<K, V> extends AbstractStreamOperator<KVOperation<K, V>> implements
 		OneInputStreamOperator<KVOperation<K, V>, KVOperation<K, V>> {
 
 	private static final long serialVersionUID = 1L;
@@ -40,8 +40,16 @@ public class KVStoreOperator<K, V> extends AbstractStreamOperator<KVOperation<K,
 
 	@Override
 	public void processElement(StreamRecord<KVOperation<K, V>> element) throws Exception {
+		executeOperation(element.getValue(), element);
+	}
+
+	@Override
+	public void processWatermark(Watermark mark) throws Exception {
+	}
+
+	protected void executeOperation(KVOperation<K, V> op, StreamRecord<KVOperation<K, V>> reuse)
+			throws Exception {
 		HashMap<K, V> store = kvStore.value();
-		KVOperation<K, V> op = element.getValue();
 		K key = op.getKey();
 
 		switch (op.getType()) {
@@ -49,21 +57,21 @@ public class KVStoreOperator<K, V> extends AbstractStreamOperator<KVOperation<K,
 			store.put(key, op.getValue());
 			break;
 		case GET:
-			output.collect(element.replace(new KVOperation<K, V>(key, store.get(key), op.getQueryID(),
+			output.collect(reuse.replace(new KVOperation<K, V>(key, store.get(key), op.getQueryID(),
 					KVOperationType.GETRES)));
 			break;
 		case MGET:
-			output.collect(element.replace(new KVOperation<K, V>(key, store.get(key), op.getNumKeys(), op
+			output.collect(reuse.replace(new KVOperation<K, V>(key, store.get(key), op.getNumKeys(), op
 					.getOperationID(), op.getQueryID())));
 			break;
 		case REMOVE:
-			output.collect(element.replace(new KVOperation<K, V>(key, store.remove(key), op.getQueryID(),
+			output.collect(reuse.replace(new KVOperation<K, V>(key, store.remove(key), op.getQueryID(),
 					KVOperationType.REMOVERES)));
 			break;
 		case SGET:
 			Object record = op.getRecord();
 			KeySelector<Object, K> selector = op.getKeySelector();
-			output.collect(element.replace(new KVOperation<K, V>(record, store.get(selector.getKey(record)),
+			output.collect(reuse.replace(new KVOperation<K, V>(record, store.get(selector.getKey(record)),
 					op.getQueryID())));
 			break;
 		default:
@@ -71,10 +79,6 @@ public class KVStoreOperator<K, V> extends AbstractStreamOperator<KVOperation<K,
 		}
 
 		kvStore.update(store);
-	}
-
-	@Override
-	public void processWatermark(Watermark mark) throws Exception {
 	}
 
 	@Override
