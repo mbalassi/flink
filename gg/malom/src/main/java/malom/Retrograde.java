@@ -20,6 +20,7 @@ import org.apache.flink.util.Collector;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -40,8 +41,8 @@ public class Retrograde implements Serializable {
 		}).name("Vertices " + s);
 	}
 
-	public static DataSet<Edge<GameState, NullValue>> createEdges(DataSet<Vertex<GameState, ValueCount>> vertices, List<SectorId> sectors) {
-		Movegen movegen = new Movegen(sectors);
+	public static DataSet<Edge<GameState, NullValue>> createEdges(DataSet<Vertex<GameState, ValueCount>> vertices, Collection<SectorId> sectors, Collection<SectorId> mainSectors) {
+		Movegen movegen = new Movegen(sectors, mainSectors);
 		return vertices.flatMap(new FlatMapFunction<Vertex<GameState, ValueCount>, Edge<GameState, NullValue>>() {
 			@Override
 			public void flatMap(Vertex<GameState, ValueCount> v, Collector<Edge<GameState, NullValue>> out) throws Exception {
@@ -65,34 +66,45 @@ public class Retrograde implements Serializable {
 	}
 
 	/**
-	 * Initialize main sectors:
-	 *  - states where I can't make a move are losses in 0
-	 *  - other states are initialized to count(inDegree)
+	 * Initialize all states in the sector family:
+	 *	- child sectors:
+	 *		- modify the depth of losses and wins to 0
+	 * 	- main sectors:
+	 *		- states where I can't make a move are losses in 0
+	 *		- other states are initialized to count(inDegree)
 	 *
 	 *  @param g		A graph of a sector family, where vertices of the main sectors are not initialized
 	 *  @param mainSec1	One of the main sectors
 	 *  @param mainSec2 The other main sector (null, if not twin)
 	 *  @return		g transformed, by initializing the vertices of the main sectors.
  	 */
-	public static Graph<GameState, ValueCount, NullValue> countChdAndInitBlocked(
+	public static Graph<GameState, ValueCount, NullValue> init(
 			Graph<GameState, ValueCount, NullValue> g,
 			SectorId mainSec1, SectorId mainSec2,
 			ExecutionEnvironment env) {
 		// Set losses to 0, and
 		// set others to count(deg)
-		return Graph.fromDataSet(g.getVertices().join(g.inDegrees(), JoinOperatorBase.JoinHint.REPARTITION_SORT_MERGE).where(0).equalTo(0).with(new JoinFunction<Vertex<GameState, ValueCount>, Tuple2<GameState, Long>, Vertex<GameState, ValueCount>>() {
+		return Graph.fromDataSet(g.getVertices().join(g.inDegrees()).where(0).equalTo(0).with(new JoinFunction<Vertex<GameState, ValueCount>, Tuple2<GameState, Long>, Vertex<GameState, ValueCount>>() {
 			@Override
 			public Vertex<GameState, ValueCount> join(Vertex<GameState, ValueCount> vertex, Tuple2<GameState, Long> deg0) throws Exception {
 				long deg = deg0.f1;
-				GameState v = vertex.f0;
-				if (!v.sid.equals(mainSec1) && (mainSec2 == null || !v.sid.equals(mainSec2))) {
-					return vertex;
+				GameState state = vertex.getId();
+				ValueCount value = vertex.getValue();
+				if (!state.sid.equals(mainSec1) && (mainSec2 == null || !state.sid.equals(mainSec2))) {
+					// vertex in child sector
+					if(value.isCount()) {
+						return vertex;
+					} else {
+						value.value.depth = 0;
+						return new Vertex<>(state, value);
+					}
 				} else {
+					// vertex in main sector
 					if (deg == 0) { // state is blocked
-						return new Vertex<>(v, ValueCount.value(Value.loss(0)));
+						return new Vertex<>(state, ValueCount.value(Value.loss(0)));
 					} else { // to be computed by the iteration (set to count for now)
 						// (Note: the first iteration will take child sectors into account.)
-						return new Vertex<>(v, ValueCount.count((int) deg));
+						return new Vertex<>(state, ValueCount.count((int) deg));
 					}
 				}
 			}
@@ -106,7 +118,7 @@ public class Retrograde implements Serializable {
 	 * Draw states never send a msg.
 	 *
 	 * @param g		A graph of a sector family, where the child sectors have already been solved, and the main sectors
-	 *              have been initialized by countChdAndInitBlocked.
+	 *              have been initialized by init.
 	 * @return		g transformed, so that the vertices of the main sectors are solved (have their final values).
 	 */
 	public static Graph<GameState, ValueCount, NullValue> iterate(Graph<GameState, ValueCount, NullValue> g) {

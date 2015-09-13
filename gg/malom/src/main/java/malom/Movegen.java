@@ -30,6 +30,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 
@@ -140,20 +141,26 @@ public class Movegen implements Serializable {
 
 	Adj[][][][] adjs = new Adj[Config.maxPieceCount + 1][Config.maxPieceCount + 1][Config.maxPieceCount + 1][Config.maxPieceCount + 1];
 
-	Movegen(List<SectorId> ids0) {
-		HashSet<SectorId> ids = new HashSet<SectorId>(ids0);
-		for(SectorId s: ids0) {
+	Movegen(Collection<SectorId> sectors, Collection<SectorId> mainSectors0) {
+		HashSet<SectorId> mainSectors = new HashSet<>(mainSectors0);
+		for(SectorId s: sectors) {
 			byte w=s.w, b=s.b, wf=s.wf, bf=s.bf;
 			Adj a = new Adj();
 			SectorId
 					mozg = new SectorId(b,w,bf,wf), //wms_w_b_wf_bf
-					felrak = new SectorId((byte)(b-1), w, (byte)(bf+1), wf), //wms_wm_b_wfp_bf
-					mozg_kle = new SectorId(b, (byte)(w+1), bf, wf), //wms_w_bp_wf_bf
-					felrak_kle = new SectorId((byte)(b-1), (byte)(w+1), (byte)(bf+1), wf); //wms_wm_bp_wfp_bf
-			if(ids.contains(mozg)) a.mozg=mozg;
-			if(ids.contains(felrak)) a.felrak=felrak;
-			if(ids.contains(mozg_kle)) a.mozg_kle=mozg_kle;
-			if(ids.contains(felrak_kle)) a.felrak_kle=felrak_kle;
+					felrak = bf < Config.maxPieceCount && b > 0 ?
+							new SectorId((byte)(b-1), w, (byte)(bf+1), wf) //wms_wm_b_wfp_bf
+							: null,
+					mozg_kle = w < Config.maxPieceCount ?
+							new SectorId(b, (byte)(w+1), bf, wf) //wms_w_bp_wf_bf
+							: null,
+					felrak_kle = b > 0 && w < Config.maxPieceCount && bf < Config.maxPieceCount ?
+							new SectorId((byte)(b-1), (byte)(w+1), (byte)(bf+1), wf) //wms_wm_bp_wfp_bf
+							: null;
+			if(mainSectors.contains(mozg)) a.mozg=mozg;
+			if(mainSectors.contains(felrak)) a.felrak=felrak;
+			if(mainSectors.contains(mozg_kle)) a.mozg_kle=mozg_kle;
+			if(mainSectors.contains(felrak_kle)) a.felrak_kle=felrak_kle;
 			adjs[s.w][s.b][s.wf][s.bf] = a;
 		}
 	}

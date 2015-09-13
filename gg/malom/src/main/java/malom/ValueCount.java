@@ -27,6 +27,11 @@ public class ValueCount implements Serializable {
 		this.count = count;
 	}
 
+	public ValueCount(ValueCount valueCount) {
+		this.value = valueCount.value;
+		this.count = valueCount.count;
+	}
+
 	public static ValueCount value(Value v){
 		ValueCount r = new ValueCount();
 		r.value = v;

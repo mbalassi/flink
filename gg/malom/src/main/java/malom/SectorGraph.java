@@ -60,6 +60,7 @@ public class SectorGraph {
 						stream().filter(chdSec -> !mainSectors.contains(chdSec)).
 						collect(Collectors.toList()));
 			}
+			assert chdSectors.size() > 0;
 			List<SectorId> sectorFamily = new ArrayList<>();
 			sectorFamily.addAll(mainSectors);
 			sectorFamily.addAll(chdSectors);
@@ -86,12 +87,12 @@ public class SectorGraph {
 			}
 
 			// Create the edges
-			DataSet<Edge<GameState, NullValue>> edges = Retrograde.createEdges(vertices, sectorFamily);
+			DataSet<Edge<GameState, NullValue>> edges = Retrograde.createEdges(vertices, sectorFamily, mainSectors);
 
 			Graph<GameState, ValueCount, NullValue> g = Graph.fromDataSet(vertices, edges, env);
 
 			// Initialize main sectors (we do this here, because we need the degrees)
-			g = Retrograde.countChdAndInitBlocked(g, u, u.hasTwin() ? u.negate() : null, env);
+			g = Retrograde.init(g, u, u.hasTwin() ? u.negate() : null, env);
 
 			// The essence of the computation
 			g = Retrograde.iterate(g);
@@ -135,8 +136,11 @@ public class SectorGraph {
 		List<SectorId> r0 = graphFunc0(u);
 		List<SectorId> r = new ArrayList<>();
 		for (SectorId x : r0) {
-			x.negateInPlace(); // Game states are negated after each move. (see comment in SectorId.java)
-			r.add(x);
+			// TODO: filtering (see std_filtered in Sporol.java)
+			if(x.b >= 0) {
+				x.negateInPlace(); // Game states are negated after each move. (see comment in SectorId.java)
+				r.add(x);
+			}
 		}
 		return r;
 	}
