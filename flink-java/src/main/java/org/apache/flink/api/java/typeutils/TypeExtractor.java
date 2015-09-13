@@ -1265,6 +1265,10 @@ public class TypeExtractor {
 			}
 			throw new InvalidTypesException("Type information extraction for tuples (except Tuple0) cannot be done based on the class.");
 		}
+		
+		if (KV.class.isAssignableFrom(clazz)) {
+			throw new InvalidTypesException("Type information extraction for KV cannot be done based on the class.");
+		}
 
 		// check for Enums
 		if(Enum.class.isAssignableFrom(clazz)) {
@@ -1568,7 +1572,11 @@ public class TypeExtractor {
 				infos[i] = privateGetForObject(field);
 			}
 			return new TupleTypeInfo(value.getClass(), infos);
+		} else if (value instanceof KV) {
+			KV kv = (KV) value;
+			return new KVTypeInfo(privateGetForObject(kv.getKey()), privateGetForObject(kv.getValue()));
 		} else {
+
 			return privateGetForClass((Class<X>) value.getClass(), new ArrayList<Type>());
 		}
 	}

@@ -17,9 +17,8 @@
 
 package org.apache.flink.streaming.api.KVStore;
 
-import org.apache.flink.streaming.api.KVStore.KVStore;
-import org.apache.flink.streaming.api.KVStore.KVStoreOutput;
-import org.apache.flink.streaming.api.KVStore.TimestampedKVStore;
+import org.apache.flink.api.java.functions.KeySelector;
+import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.source.EventTimeSourceFunction;
@@ -37,40 +36,83 @@ public class TSKVStreamExample {
 		// Create a new Key-Value store
 		KVStore<String, Integer> store = new TimestampedKVStore<>();
 
-		DataStream<KV<String, Integer>> put1 = env.addSource(new PutSource1());
-		DataStream<KV<String, Integer>> put2 = env.addSource(new PutSource2());
+		DataStream<KV<String, Integer>> put1 = env.addSource(new PutSource(
+				Tuple2.of(KV.of("a", 1), 1L),
+				Tuple2.of(KV.of("a", 2), 5L), 
+				Tuple2.of(KV.of("b", 1), 6L), 
+				Tuple2.of(KV.of("a", 3), 7L),
+				Tuple2.of(KV.of("c", 1), 8L), 
+				Tuple2.of(KV.of("c", 2), 10L)));
+		DataStream<KV<String, Integer>> put2 = env.addSource(new PutSource(
+				Tuple2.of(KV.of("a", -1), 3L),
+				Tuple2.of(KV.of("b", -1), 8L), 
+				Tuple2.of(KV.of("c", -1), 12L)));
+		
+		/**
+		 * Tuple2.of(KV.of("a", 1), 1L),
+		 * Tuple2.of(KV.of("a", -1), 3L), 
+		 * Tuple2.of(KV.of("a", 2), 5L),
+		 * Tuple2.of(KV.of("b", 1), 6L), 
+		 * Tuple2.of(KV.of("a", 3), 7L),
+		 * Tuple2.of(KV.of("c", 1), 8L), 
+		 * Tuple2.of(KV.of("b", -1), 8L),
+		 * Tuple2.of(KV.of("c", 2), 10L), 
+		 * Tuple2.of(KV.of("c", -1), 12L),
+		 */
 
-		DataStream<String> get = env.addSource(new GetSource());
+		DataStream<Tuple2<String, Long>> get = env.addSource(new GetSource(
+				Tuple2.of("a",2L),
+				Tuple2.of("a",4L),
+				Tuple2.of("b",5L),
+				Tuple2.of("a",6L),
+				Tuple2.of("b",7L),
+				Tuple2.of("a",8L),
+				Tuple2.of("b",9L),
+				Tuple2.of("c",9L),
+				Tuple2.of("c",11L),
+				Tuple2.of("c",13L)
+				));
 
 		store.put(put1);
 		store.put(put2);
 
-		int id1 = store.get(get);
+		int id1 = store.getWithKeySelector(get, new KeySelector<Tuple2<String, Long>, String>() {
 
-		// Finalize the KV store operations and get the result streams
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			public String getKey(Tuple2<String, Long> value) throws Exception {
+				return value.f0;
+			}
+		});
+
 		KVStoreOutput<String, Integer> storeOutputs = store.getOutputs();
-
-		// Fetch the result streams for the 2 get queries using the assigned IDs
-		// and print the results
-		storeOutputs.getKVStream(id1).print();
+		storeOutputs.getCustomKVStream(id1).print();
 
 		env.execute();
 	}
 
-	public static class PutSource1 implements SourceFunction<KV<String, Integer>>,
+	public static class PutSource implements SourceFunction<KV<String, Integer>>,
 			EventTimeSourceFunction<KV<String, Integer>> {
+		private static final long serialVersionUID = 1L;
+
+		Tuple2<KV<String, Integer>, Long>[] inputs;
+
+		@SafeVarargs
+		public PutSource(Tuple2<KV<String, Integer>, Long>... input) {
+			this.inputs = input;
+		}
 
 		@Override
 		public void run(
 				org.apache.flink.streaming.api.functions.source.SourceFunction.SourceContext<KV<String, Integer>> ctx)
 				throws Exception {
-
-			ctx.collectWithTimestamp(KV.of("a", 2), 1);
-			ctx.collectWithTimestamp(KV.of("b", 3), 4);
-			ctx.emitWatermark(new Watermark(4L));
-			ctx.collectWithTimestamp(KV.of("a", 1), 8);
-			ctx.collectWithTimestamp(KV.of("c", 4), 12);
-			ctx.emitWatermark(new Watermark(12L));
+			synchronized (ctx.getCheckpointLock()) {
+				for (Tuple2<KV<String, Integer>, Long> input : inputs) {
+					ctx.collectWithTimestamp(input.f0, input.f1);
+					ctx.emitWatermark(new Watermark(input.f1));
+				}
+			}
 		}
 
 		@Override
@@ -79,50 +121,32 @@ public class TSKVStreamExample {
 
 	}
 
-	public static class PutSource2 implements SourceFunction<KV<String, Integer>>,
-			EventTimeSourceFunction<KV<String, Integer>> {
+	public static class GetSource implements SourceFunction<Tuple2<String, Long>>,
+			EventTimeSourceFunction<Tuple2<String, Long>> {
+		private static final long serialVersionUID = 1L;
 
-		@Override
-		public void run(
-				org.apache.flink.streaming.api.functions.source.SourceFunction.SourceContext<KV<String, Integer>> ctx)
-				throws Exception {
+		Tuple2<String, Long>[] inputs;
 
-			ctx.collectWithTimestamp(KV.of("b", 1), 7);
-			ctx.emitWatermark(new Watermark(7L));
-			ctx.collectWithTimestamp(KV.of("c", 0), 10);
-			ctx.emitWatermark(new Watermark(10L));
+		@SafeVarargs
+		public GetSource(Tuple2<String, Long>... input) {
+			this.inputs = input;
 		}
 
 		@Override
-		public void cancel() {
-		}
-
-	}
-
-	public static class GetSource implements SourceFunction<String>, EventTimeSourceFunction<String> {
-
-		@Override
 		public void run(
-				org.apache.flink.streaming.api.functions.source.SourceFunction.SourceContext<String> ctx)
+				org.apache.flink.streaming.api.functions.source.SourceFunction.SourceContext<Tuple2<String, Long>> ctx)
 				throws Exception {
-			ctx.collectWithTimestamp("a", 2);
-			ctx.collectWithTimestamp("b", 3);
-			ctx.emitWatermark(new Watermark(3L));
-			ctx.collectWithTimestamp("b", 5);
-			ctx.collectWithTimestamp("b", 7);
-			ctx.emitWatermark(new Watermark(7L));
-
-			ctx.collectWithTimestamp("a", 9);
-			ctx.collectWithTimestamp("c", 11);
-			ctx.collectWithTimestamp("c", 13);
-			ctx.emitWatermark(new Watermark(13L));
+			synchronized (ctx.getCheckpointLock()) {
+				for (Tuple2<String, Long> input : inputs) {
+					ctx.collectWithTimestamp(input, input.f1);
+					ctx.emitWatermark(new Watermark(input.f1));
+				}
+			}
 
 		}
 
 		@Override
 		public void cancel() {
-			// TODO Auto-generated method stub
-
 		}
 
 	}

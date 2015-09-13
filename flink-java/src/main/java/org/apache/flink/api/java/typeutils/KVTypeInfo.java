@@ -36,12 +36,12 @@ public class KVTypeInfo<K, V> extends TypeInformation<KV<K, V>> {
 		this.keyType = keyType;
 		this.valueType = valueType;
 	}
-	
-	public TypeInformation<K> getKeyType(){
+
+	public TypeInformation<K> getKeyType() {
 		return keyType;
 	}
-	
-	public TypeInformation<V> getValueType(){
+
+	public TypeInformation<V> getValueType() {
 		return valueType;
 	}
 
@@ -115,11 +115,20 @@ public class KVTypeInfo<K, V> extends TypeInformation<KV<K, V>> {
 
 		@Override
 		public KV<K, V> copy(KV<K, V> from, KV<K, V> reuse) {
-			reuse.setKey(keySerializer.copy(from.getKey(), reuse.getKey()));
+			K reuseK = reuse.getKey();
+			if (reuseK == null) {
+				reuse.setKey(keySerializer.copy(from.getKey()));
+			} else {
+				reuse.setKey(keySerializer.copy(from.getKey(), reuseK));
+			}
+
 			if (from.getValue() != null) {
 				V reuseV = reuse.getValue();
-				reuse.setValue(valueSerializer.copy(from.getValue(), reuseV != null ? reuseV
-						: valueSerializer.createInstance()));
+				if (reuseV == null) {
+					reuse.setValue(valueSerializer.copy(from.getValue()));
+				} else {
+					reuse.setValue(valueSerializer.copy(from.getValue(), reuseV));
+				}
 			}
 			return reuse;
 		}
