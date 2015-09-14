@@ -102,7 +102,7 @@ public class WordCount {
 			// emit the pairs
 			for (String token : tokens) {
 				if (token.length() > 0) {
-					out.collect(new Tuple2<String, Integer>(token, 1));
+					out.collect(new Tuple2<String, Integer>(token, null));
 				}
 			}
 		}

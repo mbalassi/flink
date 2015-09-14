@@ -57,15 +57,15 @@ public class AsyncKVStoreOperator<K, V> extends AbstractStreamOperator<KVOperati
 			store.put(key, op.getValue());
 			break;
 		case GET:
-			output.collect(reuse.replace(new KVOperation<K, V>(key, store.get(key), op.getQueryID(),
+			output.collect(reuse.replace(new KVOperation<>(key, store.get(key), op.getQueryID(),
 					KVOperationType.GETRES)));
 			break;
 		case MGET:
-			output.collect(reuse.replace(new KVOperation<K, V>(key, store.get(key), op.getNumKeys(), op
+			output.collect(reuse.replace(new KVOperation<>(key, store.get(key), op.getNumKeys(), op
 					.getOperationID(), op.getQueryID())));
 			break;
 		case REMOVE:
-			output.collect(reuse.replace(new KVOperation<K, V>(key, store.remove(key), op.getQueryID(),
+			output.collect(reuse.replace(new KVOperation<>(key, store.remove(key), op.getQueryID(),
 					KVOperationType.REMOVERES)));
 			break;
 		case SGET:

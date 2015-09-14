@@ -154,7 +154,7 @@ public class KVUtils {
 
 		@Override
 		public void open(Configuration c) {
-			reuse = new KV<K, V>();
+			reuse = new KV<>();
 		}
 	}
 
@@ -235,7 +235,7 @@ public class KVUtils {
 			}
 
 			if (partial.f0 == 0) {
-				out.collect((KV<K, V>[]) partial.f1);
+				out.collect(partial.f1);
 				merged.update(null);
 			} else {
 				merged.update(partial);

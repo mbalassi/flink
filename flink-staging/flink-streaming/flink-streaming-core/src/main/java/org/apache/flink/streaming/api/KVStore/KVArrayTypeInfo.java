@@ -65,7 +65,7 @@ public class KVArrayTypeInfo<K, V> extends TypeInformation<KV<K, V>[]> {
 
 	@Override
 	public TypeSerializer<KV<K, V>[]> createSerializer(ExecutionConfig config) {
-		return new GenericArraySerializer<KV<K, V>>(kvType.getTypeClass(), kvType.createSerializer(config));
+		return new GenericArraySerializer<>(kvType.getTypeClass(), kvType.createSerializer(config));
 	}
 
 }

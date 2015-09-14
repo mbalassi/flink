@@ -23,16 +23,16 @@ import org.apache.flink.types.KV;
 
 public interface KVStore<K, V> {
 
-	public abstract void put(DataStream<KV<K, V>> stream);
+	void put(DataStream<KV<K, V>> stream);
 
-	public abstract int get(DataStream<K> stream);
+	int get(DataStream<K> stream);
 
-	public abstract int remove(DataStream<K> stream);
+	int remove(DataStream<K> stream);
 
-	public abstract <X> int getWithKeySelector(DataStream<X> stream, KeySelector<X, K> keySelector);
+	<X> int getWithKeySelector(DataStream<X> stream, KeySelector<X, K> keySelector);
 
-	public abstract int multiGet(DataStream<K[]> stream);
+	int multiGet(DataStream<K[]> stream);
 
-	public abstract KVStoreOutput<K, V> getOutputs();
+	KVStoreOutput<K, V> getOutputs();
 
 }

@@ -21,7 +21,7 @@ import org.apache.flink.api.java.functions.KeySelector;
 
 public class KVOperation<K, V> {
 
-	public static enum KVOperationType {
+	public enum KVOperationType {
 		PUT, GET, REMOVE, MGET, SGET, GETRES, REMOVERES, MGETRES, SGETRES;
 	}
 

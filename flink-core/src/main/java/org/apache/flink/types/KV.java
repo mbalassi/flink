@@ -25,8 +25,13 @@ import com.google.common.base.MoreObjects;
 
 /**
  * MODIFICATION OF KV CLASS FROM GOOGLE CLOUD DATAFLOW JAVA SDK
- * 
- * A key/value pair.
+ *
+ *      THE APACHE 2.0 LICENSED CODE REPOSITORY IS FOUND AT
+ *     https://github.com/GoogleCloudPlatform/DataflowJavaSDK
+ *
+ * A key/value pair. This implementation is needed instead of
+ * basing it on Tuple, because the TupleSerializer currently
+ * does not handle null values.
  * 
  * @param <K>
  *            the type of the key

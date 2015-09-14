@@ -45,26 +45,12 @@ public class AsyncKVStore<K, V> implements KVStore<K, V> {
 
 	private int queryCount = 0;
 
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see
-	 * org.apache.flink.streaming.api.KVStore.KVStore#put(org.apache.flink.streaming
-	 * .api.datastream.DataStream)
-	 */
 	@Override
 	public void put(DataStream<KV<K, V>> stream) {
 		checkNotFinalized();
 		put.add(Tuple2.of(stream, ++queryCount));
 	}
 
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see
-	 * org.apache.flink.streaming.api.KVStore.KVStore#get(org.apache.flink.streaming
-	 * .api.datastream.DataStream)
-	 */
 	@Override
 	public int get(DataStream<K> stream) {
 		checkNotFinalized();
@@ -72,13 +58,6 @@ public class AsyncKVStore<K, V> implements KVStore<K, V> {
 		return queryCount;
 	}
 
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see
-	 * org.apache.flink.streaming.api.KVStore.KVStore#remove(org.apache.flink
-	 * .streaming.api.datastream.DataStream)
-	 */
 	@Override
 	public int remove(DataStream<K> stream) {
 		checkNotFinalized();
@@ -86,14 +65,6 @@ public class AsyncKVStore<K, V> implements KVStore<K, V> {
 		return queryCount;
 	}
 
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see
-	 * org.apache.flink.streaming.api.KVStore.KVStore#getWithKeySelector(org
-	 * .apache.flink.streaming.api.datastream.DataStream,
-	 * org.apache.flink.api.java.functions.KeySelector)
-	 */
 	@Override
 	public <X> int getWithKeySelector(DataStream<X> stream, KeySelector<X, K> keySelector) {
 		checkNotFinalized();
@@ -101,13 +72,6 @@ public class AsyncKVStore<K, V> implements KVStore<K, V> {
 		return queryCount;
 	}
 
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see
-	 * org.apache.flink.streaming.api.KVStore.KVStore#multiGet(org.apache.flink
-	 * .streaming.api.datastream.DataStream)
-	 */
 	@Override
 	public int multiGet(DataStream<K[]> stream) {
 		checkNotFinalized();
@@ -115,17 +79,6 @@ public class AsyncKVStore<K, V> implements KVStore<K, V> {
 		return queryCount;
 	}
 
-	public void checkNotFinalized() {
-		if (finalized) {
-			throw new IllegalStateException("Cannot operate on the Store after getting the outputs.");
-		}
-	}
-
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see org.apache.flink.streaming.api.KVStore.KVStore#getOutputs()
-	 */
 	@Override
 	@SuppressWarnings("unchecked")
 	public KVStoreOutput<K, V> getOutputs() {
@@ -134,7 +87,7 @@ public class AsyncKVStore<K, V> implements KVStore<K, V> {
 			throw new RuntimeException("At least one Put stream needs to be added.");
 		}
 		final KVTypeInfo<K, V> kvType = (KVTypeInfo<K, V>) put.get(0).f0.getType();
-		final KVOperationTypeInfo<K, V> kvOpType = new KVOperationTypeInfo<K, V>(kvType.getKeyType(),
+		final KVOperationTypeInfo<K, V> kvOpType = new KVOperationTypeInfo<>(kvType.getKeyType(),
 				kvType.getValueType());
 
 		for (Tuple2<DataStream<KV<K, V>>, Integer> query : put) {
@@ -173,7 +126,7 @@ public class AsyncKVStore<K, V> implements KVStore<K, V> {
 
 		for (Tuple2<DataStream<K>, Integer> query : get) {
 			DataStream<KV<K, V>> projected = split.select(query.f1.toString()).map(new KVUtils.ToKV<K, V>())
-					.returns(new KVTypeInfo<K, V>(kvOpType.keyType, kvOpType.valueType));
+					.returns(new KVTypeInfo<>(kvOpType.keyType, kvOpType.valueType));
 			kvStreams.put(query.f1, projected);
 		}
 
@@ -192,16 +145,22 @@ public class AsyncKVStore<K, V> implements KVStore<K, V> {
 		for (Tuple2<DataStream<K[]>, Integer> query : multiGet) {
 			DataStream<KV<K, V>[]> projected = split.select(query.f1.toString())
 					.groupBy(new KVUtils.OperationIDSelector<K, V>()).flatMap(new KVUtils.MGetMerge<K, V>())
-					.returns(new KVArrayTypeInfo<K, V>(kvType));
+					.returns(new KVArrayTypeInfo<>(kvType));
 			mkvStreams.put(query.f1, projected);
 		}
 
-		return new KVStoreOutput<K, V>(kvStreams, skvStreams, mkvStreams);
+		return new KVStoreOutput<>(kvStreams, skvStreams, mkvStreams);
 
 	}
 
+	protected void checkNotFinalized() {
+		if (finalized) {
+			throw new IllegalStateException("Cannot operate on the Store after getting the outputs.");
+		}
+	}
+
 	protected OneInputStreamOperator<KVOperation<K, V>, KVOperation<K, V>> getKVOperator() {
-		return new AsyncKVStoreOperator<K, V>();
+		return new AsyncKVStoreOperator<>();
 	}
 
 }

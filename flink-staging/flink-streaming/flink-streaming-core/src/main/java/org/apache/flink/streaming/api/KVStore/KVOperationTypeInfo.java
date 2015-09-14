@@ -82,7 +82,7 @@ public class KVOperationTypeInfo<K, V> extends TypeInformation<KVOperation<K, V>
 
 	@Override
 	public TypeSerializer<KVOperation<K, V>> createSerializer(ExecutionConfig config) {
-		return new KVOpSerializer<K, V>(keyType.createSerializer(config), valueType == null ? null
+		return new KVOpSerializer<>(keyType.createSerializer(config), valueType == null ? null
 				: valueType.createSerializer(config), selectors, config);
 	}
 
@@ -115,7 +115,7 @@ public class KVOperationTypeInfo<K, V> extends TypeInformation<KVOperation<K, V>
 			this.keySerializer = keySerializer;
 			this.valueSerializer = valueSerializer;
 			if (selectorInfo != null) {
-				selectors = new HashMap<Integer, Tuple2<TypeSerializer, KeySelector>>();
+				selectors = new HashMap<>();
 				for (Entry<Integer, Tuple2<TypeInformation, KeySelector>> entry : selectorInfo.entrySet()) {
 					selectors.put(entry.getKey(),
 							Tuple2.of(entry.getValue().f0.createSerializer(config), entry.getValue().f1));
@@ -135,7 +135,7 @@ public class KVOperationTypeInfo<K, V> extends TypeInformation<KVOperation<K, V>
 
 		@Override
 		public KVOperation<K, V> createInstance() {
-			return new KVOperation<K, V>();
+			return new KVOperation<>();
 		}
 
 		@Override
