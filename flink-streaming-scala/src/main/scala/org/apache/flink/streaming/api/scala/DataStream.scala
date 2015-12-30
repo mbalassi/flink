@@ -44,7 +44,14 @@ class DataStream[T](javaStream: JavaStream[T]) {
   /**
    * Gets the underlying java DataStream object.
    */
-  def getJavaStream: JavaStream[T] = javaStream
+  private[flink] def getJavaStream: JavaStream[T] = javaStream
+
+  /**
+    * Returns the [[StreamExecutionEnvironment]] associated with the current [[DataStream]].
+    * @return associated execution environment
+    */
+  def getExecutionEnvironment: StreamExecutionEnvironment =
+    new StreamExecutionEnvironment(javaStream.getExecutionEnvironment)
 
   /**
    * Returns the ID of the DataStream.
@@ -56,7 +63,7 @@ class DataStream[T](javaStream: JavaStream[T]) {
   /**
    * Returns the TypeInformation for the elements of this DataStream.
    */
-  def getType(): TypeInformation[T] = javaStream.getType()
+  def getType(): TypeInformation[T] = javaStream.getType
 
   /**
    * Sets the parallelism of this operation. This must be at least 1.
