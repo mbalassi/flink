@@ -39,6 +39,8 @@ import _root_.scala.language.implicitConversions
 
 class StreamExecutionEnvironment(javaEnv: JavaEnv) {
 
+  implicit val context = this
+
   /**
    * Gets the config object.
    */

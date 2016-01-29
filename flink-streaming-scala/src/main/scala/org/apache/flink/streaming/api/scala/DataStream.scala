@@ -39,19 +39,18 @@ import org.apache.flink.util.Collector
 import scala.collection.JavaConverters._
 import scala.reflect.ClassTag
 
-class DataStream[T](javaStream: JavaStream[T]) {
+class DataStream[T](stream: JavaStream[T])(implicit context: StreamExecutionEnvironment) {
 
   /**
    * Gets the underlying java DataStream object.
    */
-  private[flink] def getJavaStream: JavaStream[T] = javaStream
+  private[flink] def javaStream: JavaStream[T] = stream
 
   /**
     * Returns the [[StreamExecutionEnvironment]] associated with the current [[DataStream]].
     * @return associated execution environment
     */
-  def getExecutionEnvironment: StreamExecutionEnvironment =
-    new StreamExecutionEnvironment(javaStream.getExecutionEnvironment)
+  def getExecutionEnvironment: StreamExecutionEnvironment = context
 
   /**
    * Returns the ID of the DataStream.
@@ -63,7 +62,7 @@ class DataStream[T](javaStream: JavaStream[T]) {
   /**
    * Returns the TypeInformation for the elements of this DataStream.
    */
-  def getType(): TypeInformation[T] = javaStream.getType
+  def getType(): TypeInformation[T] = javaStream.getType()
 
   /**
    * Sets the parallelism of this operation. This must be at least 1.
@@ -204,7 +203,7 @@ class DataStream[T](javaStream: JavaStream[T]) {
    *
    */
   def union(dataStreams: DataStream[T]*): DataStream[T] =
-    javaStream.union(dataStreams.map(_.getJavaStream): _*)
+    javaStream.union(dataStreams.map(_.javaStream): _*)
 
   /**
    * Creates a new ConnectedStreams by connecting
@@ -212,7 +211,7 @@ class DataStream[T](javaStream: JavaStream[T]) {
    * DataStreams connected using this operators can be used with CoFunctions.
    */
   def connect[T2](dataStream: DataStream[T2]): ConnectedStreams[T, T2] =
-    javaStream.connect(dataStream.getJavaStream)
+    javaStream.connect(dataStream.javaStream)
   
   /**
    * Groups the elements of a DataStream by the given key positions (for tuple/array types) to
@@ -378,7 +377,7 @@ class DataStream[T](javaStream: JavaStream[T]) {
     val iterativeStream = javaStream.iterate(maxWaitTimeMillis)
 
     val (feedback, output) = stepFunction(new DataStream[T](iterativeStream))
-    iterativeStream.closeWith(feedback.getJavaStream)
+    iterativeStream.closeWith(feedback.javaStream)
     output
   }
 
@@ -409,7 +408,7 @@ class DataStream[T](javaStream: JavaStream[T]) {
                                    withFeedbackType(feedbackType)
 
     val (feedback, output) = stepFunction(connectedIterativeStream)
-    connectedIterativeStream.closeWith(feedback.getJavaStream)
+    connectedIterativeStream.closeWith(feedback.javaStream)
     output
   }
 
@@ -893,7 +892,7 @@ class DataStream[T](javaStream: JavaStream[T]) {
    * is not disabled in the [[org.apache.flink.api.common.ExecutionConfig]].
    */
   private[flink] def clean[F <: AnyRef](f: F): F = {
-    new StreamExecutionEnvironment(javaStream.getExecutionEnvironment).scalaClean(f)
+    context.scalaClean(f)
   }
 
 }

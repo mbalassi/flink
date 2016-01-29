@@ -62,7 +62,8 @@ object JoinedStreams {
    * @tparam T1 Type of the elements from the first input
    * @tparam T2 Type of the elements from the second input
    */
-  class Unspecified[T1, T2](input1: DataStream[T1], input2: DataStream[T2]) {
+  class Unspecified[T1, T2](input1: DataStream[T1], input2: DataStream[T2])
+                           (implicit context: StreamExecutionEnvironment){
 
     /**
      * Specifies a [[KeySelector]] for elements from the first input.
@@ -95,7 +96,7 @@ object JoinedStreams {
      * is not disabled in the [[org.apache.flink.api.common.ExecutionConfig]].
      */
     private[flink] def clean[F <: AnyRef](f: F): F = {
-      new StreamExecutionEnvironment(input1.getJavaStream.getExecutionEnvironment).scalaClean(f)
+      context.scalaClean(f)
     }
   }
 
@@ -115,7 +116,8 @@ object JoinedStreams {
       input2: DataStream[T2],
       keySelector1: KeySelector[T1, KEY],
       keySelector2: KeySelector[T2, KEY],
-      keyType: TypeInformation[KEY]) {
+      keyType: TypeInformation[KEY])
+      (implicit context: StreamExecutionEnvironment){
 
     /**
      * Specifies a [[KeySelector]] for elements from the first input.
@@ -168,7 +170,7 @@ object JoinedStreams {
      * is not disabled in the [[org.apache.flink.api.common.ExecutionConfig]].
      */
     private[flink] def clean[F <: AnyRef](f: F): F = {
-      new StreamExecutionEnvironment(input1.getJavaStream.getExecutionEnvironment).scalaClean(f)
+      context.scalaClean(f)
     }
   }
 
@@ -188,7 +190,8 @@ object JoinedStreams {
       keySelector2: KeySelector[T2, KEY],
       windowAssigner: WindowAssigner[_ >: JavaCoGroupedStreams.TaggedUnion[T1, T2], W],
       trigger: Trigger[_ >: JavaCoGroupedStreams.TaggedUnion[T1, T2], _ >: W],
-      evictor: Evictor[_ >: JavaCoGroupedStreams.TaggedUnion[T1, T2], _ >: W]) {
+      evictor: Evictor[_ >: JavaCoGroupedStreams.TaggedUnion[T1, T2], _ >: W])
+      (implicit context: StreamExecutionEnvironment){
 
 
     /**
@@ -263,7 +266,7 @@ object JoinedStreams {
      */
     def apply[T: TypeInformation](function: JoinFunction[T1, T2, T]): DataStream[T] = {
 
-      val join = new JavaJoinedStreams[T1, T2](input1.getJavaStream, input2.getJavaStream)
+      val join = new JavaJoinedStreams[T1, T2](input1.javaStream, input2.javaStream)
 
       join
         .where(keySelector1)
@@ -280,7 +283,7 @@ object JoinedStreams {
      */
     def apply[T: TypeInformation](function: FlatJoinFunction[T1, T2, T]): DataStream[T] = {
 
-      val join = new JavaJoinedStreams[T1, T2](input1.getJavaStream, input2.getJavaStream)
+      val join = new JavaJoinedStreams[T1, T2](input1.javaStream, input2.javaStream)
 
       join
         .where(keySelector1)
@@ -296,7 +299,7 @@ object JoinedStreams {
      * is not disabled in the [[org.apache.flink.api.common.ExecutionConfig]].
      */
     private[flink] def clean[F <: AnyRef](f: F): F = {
-      new StreamExecutionEnvironment(input1.getJavaStream.getExecutionEnvironment).scalaClean(f)
+      context.scalaClean(f)
     }
   }
 
@@ -306,7 +309,7 @@ object JoinedStreams {
    */
   def createJoin[T1, T2](input1: DataStream[T1], input2: DataStream[T2])
       : JoinedStreams.Unspecified[T1, T2] = {
-    new JoinedStreams.Unspecified[T1, T2](input1, input2)
+    new JoinedStreams.Unspecified[T1, T2](input1, input2)(input1.getExecutionEnvironment)
   }
 
 }

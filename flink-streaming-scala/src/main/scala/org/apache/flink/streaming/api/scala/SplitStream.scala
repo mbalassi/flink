@@ -27,7 +27,8 @@ import org.apache.flink.streaming.api.datastream.{ SplitStream => SplitJavaStrea
  * the appropriate method on this stream.
  *
  */
-class SplitStream[T](javaStream: SplitJavaStream[T]) extends DataStream[T](javaStream){
+class SplitStream[T](javaStream: SplitJavaStream[T])(implicit context : StreamExecutionEnvironment)
+  extends DataStream[T](javaStream)(context){
 
   /**
    *  Sets the output names for which the next operator will receive values.

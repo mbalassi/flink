@@ -34,17 +34,21 @@ package object scala {
   // using the Scala API
   implicit def createTypeInformation[T]: TypeInformation[T] = macro TypeUtils.createTypeInfo[T]
 
-  implicit def javaToScalaStream[R](javaStream: JavaStream[R]): DataStream[R] =
-    new DataStream[R](javaStream)
+  implicit def javaToScalaStream[R](javaStream: JavaStream[R])(implicit context :
+    StreamExecutionEnvironment): DataStream[R] =
+    new DataStream[R](javaStream)(context)
     
-  implicit def javaToScalaGroupedStream[R, K](javaStream: KeyedJavaStream[R, K]):
-  KeyedStream[R, K] = new KeyedStream[R, K](javaStream)
+  implicit def javaToScalaGroupedStream[R, K](javaStream: KeyedJavaStream[R, K])
+    (implicit context : StreamExecutionEnvironment):
+  KeyedStream[R, K] = new KeyedStream[R, K](javaStream)(context)
 
-  implicit def javaToScalaSplitStream[R](javaStream: SplitJavaStream[R]): SplitStream[R] =
-    new SplitStream[R](javaStream)
+  implicit def javaToScalaSplitStream[R](javaStream: SplitJavaStream[R])
+    (implicit context : StreamExecutionEnvironment): SplitStream[R] =
+    new SplitStream[R](javaStream)(context)
 
-  implicit def javaToScalaConnectedStream[IN1, IN2](javaStream: ConnectedJavaStreams[IN1, IN2]):
-  ConnectedStreams[IN1, IN2] = new ConnectedStreams[IN1, IN2](javaStream)
+  implicit def javaToScalaConnectedStream[IN1, IN2](javaStream: ConnectedJavaStreams[IN1, IN2])
+    (implicit context : StreamExecutionEnvironment):
+    ConnectedStreams[IN1, IN2] = new ConnectedStreams[IN1, IN2](javaStream)(context)
 
   implicit def seqToFlinkSource[T: ClassTag: TypeInformation](scalaSeq: Seq[T]) : DataStream[T] =
     StreamExecutionEnvironment.getExecutionEnvironment.fromCollection(scalaSeq)

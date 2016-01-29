@@ -57,7 +57,8 @@ import scala.collection.JavaConverters._
  *           [[org.apache.flink.streaming.api.windowing.assigners.WindowAssigner]]
  *           assigns the elements to.
  */
-class WindowedStream[T, K, W <: Window](javaStream: JavaWStream[T, K, W]) {
+class WindowedStream[T, K, W <: Window](javaStream: JavaWStream[T, K, W])
+                                       (implicit context : StreamExecutionEnvironment){
 
   /**
    * Sets the [[Trigger]] that should be used to trigger window emission.

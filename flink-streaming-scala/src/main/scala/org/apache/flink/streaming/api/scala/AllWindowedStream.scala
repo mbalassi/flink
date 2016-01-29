@@ -29,9 +29,8 @@ import org.apache.flink.streaming.api.windowing.triggers.Trigger
 import org.apache.flink.streaming.api.windowing.windows.Window
 import org.apache.flink.util.Collector
 
-import scala.reflect.ClassTag
-
 import scala.collection.JavaConverters._
+import scala.reflect.ClassTag
 
 /**
  * A [[AllWindowedStream]] represents a data stream where the stream of
@@ -54,7 +53,8 @@ import scala.collection.JavaConverters._
  *           [[org.apache.flink.streaming.api.windowing.assigners.WindowAssigner]]
  *           assigns the elements to.
  */
-class AllWindowedStream[T, W <: Window](javaStream: JavaAllWStream[T, W]) {
+class AllWindowedStream[T, W <: Window](javaStream: JavaAllWStream[T, W])
+                                       (implicit context: StreamExecutionEnvironment) {
 
   /**
    * Sets the [[Trigger]] that should be used to trigger window emission.
@@ -354,7 +354,7 @@ class AllWindowedStream[T, W <: Window](javaStream: JavaAllWStream[T, W]) {
    * is not disabled in the [[org.apache.flink.api.common.ExecutionConfig]].
    */
   private[flink] def clean[F <: AnyRef](f: F): F = {
-    new StreamExecutionEnvironment(javaStream.getExecutionEnvironment).scalaClean(f)
+    context.scalaClean(f)
   }
 
   /**

@@ -64,7 +64,8 @@ object CoGroupedStreams {
    * @tparam T1 Type of the elements from the first input
    * @tparam T2 Type of the elements from the second input
    */
-  class Unspecified[T1, T2](input1: DataStream[T1], input2: DataStream[T2]) {
+  class Unspecified[T1, T2](input1: DataStream[T1], input2: DataStream[T2])
+                           (implicit context: StreamExecutionEnvironment) {
 
     /**
      * Specifies a [[KeySelector]] for elements from the first input.
@@ -97,7 +98,7 @@ object CoGroupedStreams {
      * is not disabled in the [[org.apache.flink.api.common.ExecutionConfig]].
      */
     private[flink] def clean[F <: AnyRef](f: F): F = {
-      new StreamExecutionEnvironment(input1.getJavaStream.getExecutionEnvironment).scalaClean(f)
+      input1.getExecutionEnvironment.scalaClean(f)
     }
   }
 
@@ -117,7 +118,8 @@ object CoGroupedStreams {
       input2: DataStream[T2],
       keySelector1: KeySelector[T1, KEY],
       keySelector2: KeySelector[T2, KEY],
-      keyType: TypeInformation[KEY]) {
+      keyType: TypeInformation[KEY])
+      (implicit context: StreamExecutionEnvironment){
 
     /**
      * Specifies a [[KeySelector]] for elements from the first input.
@@ -166,11 +168,11 @@ object CoGroupedStreams {
     }
 
     /**
-     * Returns a "closure-cleaned" version of the given function. Cleans only if closure cleaning
-     * is not disabled in the [[org.apache.flink.api.common.ExecutionConfig]].
-     */
+      * Returns a "closure-cleaned" version of the given function. Cleans only if closure cleaning
+      * is not disabled in the [[org.apache.flink.api.common.ExecutionConfig]].
+      */
     private[flink] def clean[F <: AnyRef](f: F): F = {
-      new StreamExecutionEnvironment(input1.getJavaStream.getExecutionEnvironment).scalaClean(f)
+      context.scalaClean(f)
     }
   }
 
@@ -190,7 +192,8 @@ object CoGroupedStreams {
       keySelector2: KeySelector[T2, KEY],
       windowAssigner: WindowAssigner[_ >: JavaCoGroupedStreams.TaggedUnion[T1, T2], W],
       trigger: Trigger[_ >: JavaCoGroupedStreams.TaggedUnion[T1, T2], _ >: W],
-      evictor: Evictor[_ >: JavaCoGroupedStreams.TaggedUnion[T1, T2], _ >: W]) {
+      evictor: Evictor[_ >: JavaCoGroupedStreams.TaggedUnion[T1, T2], _ >: W])
+      (implicit context: StreamExecutionEnvironment) {
 
 
     /**
@@ -270,7 +273,7 @@ object CoGroupedStreams {
      */
     def apply[T: TypeInformation](function: CoGroupFunction[T1, T2, T]): DataStream[T] = {
 
-      val coGroup = new JavaCoGroupedStreams[T1, T2](input1.getJavaStream, input2.getJavaStream)
+      val coGroup = new JavaCoGroupedStreams[T1, T2](input1.javaStream, input2.javaStream)
 
       coGroup
         .where(keySelector1)
@@ -286,7 +289,7 @@ object CoGroupedStreams {
      * is not disabled in the [[org.apache.flink.api.common.ExecutionConfig]].
      */
     private[flink] def clean[F <: AnyRef](f: F): F = {
-      new StreamExecutionEnvironment(input1.getJavaStream.getExecutionEnvironment).scalaClean(f)
+      context.scalaClean(f)
     }
   }
 
@@ -296,7 +299,7 @@ object CoGroupedStreams {
    */
   def createCoGroup[T1, T2](input1: DataStream[T1], input2: DataStream[T2])
       : CoGroupedStreams.Unspecified[T1, T2] = {
-    new CoGroupedStreams.Unspecified[T1, T2](input1, input2)
+    new CoGroupedStreams.Unspecified[T1, T2](input1, input2)(input1.getExecutionEnvironment)
   }
 
 }

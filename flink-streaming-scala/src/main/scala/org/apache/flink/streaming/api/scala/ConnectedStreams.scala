@@ -32,7 +32,8 @@ import scala.reflect.ClassTag
  * can be used to apply transformations such as [[CoMapFunction]] on two
  * [[DataStream]]s.
  */
-class ConnectedStreams[IN1, IN2](javaStream: JavaCStream[IN1, IN2]) {
+class ConnectedStreams[IN1, IN2](javaStream: JavaCStream[IN1, IN2])
+                                (implicit context: StreamExecutionEnvironment){
 
   /**
    * Applies a CoMap transformation on a {@link ConnectedStreams} and maps

@@ -33,7 +33,8 @@ import org.apache.flink.util.Collector
 import scala.reflect.ClassTag
 
 
-class KeyedStream[T, K](javaStream: KeyedJavaStream[T, K]) extends DataStream[T](javaStream) {
+class KeyedStream[T, K](javaStream: KeyedJavaStream[T, K])(implicit context :
+  StreamExecutionEnvironment) extends DataStream[T](javaStream)(context) {
 
   // ------------------------------------------------------------------------
   //  Properties
