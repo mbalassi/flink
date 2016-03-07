@@ -20,7 +20,9 @@ package org.apache.flink.runtime.accumulators;
 
 import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.common.accumulators.Accumulator;
+import org.apache.flink.api.common.accumulators.IndexedLongCounter;
 import org.apache.flink.api.common.accumulators.LongCounter;
+import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.runtime.executiongraph.ExecutionAttemptID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,6 +51,8 @@ public class AccumulatorRegistry {
 	/* The reporter reference that is handed to the reporting tasks. */
 	private final ReadWriteReporter reporter;
 
+	private final GranularReadWriteReporter granularReporter;
+
 	/**
 	 * Flink metrics supported
 	 */
@@ -56,7 +60,12 @@ public class AccumulatorRegistry {
 		NUM_RECORDS_IN,
 		NUM_RECORDS_OUT,
 		NUM_BYTES_IN,
-		NUM_BYTES_OUT
+		NUM_BYTES_OUT,
+
+		GRANULAR_NUM_RECORDS_IN,
+		GRANULAR_NUM_RECORDS_OUT,
+		GRANULAR_NUM_BYTES_IN,
+		GRANULAR_NUM_BYTES_OUT
 	}
 
 
@@ -64,6 +73,7 @@ public class AccumulatorRegistry {
 		this.jobID = jobID;
 		this.taskID = taskID;
 		this.reporter = new ReadWriteReporter(flinkAccumulators);
+		this.granularReporter = new GranularReadWriteReporter(flinkAccumulators);
 	}
 
 	/**
@@ -138,6 +148,61 @@ public class AccumulatorRegistry {
 		@Override
 		public void reportNumBytesOut(long value) {
 			numBytesOut.add(value);
+		}
+	}
+
+	/**
+	 * Gets the reporter for flink internal metrics.
+	 */
+	public GranularReporter getGranularReadWriteReporter() {
+		return granularReporter;
+	}
+
+	/**
+	 * Interface for Flink's internal accumulators.
+	 */
+	public interface GranularReporter {
+		void reportNumRecordsIn(int src, long value);
+		void reportNumRecordsOut(int src, long value);
+		void reportNumBytesIn(int src, long value);
+		void reportNumBytesOut(int src, long value);
+	}
+
+	/**
+	 * Accumulator based reporter for keeping track of internal metrics (e.g. bytes and records in/out)
+	 */
+	private static class GranularReadWriteReporter implements GranularReporter {
+
+		private IndexedLongCounter numRecordsIn = new IndexedLongCounter();
+		private IndexedLongCounter numRecordsOut = new IndexedLongCounter();
+		private IndexedLongCounter numBytesIn = new IndexedLongCounter();
+		private IndexedLongCounter numBytesOut = new IndexedLongCounter();
+
+		private GranularReadWriteReporter(Map<Metric, Accumulator<?,?>> accumulatorMap) {
+			accumulatorMap.put(Metric.GRANULAR_NUM_RECORDS_IN, numRecordsIn);
+			accumulatorMap.put(Metric.GRANULAR_NUM_RECORDS_OUT, numRecordsOut);
+			accumulatorMap.put(Metric.GRANULAR_NUM_BYTES_IN, numBytesIn);
+			accumulatorMap.put(Metric.GRANULAR_NUM_BYTES_OUT, numBytesOut);
+		}
+
+		@Override
+		public void reportNumRecordsIn(int src, long value) {
+			numRecordsIn.add(Tuple2.of(src, value));
+		}
+
+		@Override
+		public void reportNumRecordsOut(int src, long value) {
+			numRecordsOut.add(Tuple2.of(src, value));
+		}
+
+		@Override
+		public void reportNumBytesIn(int src, long value) {
+			numBytesIn.add(Tuple2.of(src, value));
+		}
+
+		@Override
+		public void reportNumBytesOut(int src, long value) {
+			numBytesOut.add(Tuple2.of(src, value));
 		}
 	}
 

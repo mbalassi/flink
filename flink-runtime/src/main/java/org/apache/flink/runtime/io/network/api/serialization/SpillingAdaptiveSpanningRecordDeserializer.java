@@ -61,6 +61,11 @@ public class SpillingAdaptiveSpanningRecordDeserializer<T extends IOReadableWrit
 
 	private AccumulatorRegistry.Reporter reporter;
 
+	// Visualization code
+	private int granularReporterIndex;
+	private AccumulatorRegistry.GranularReporter granularReporter;
+
+
 	public SpillingAdaptiveSpanningRecordDeserializer(String[] tmpDirectories) {
 		this.nonSpanningWrapper = new NonSpanningWrapper();
 		this.spanningWrapper = new SpanningWrapper(tmpDirectories);
@@ -110,6 +115,10 @@ public class SpillingAdaptiveSpanningRecordDeserializer<T extends IOReadableWrit
 				reporter.reportNumBytesIn(len);
 			}
 
+			if (granularReporter != null) {
+				granularReporter.reportNumBytesIn(granularReporterIndex, len);
+			}
+
 			if (len <= nonSpanningRemaining - 4) {
 				// we can get a full record from here
 				try {
@@ -117,6 +126,10 @@ public class SpillingAdaptiveSpanningRecordDeserializer<T extends IOReadableWrit
 
 					if (reporter != null) {
 						reporter.reportNumRecordsIn(1);
+					}
+
+					if (granularReporter != null) {
+						granularReporter.reportNumRecordsIn(granularReporterIndex, 1);
 					}
 
 					int remaining = this.nonSpanningWrapper.remaining();
@@ -188,6 +201,12 @@ public class SpillingAdaptiveSpanningRecordDeserializer<T extends IOReadableWrit
 		this.spanningWrapper.setReporter(reporter);
 	}
 
+	@Override
+	public void setGranularReporter(int index, AccumulatorRegistry.GranularReporter granularReporter) {
+		this.granularReporter = granularReporter;
+		this.granularReporterIndex = index;
+		this.spanningWrapper.setGranularReporter(index, granularReporter);
+	}
 
 	// -----------------------------------------------------------------------------------------------------------------
 	
@@ -485,6 +504,9 @@ public class SpillingAdaptiveSpanningRecordDeserializer<T extends IOReadableWrit
 
 		private AccumulatorRegistry.Reporter reporter;
 
+		private int granularReporterIndex;
+		private AccumulatorRegistry.GranularReporter granularReporter;
+
 		public SpanningWrapper(String[] tempDirs) {
 			this.tempDirs = tempDirs;
 			
@@ -540,6 +562,10 @@ public class SpillingAdaptiveSpanningRecordDeserializer<T extends IOReadableWrit
 
 					if (reporter != null) {
 						reporter.reportNumBytesIn(recordLength);
+					}
+
+					if (granularReporter != null) {
+						granularReporter.reportNumBytesIn(granularReporterIndex, recordLength);
 					}
 
 					this.lengthBuffer.clear();
@@ -675,6 +701,11 @@ public class SpillingAdaptiveSpanningRecordDeserializer<T extends IOReadableWrit
 
 		public void setReporter(AccumulatorRegistry.Reporter reporter) {
 			this.reporter = reporter;
+		}
+
+		public void setGranularReporter(int index, AccumulatorRegistry.GranularReporter granularReporter) {
+			this.granularReporter = granularReporter;
+			this.granularReporterIndex = index;
 		}
 	}
 }

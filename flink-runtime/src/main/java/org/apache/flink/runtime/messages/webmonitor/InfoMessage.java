@@ -20,6 +20,6 @@ package org.apache.flink.runtime.messages.webmonitor;
 
 /**
  * Abstract base interface of all info messages exchanged between the
- * JobManager an for example the runtime monitor.
+ * JobManager and for example the runtime monitor.
  */
 public interface InfoMessage extends java.io.Serializable {}

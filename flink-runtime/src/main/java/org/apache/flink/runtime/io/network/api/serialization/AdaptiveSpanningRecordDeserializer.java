@@ -165,6 +165,11 @@ public class AdaptiveSpanningRecordDeserializer<T extends IOReadableWritable> im
 		this.spanningWrapper.setReporter(reporter);
 	}
 
+	@Override
+	public void setGranularReporter(int index, AccumulatorRegistry.GranularReporter granularReporter) {
+		throw new UnsupportedOperationException("Unimplemented method.");
+	}
+
 	// -----------------------------------------------------------------------------------------------------------------
 
 	private static final class NonSpanningWrapper implements DataInputView {

@@ -224,6 +224,13 @@ public class StreamInputProcessor<IN> {
 			}
 		});
 	}
+
+	//Visualization code
+	public void setGranularReporter(AccumulatorRegistry.GranularReporter granularReporter) {
+		for (int i = 0; i < recordDeserializers.length; i++) {
+			recordDeserializers[i].setGranularReporter(i, granularReporter);
+		}
+	}
 	
 	public void cleanup() throws IOException {
 		// clear the buffers first. this part should not ever fail
