@@ -70,4 +70,6 @@ public interface RecordDeserializer<T extends IOReadableWritable> {
 	 * Setter for the reporter, e.g. for the number of records emitted and the number of bytes read.
 	 */
 	void setReporter(AccumulatorRegistry.Reporter reporter);
+
+	void setGranularReporter(int index, AccumulatorRegistry.GranularReporter granularReporter);
 }

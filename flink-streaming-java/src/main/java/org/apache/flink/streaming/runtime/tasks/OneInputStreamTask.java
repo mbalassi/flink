@@ -51,7 +51,9 @@ public class OneInputStreamTask<IN, OUT> extends StreamTask<OUT, OneInputStreamO
 			// make sure that stream tasks report their I/O statistics
 			AccumulatorRegistry registry = getEnvironment().getAccumulatorRegistry();
 			AccumulatorRegistry.Reporter reporter = registry.getReadWriteReporter();
+			AccumulatorRegistry.GranularReporter granularReporter = registry.getGranularReadWriteReporter();
 			inputProcessor.setReporter(reporter);
+			inputProcessor.setGranularReporter(granularReporter);
 		}
 	}
 

@@ -21,6 +21,7 @@ package org.apache.flink.runtime.webmonitor.handlers;
 import com.fasterxml.jackson.core.JsonGenerator;
 
 import org.apache.flink.api.common.accumulators.Accumulator;
+import org.apache.flink.api.common.accumulators.IndexedLongCounter;
 import org.apache.flink.api.common.accumulators.LongCounter;
 import org.apache.flink.runtime.accumulators.AccumulatorRegistry;
 import org.apache.flink.runtime.execution.ExecutionState;
@@ -89,6 +90,25 @@ public class JobVertexDetailsHandler extends AbstractJobVertexRequestHandler {
 				readRecords = null;
 				writeRecords = null;
 			}
+
+			Map<AccumulatorRegistry.Metric, Accumulator<?, ?>> granularMetrics = vertex.getCurrentExecutionAttempt().getFlinkAccumulators();
+			IndexedLongCounter granularReadBytes;
+			IndexedLongCounter granularWriteBytes;
+			IndexedLongCounter granularReadRecords;
+			IndexedLongCounter granularWriteRecords;
+
+			if (granularMetrics != null) {
+				granularReadBytes = (IndexedLongCounter) granularMetrics.get(AccumulatorRegistry.Metric.GRANULAR_NUM_BYTES_IN);
+				granularWriteBytes = (IndexedLongCounter) granularMetrics.get(AccumulatorRegistry.Metric.GRANULAR_NUM_BYTES_OUT);
+				granularReadRecords = (IndexedLongCounter) granularMetrics.get(AccumulatorRegistry.Metric.GRANULAR_NUM_RECORDS_IN);
+				granularWriteRecords = (IndexedLongCounter) granularMetrics.get(AccumulatorRegistry.Metric.GRANULAR_NUM_RECORDS_OUT);
+			}
+			else {
+				granularReadBytes = null;
+				granularWriteBytes = null;
+				granularReadRecords = null;
+				granularWriteRecords = null;
+			}
 			
 			gen.writeStartObject();
 			gen.writeNumberField("subtask", num);
@@ -104,6 +124,23 @@ public class JobVertexDetailsHandler extends AbstractJobVertexRequestHandler {
 			gen.writeNumberField("write-bytes", writeBytes != null ? writeBytes.getLocalValuePrimitive() : -1L);
 			gen.writeNumberField("read-records", readRecords != null ? readRecords.getLocalValuePrimitive() : -1L);
 			gen.writeNumberField("write-records",writeRecords != null ? writeRecords.getLocalValuePrimitive() : -1L);
+			gen.writeEndObject();
+
+			gen.writeObjectFieldStart("granular-metrics");
+			gen.writeObjectFieldStart("read-bytes");
+			if (granularReadBytes != null){
+				for (Map.Entry<Integer, Long> pair : granularReadBytes.getLocalValue().entrySet()){
+					gen.writeNumberField(pair.getKey().toString(), pair.getValue());
+				}
+			}
+			gen.writeEndObject();
+			gen.writeObjectFieldStart("read-records");
+			if (granularReadRecords != null){
+				for (Map.Entry<Integer, Long> pair : granularReadRecords.getLocalValue().entrySet()){
+					gen.writeNumberField(pair.getKey().toString(), pair.getValue());
+				}
+			}
+			gen.writeEndObject();
 			gen.writeEndObject();
 			
 			gen.writeEndObject();
