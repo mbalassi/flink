@@ -51,6 +51,7 @@ import org.apache.flink.runtime.webmonitor.handlers.JobCheckpointsHandler;
 import org.apache.flink.runtime.webmonitor.handlers.JobConfigHandler;
 import org.apache.flink.runtime.webmonitor.handlers.JobDetailsHandler;
 import org.apache.flink.runtime.webmonitor.handlers.JobExceptionsHandler;
+import org.apache.flink.runtime.webmonitor.handlers.JobGranularMetricsHandler;
 import org.apache.flink.runtime.webmonitor.handlers.JobManagerConfigHandler;
 import org.apache.flink.runtime.webmonitor.handlers.JobPlanHandler;
 import org.apache.flink.runtime.webmonitor.handlers.JobStoppingHandler;
@@ -224,6 +225,7 @@ public class WebRuntimeMonitor implements WebMonitor {
 			.GET("/jobs", handler(new CurrentJobIdsHandler(DEFAULT_REQUEST_TIMEOUT)))
 
 			.GET("/jobs/:jobid", handler(new JobDetailsHandler(currentGraphs)))
+			.GET("/jobs/:jobid/granular-metrics", handler(new JobGranularMetricsHandler(currentGraphs)))
 			.GET("/jobs/:jobid/vertices", handler(new JobDetailsHandler(currentGraphs)))
 
 			.GET("/jobs/:jobid/vertices/:vertexid", handler(new JobVertexDetailsHandler(currentGraphs)))
