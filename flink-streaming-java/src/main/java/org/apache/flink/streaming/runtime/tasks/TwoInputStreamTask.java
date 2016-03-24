@@ -76,7 +76,9 @@ public class TwoInputStreamTask<IN1, IN2, OUT> extends StreamTask<OUT, TwoInputS
 		// make sure that stream tasks report their I/O statistics
 		AccumulatorRegistry registry = getEnvironment().getAccumulatorRegistry();
 		AccumulatorRegistry.Reporter reporter = registry.getReadWriteReporter();
-		this.inputProcessor.setReporter(reporter);
+		AccumulatorRegistry.GranularReporter granularReporter = registry.getGranularReadWriteReporter();
+		inputProcessor.setReporter(reporter);
+		inputProcessor.setGranularReporter(granularReporter);
 	}
 
 	@Override

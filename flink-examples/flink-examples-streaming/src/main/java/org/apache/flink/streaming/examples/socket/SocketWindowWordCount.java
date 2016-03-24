@@ -23,6 +23,7 @@ import org.apache.flink.api.common.functions.ReduceFunction;
 import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.api.functions.co.CoFlatMapFunction;
 import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.flink.util.Collector;
 
@@ -44,9 +45,11 @@ public class SocketWindowWordCount {
 
 		// the port to connect to
 		final int port;
+		final int dop;
 		try {
 			final ParameterTool params = ParameterTool.fromArgs(args);
 			port = params.getInt("port");
+			dop = params.getInt("dop", 1);
 		} catch (Exception e) {
 			System.err.println("No port specified. Please run 'WindowWordCount --port <port>', " +
 					"where port is the address of the text server");
@@ -83,8 +86,21 @@ public class SocketWindowWordCount {
 					}
 				});
 
+		DataStream<Long> other = env.generateSequence(0,100).setParallelism(dop);
+
+		DataStream<WordWithCount> out = windowCounts.connect(other).flatMap(new CoFlatMapFunction<WordWithCount, Long, WordWithCount>() {
+			@Override
+			public void flatMap1(WordWithCount value, Collector<WordWithCount> out) throws Exception {
+				out.collect(value);
+			}
+
+			@Override
+			public void flatMap2(Long value, Collector<WordWithCount> out) throws Exception {
+			}
+		});
+
 		// print the results with a single thread, rather than in parallel
-		windowCounts.print().setParallelism(1);
+		out.print().setParallelism(1);
 
 		env.execute("Socket Window WordCount");
 	}

@@ -68,7 +68,7 @@ object WindowJoin {
 
     // // create the data sources for both grades and salaries
     val grades = WindowJoinSampleData.getGradeSource(env, rate)
-    val salaries = WindowJoinSampleData.getSalarySource(env, rate)
+    val salaries = WindowJoinSampleData.getSalarySource(env, rate * 100)
 
     // join the two input streams by name on a window.
     // for testability, this functionality is in a separate method.
