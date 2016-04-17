@@ -23,6 +23,7 @@ import java.util.Arrays;
 import java.util.Random;
 
 import org.apache.flink.annotation.PublicEvolving;
+import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.core.memory.DataInputView;
 import org.apache.flink.core.memory.DataOutputView;
 import org.apache.flink.types.StringValue;
@@ -348,5 +349,23 @@ public final class StringUtils {
 			}
 		}
 		return true;
+	}
+
+	/**
+	 * It takes a list of pairs and replaces every occurrence of the first member with
+	 * the second member.
+	 *
+	 * @param text The original text.
+	 * @param replacements Array of pairs. The first member will be replaced with the second for each elements.
+	 * @return The text after the replacements.
+	 */
+	public static String replaceStrings(String text, Tuple2<String, StringBuilder>[] replacements) {
+		String[] searchList = new String[replacements.length];
+		String[] replacementList = new String[replacements.length];
+		for(int i = 0; i < replacements.length; ++i) {
+			searchList[i] = replacements[i].f0;
+			replacementList[i] = replacements[i].f1.toString();
+		}
+		return org.apache.commons.lang3.StringUtils.replaceEach(text, searchList, replacementList);
 	}
 }

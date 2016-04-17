@@ -24,6 +24,8 @@ import org.apache.flink.configuration.Configuration;
 import org.apache.flink.core.io.IOReadableWritable;
 import org.apache.flink.core.memory.DataInputViewStreamWrapper;
 import org.apache.flink.core.memory.DataOutputViewStreamWrapper;
+import org.codehaus.commons.compiler.CompileException;
+import org.codehaus.janino.SimpleCompiler;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -38,15 +40,31 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
 import java.util.HashMap;
 
+import static org.apache.flink.util.Preconditions.checkNotNull;
+
 /**
  * Utility class to create instances from class objects and checking failure reasons.
  */
 @Internal
 public final class InstantiationUtil {
-	
+	private static final HashMap<String, ClassLoader> loaderForGeneratedClasses = new HashMap<>();
+
+	public synchronized static Class<TypeSerializer<?>> compile(ClassLoader cl, String name, String code) throws
+		CompileException, ClassNotFoundException {
+		checkNotNull(cl);
+		SimpleCompiler compiler = new SimpleCompiler();
+		compiler.setParentClassLoader(cl);
+		compiler.cook(code);
+		ClassLoader loader = compiler.getClassLoader();
+		loaderForGeneratedClasses.put(name, loader);
+		Class<TypeSerializer<?>> serializerClazz = (Class<TypeSerializer<?>>) loader.loadClass(name);
+		return serializerClazz;
+	}
+
 	/**
 	 * A custom ObjectInputStream that can also load user-code using a
-	 * user-code ClassLoader.
+	 * user-code ClassLoader and generated code using the class loader
+	 * from Janino.
 	 *
 	 */
 	public static class ClassLoaderObjectInputStream extends ObjectInputStream {
@@ -71,8 +89,8 @@ public final class InstantiationUtil {
 						// return primitive class
 						return cl;
 					} else {
-						// throw ClassNotFoundException
-						throw ex;
+						// search among the compiled classes too
+						return Class.forName(name, false, loaderForGeneratedClasses.get(name));
 					}
 				}
 			}

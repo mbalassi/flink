@@ -117,7 +117,7 @@ public final class PojoSerializer<T> extends TypeSerializer<T> {
 	}
 
 	private void writeObject(ObjectOutputStream out)
-			throws IOException, ClassNotFoundException {
+			throws IOException {
 		out.defaultWriteObject();
 		out.writeInt(fields.length);
 		for (Field field: fields) {

@@ -114,6 +114,8 @@ public class ExecutionConfig implements Serializable, Archiveable<ArchivedExecut
 
 	private boolean forceAvro = false;
 
+	private boolean forceCodeGeneration = true;
+
 	private CodeAnalysisMode codeAnalysisMode = CodeAnalysisMode.DISABLE;
 
 	/** If set to true, progress updates are printed to System.out during execution */
@@ -530,6 +532,21 @@ public class ExecutionConfig implements Serializable, Archiveable<ArchivedExecut
 
 	public boolean isForceAvroEnabled() {
 		return forceAvro;
+	}
+
+    /**
+     * Force Flink to use the generated serializers for POJOs.
+     */
+	public void enableCodeGeneration() {
+		forceCodeGeneration = true;
+	}
+
+	public void disableCodeGeneration() {
+		forceCodeGeneration = false;
+	}
+
+	public boolean isCodeGenerationEnabled() {
+		return forceCodeGeneration;
 	}
 
 	/**
