@@ -18,6 +18,8 @@
 
 package org.apache.flink.util;
 
+import freemarker.template.Template;
+import freemarker.template.TemplateException;
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.configuration.Configuration;
@@ -29,6 +31,7 @@ import org.codehaus.janino.SimpleCompiler;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
@@ -36,9 +39,12 @@ import java.io.ObjectOutputStream;
 import java.io.ObjectStreamClass;
 import java.io.OutputStream;
 import java.io.Serializable;
+import java.io.StringWriter;
+import java.io.Writer;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
 import java.util.HashMap;
+import java.util.Map;
 
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
@@ -48,6 +54,31 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
 @Internal
 public final class InstantiationUtil {
 	private static final HashMap<String, ClassLoader> loaderForGeneratedClasses = new HashMap<>();
+	private static final freemarker.template.Configuration cfg =
+		new freemarker.template.Configuration(freemarker.template.Configuration.VERSION_2_3_24);
+
+	static {
+		String templatePath = InstantiationUtil.class.getResource("/PojoSerializerTemplate.ftl").getPath();
+		try {
+			cfg.setDirectoryForTemplateLoading((new File(templatePath)).getParentFile());
+			cfg.setDefaultEncoding("UTF-8");
+			cfg.setTemplateExceptionHandler(freemarker.template.TemplateExceptionHandler.RETHROW_HANDLER);
+			cfg.setLogTemplateExceptions(false);
+		} catch (IOException e) {
+			throw new RuntimeException("Unable to open template path: " + templatePath, e);
+		}
+	}
+
+	public synchronized static String getCodeFromTemplate(String name, Map<String, String> root) throws IOException {
+		Template temp = cfg.getTemplate(name);
+		Writer w = new StringWriter();
+		try {
+			temp.process(root, w);
+		} catch (TemplateException e) {
+			throw new RuntimeException("Unable to process template: " + name, e);
+		}
+		return w.toString();
+	}
 
 	public synchronized static Class<TypeSerializer<?>> compile(ClassLoader cl, String name, String code) throws
 		CompileException, ClassNotFoundException {

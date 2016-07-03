@@ -20,10 +20,9 @@ package org.apache.flink.api.java.typeutils.runtime;
 
 import org.apache.flink.api.common.typeutils.TypeComparator;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
-import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.util.InstantiationUtil;
-import org.apache.flink.util.StringUtils;
 
+import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.util.HashMap;
@@ -161,167 +160,25 @@ public final class PojoComparatorGenerator<T> {
 				"localIndex += f%d.extractKeys(((" + typeName + ")record)." + accesStringForField(keyFields[i]) +
 					", target, localIndex);\n", i));
 		}
-		@SuppressWarnings("unchecked")
-		Tuple2<String, StringBuilder>[] replacements = new Tuple2[]{new Tuple2<>
-			("@MEMBERS@", members), new Tuple2<>("@INITMEMBERS@", initMembers), new Tuple2<>("@NORMALIZABLEKEYS@",
-			normalizableKeys), new Tuple2<>("@CLONEMEMBERS@", cloneMembers), new Tuple2<>("@FLATCOMPARATORS@",
-			flatComparators), new Tuple2<>("@HASHMEMBERS@", hashMembers), new Tuple2<>("@SETREFERENCE@", setReference)
-			, new Tuple2<>("@EQUALTOREFERENCE@", equalToReference), new Tuple2<>("@COMPARETOREFERENCE@",
-			compareToReference), new Tuple2<>("@COMPAREFIELDS@", compareFields), new Tuple2<>("@PUTNORMALIZEDKEYS@",
-			putNormalizedKeys), new Tuple2<>("@EXTRACTKEYS@", extractKeys)};
-		String classTemplate = getClassTemplate(className);
-		code = StringUtils.replaceStrings(classTemplate, replacements);
-	}
-
-	private static String getClassTemplate(String className) {
-		String imports =
-			"package " + packageName + ";\n" +
-			"import java.io.IOException;\n" +
-			"import java.io.ObjectInputStream;\n" +
-			"import java.io.ObjectOutputStream;\n" +
-			"import java.util.List;\n" +
-			"import org.apache.flink.api.common.typeutils.CompositeTypeComparator;\n" +
-			"import org.apache.flink.api.common.typeutils.TypeComparator;\n" +
-			"import org.apache.flink.api.common.typeutils.TypeSerializer;\n" +
-			"import org.apache.flink.core.memory.DataInputView;\n" +
-			"import org.apache.flink.core.memory.DataOutputView;\n" +
-			"import org.apache.flink.core.memory.MemorySegment;\n" +
-			"import org.apache.flink.types.NullKeyFieldException;\n" + "" +
-			"import org.apache.flink.api.java.typeutils.runtime.TupleComparatorBase;\n" +
-			"import org.apache.flink.util.InstantiationUtil;\n\n";
-
-		return imports +
-		"public final class " + className + " extends CompositeTypeComparator implements java.io.Serializable {\n" +
-		"private static final long serialVersionUID = 1L;\n" +
-		"private final int[] normalizedKeyLengths;\n" +
-		"private final int numLeadingNormalizableKeys;\n" +
-		"private final int normalizableKeyPrefixLen;\n" +
-		"private final int numKeyFields;\n" +
-		"private final boolean invertNormKey;\n" +
-		"private TypeSerializer serializer;\n" +
-		"private final Class type;\n" +
-		"@MEMBERS@\n" +
-		"public " + className + "(TypeComparator[] comparators, TypeSerializer serializer, Class type) {\n" +
-		"	@INITMEMBERS@\n" +
-		"	this.type = type;\n" +
-		"	this.numKeyFields = comparators.length;\n" +
-		"	this.serializer = serializer;\n" +
-		"	this.normalizedKeyLengths = new int[numKeyFields];\n" +
-		"	int nKeys = 0;\n" +
-		"	int nKeyLen = 0;\n" +
-		"	boolean inverted = f0.invertNormalizedKey();\n" +
-		"	do {\n" +
-		"		@NORMALIZABLEKEYS@\n" +
-		"	} while (false);\n" +
-		"	this.numLeadingNormalizableKeys = nKeys;\n" +
-		"	this.normalizableKeyPrefixLen = nKeyLen;\n" +
-		"	this.invertNormKey = inverted;\n" +
-		"}\n" +
-		"private " + className + "(" + className + " toClone) {\n" +
-		"	@CLONEMEMBERS@\n" +
-		"	this.normalizedKeyLengths = toClone.normalizedKeyLengths;\n" +
-		"	this.numKeyFields = toClone.numKeyFields;\n" +
-		"	this.numLeadingNormalizableKeys = toClone.numLeadingNormalizableKeys;\n" +
-		"	this.normalizableKeyPrefixLen = toClone.normalizableKeyPrefixLen;\n" +
-		"	this.invertNormKey = toClone.invertNormKey;\n" +
-		"	this.type = toClone.type;\n" +
-		"	try {\n" +
-		"		this.serializer = (TypeSerializer) InstantiationUtil.deserializeObject(\n" +
-		"			InstantiationUtil.serializeObject(toClone.serializer), Thread.currentThread().getContextClassLoader());\n" +
-		"	} catch (IOException e) {\n" +
-		"		throw new RuntimeException(\"Cannot copy serializer\", e);\n" +
-		"	} catch (ClassNotFoundException e) {\n" +
-		"		throw new RuntimeException(\"Cannot copy serializer\", e);\n" +
-		"	}\n" +
-		"}\n" +
-		"@Override\n" +
-		"public void getFlatComparator(List flatComparators) {\n" +
-		"	@FLATCOMPARATORS@\n" +
-		"}\n" +
-		"@Override\n" +
-		"public int hash(Object value) {\n" +
-		"	int i = 0;\n" +
-		"	int code = 0;\n" +
-		"	@HASHMEMBERS@\n" +
-		"	return code;\n" +
-		"}\n" +
-		"@Override\n" +
-		"public void setReference(Object toCompare) {\n" +
-		"	@SETREFERENCE@\n" +
-		"}\n" +
-		"@Override\n" +
-		"public boolean equalToReference(Object candidate) {\n" +
-		"	@EQUALTOREFERENCE@\n" +
-		"	return true;\n" +
-		"}\n" +
-		"@Override\n" +
-		"public int compareToReference(TypeComparator referencedComparator) {\n" +
-		"	" + className + " other = (" + className + ") referencedComparator;\n" +
-		"	int cmp;\n" +
-		"	@COMPARETOREFERENCE@\n" +
-		"	return 0;\n" +
-		"}\n" +
-		"@Override\n" +
-		"public int compare(Object first, Object second) {\n" +
-		"	int cmp;\n" +
-		"	@COMPAREFIELDS@\n" +
-		"	return 0;\n" +
-		"}\n" +
-		"@Override\n" +
-		"public int compareSerialized(DataInputView firstSource, DataInputView secondSource) throws IOException {\n" +
-		"	Object first = this.serializer.createInstance();\n" +
-		"	Object second = this.serializer.createInstance();\n" +
-		"	first = this.serializer.deserialize(first, firstSource);\n" +
-		"	second = this.serializer.deserialize(second, secondSource);\n" +
-		"	return this.compare(first, second);\n" +
-		"}\n" +
-		"@Override\n" +
-		"public boolean supportsNormalizedKey() {\n" +
-		"	return this.numLeadingNormalizableKeys > 0;\n" +
-		"}\n" +
-		"@Override\n" +
-		"public int getNormalizeKeyLen() {\n" +
-		"	return this.normalizableKeyPrefixLen;\n" +
-		"}\n" +
-		"@Override\n" +
-		"public boolean isNormalizedKeyPrefixOnly(int keyBytes) {\n" +
-		"	return this.numLeadingNormalizableKeys < this.numKeyFields ||\n" +
-		"		this.normalizableKeyPrefixLen == Integer.MAX_VALUE ||\n" +
-		"		this.normalizableKeyPrefixLen > keyBytes;\n" +
-		"}\n" +
-		"@Override\n" +
-		"public void putNormalizedKey(Object value, MemorySegment target, int offset, int numBytes) {\n" +
-		"	int len;\n" +
-		"	do {\n" +
-		"	@PUTNORMALIZEDKEYS@\n" +
-		"	} while (false);\n" +
-		"}\n" +
-		"@Override\n" +
-		"public boolean invertNormalizedKey() {\n" +
-		"	return this.invertNormKey;\n" +
-		"}\n" +
-		"@Override\n" +
-		"public boolean supportsSerializationWithKeyNormalization() {\n" +
-		"	return false;\n" +
-		"}\n" +
-		"@Override\n" +
-		"public void writeWithKeyNormalization(Object record, DataOutputView target) throws IOException {\n" +
-		"	throw new UnsupportedOperationException();\n" +
-		"}\n" +
-		"@Override\n" +
-		"public Object readWithKeyDenormalization(Object reuse, DataInputView source) throws IOException {\n" +
-		"	throw new UnsupportedOperationException();\n" +
-		"}\n" +
-		"@Override\n" +
-		"public " + className + " duplicate() {\n" +
-		"	return new " + className + "(this);\n" +
-		"}\n" +
-		"@Override\n" +
-		"public int extractKeys(Object record, Object[] target, int index) {\n" +
-		"	int localIndex = index;\n" +
-		"	@EXTRACTKEYS@\n" +
-		"	return localIndex - index;\n" +
-		"}\n" +
-		"}";
+		Map<String, String> root = new HashMap<>();
+		root.put("packageName", packageName);
+		root.put("className", className);
+		root.put("members", members.toString());
+		root.put("initMembers", initMembers.toString());
+		root.put("cloneMembers", cloneMembers.toString());
+		root.put("flatComparators", flatComparators.toString());
+		root.put("hashMembers", hashMembers.toString());
+		root.put("normalizableKeys", normalizableKeys.toString());
+		root.put("setReference", setReference.toString());
+		root.put("equalToReference", equalToReference.toString());
+		root.put("compareToReference", compareToReference.toString());
+		root.put("compareFields", compareFields.toString());
+		root.put("putNormalizedKeys", putNormalizedKeys.toString());
+		root.put("extractKeys", extractKeys.toString());
+		try {
+			code = InstantiationUtil.getCodeFromTemplate("PojoComparatorTemplate.ftl", root);
+		} catch (IOException e) {
+			throw new RuntimeException("Unable to read template.", e);
+		}
 	}
 }
