@@ -31,6 +31,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
 
+import org.apache.flink.util.InstantiationUtil;
 import org.apache.flink.util.TestLogger;
 import org.junit.Assert;
 
@@ -358,7 +359,7 @@ public abstract class SerializerTestBase<T> extends TestLogger {
 			TypeSerializer<T> ser1 = getSerializer();
 			TypeSerializer<T> ser2;
 			try {
-				ser2 = SerializationUtils.clone(ser1);
+				ser2 = InstantiationUtil.clone(ser1);
 			} catch (SerializationException e) {
 				fail("The serializer is not serializable: " + e);
 				return;

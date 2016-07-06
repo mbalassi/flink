@@ -31,8 +31,9 @@ import java.util.Map;
 import static org.apache.flink.api.java.typeutils.PojoTypeInfo.accesStringForField;
 
 public final class PojoComparatorGenerator<T> {
-	private static final Map<Class<?>, Class<TypeSerializer<?>>> generatedClasses = new HashMap<>();
+	private static final Map<String, Class<TypeSerializer<?>>> generatedClasses = new HashMap<>();
 	private static final String packageName = "org.apache.flink.api.java.typeutils.runtime.generated";
+	private static long counter = 0; // TODO: atomic?
 
 	private transient Field[] keyFields;
 	private final TypeComparator<Object>[] comparators;
@@ -50,22 +51,31 @@ public final class PojoComparatorGenerator<T> {
 	}
 
 	public TypeComparator<T> createComparator() {
-		final String className = type.getSimpleName() + "_GeneratedComparator";
-		try {
-			Class<TypeSerializer<?>> comparatorClazz;
-			if (generatedClasses.containsKey(type)) {
-				comparatorClazz = generatedClasses.get(type);
-			} else {
+		Class<TypeSerializer<?>> comparatorClazz;
+		StringBuilder keyBuilder = new StringBuilder();
+		keyBuilder.append(type.getCanonicalName());
+		for(Field f : keyFields) {
+			keyBuilder.append(f.getName());
+		}
+		String key = keyBuilder.toString();
+		if (generatedClasses.containsKey(key)) {
+			comparatorClazz = generatedClasses.get(key);
+		} else {
+			final String className = type.getSimpleName() + "_GeneratedComparator" + Long.toString(counter++);
+			try {
 				generateCode(className);
 				comparatorClazz = InstantiationUtil.compile(type.getClassLoader(), packageName + "." + className, code);
-				generatedClasses.put(type, comparatorClazz);
+				generatedClasses.put(key, comparatorClazz);
+			} catch (Exception e) {
+				throw new RuntimeException("Unable to generate comparator: " + className, e);
 			}
-			Constructor<?>[] ctors = comparatorClazz.getConstructors();
-			assert ctors.length == 1;
-			return (TypeComparator<T>) ctors[0].newInstance(new Object[]{comparators, serializer, type});
 		}
-		catch (Exception e) {
-			throw new RuntimeException("Unable to generate comparator: " + className, e);
+		Constructor<?>[] ctors = comparatorClazz.getConstructors();
+		assert ctors.length == 1;
+		try {
+			return (TypeComparator<T>) ctors[0].newInstance(new Object[]{comparators, serializer, type});
+		} catch (Exception e) {
+			throw new RuntimeException("Unable to instantiate comparator using: " + ctors[0].getName(), e);
 		}
 	}
 
@@ -106,7 +116,7 @@ public final class PojoComparatorGenerator<T> {
 				"}\n", i, i, i));
 		}
 		StringBuilder hashMembers = new StringBuilder();
-		for (int i = 0; i < comparators.length; ++i) {
+		for (int i = 0; i < keyFields.length; ++i) {
 			hashMembers.append(String.format(
 				"code *= TupleComparatorBase.HASH_SALT[%d & 0x1F];\n" +
 				"code += this.f%d.hash(((" + typeName + ")value)." + accesStringForField(keyFields[i]) +

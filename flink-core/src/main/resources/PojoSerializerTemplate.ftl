@@ -330,13 +330,15 @@ public final class ${className} extends TypeSerializer {
         if (obj instanceof ${className}) {
             ${className} other = (${className})obj;
             return other.canEqual(this) && this.clazz == other.clazz && this.numFields == other.numFields
-                    && ${memberEquals};
+                    && ${memberEquals} && Arrays.equals(registeredSerializers, other.registeredSerializers) &&
+					registeredClasses.equals(other.registeredClasses);
         } else {
             return false;
         }
     }
     public boolean canEqual(Object obj) { return obj instanceof ${className}; }
     public int hashCode() {
-        return Objects.hash(clazz, numFields, ${memberHash});
+		return 31 * (31 * Arrays.hashCode(new TypeSerializer[]{${memberHash}}) +
+		Arrays.hashCode(registeredSerializers)) + Objects.hash(clazz, numFields, registeredClasses);
     }
 }
