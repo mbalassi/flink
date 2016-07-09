@@ -33,6 +33,7 @@ import org.apache.flink.api.java.typeutils.runtime.PojoComparatorGenerator;
 import org.apache.flink.api.java.typeutils.runtime.PojoSerializer;
 import org.apache.flink.api.java.typeutils.runtime.PojoSerializerGenerator;
 import org.apache.flink.api.java.typeutils.runtime.kryo.KryoSerializer;
+import org.apache.flink.util.InstantiationUtil;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
@@ -82,12 +83,30 @@ public class PojoTypeInfo<T> extends CompositeType<T> {
 	
 	private final int totalFields;
 
-	public static <C, S extends TypeSerializer<C>> void registerCustomSerializer(Class<C> c, Class<S> s) {
-		customSerializers.put(c, s);
+	/**
+	 * Register a custom serializer for a type. The precedence of the serializers
+	 * is the following (highest to lowest): Kryo, Avro, Custom, Generated, Flink.
+	 * The chosen serializer will be the first one from the list that is turned on.
+	 *
+	 */
+	public static <C, S extends TypeSerializer<C>> void registerCustomSerializer(Class<C> clazz, Class<S> ser) {
+		Constructor<?>[] ctors = ser.getConstructors();
+		assert ctors.length == 1;
+		assert ctors[0].getParameterTypes().length == 0;
+		customSerializers.put(clazz, ser);
 	}
 
-	public static <C, S extends TypeComparator<C>> void registerCustomComparator(Class<C> c, Class<S> s) {
-		customComparators.put(c, s);
+	/**
+	 * Register a custom comparator for a type. The precedence of the serializers
+	 * is the following (highest to lowest): Custom, Generated, Flink.
+	 * The chosen serializer will be the first one from the list that is turned on.
+	 *
+	 */
+	public static <C, S extends TypeComparator<C>> void registerCustomComparator(Class<C> clazz, Class<S> comp) {
+		Constructor<?>[] ctors = comp.getConstructors();
+		assert ctors.length == 1;
+		assert ctors[0].getParameterTypes().length == 0;
+		customComparators.put(clazz, comp);
 	}
 
 	@PublicEvolving
@@ -333,15 +352,7 @@ public class PojoTypeInfo<T> extends CompositeType<T> {
 		}
 
 		if (customSerializers.containsKey(this.getTypeClass())) {
-			Constructor<?>[] ctors = customSerializers.get(this.getTypeClass()).getConstructors();
-			assert ctors.length == 1;
-			try {
-				return (TypeSerializer<T>) ctors[0].newInstance(new Object[]{getTypeClass(), fieldSerializers, config});
-
-			} catch (Throwable t) {
-				t = null;
-			}
-			//return InstantiationUtil.instantiate(customSerializers.get(this.getTypeClass()));
+			return InstantiationUtil.instantiate(customSerializers.get(this.getTypeClass()));
 		}
 
 		if(config.isCodeGenerationEnabled()) {
@@ -428,15 +439,7 @@ public class PojoTypeInfo<T> extends CompositeType<T> {
 				"Number of key fields and field comparators is not equal.");
 
 			if (customComparators.containsKey(getTypeClass())) {
-				Constructor<?>[] ctors = customComparators.get(getTypeClass()).getConstructors();
-				assert ctors.length == 1;
-				try {
-					return (TypeComparator<T>) ctors[0].newInstance(new Object[]{fieldComparators.toArray(new
-						TypeComparator[fieldComparators.size()]), createSerializer(config), getTypeClass()});
-				} catch (Throwable t) {
-					t = null;
-				}
-				//return InstantiationUtil.instantiate(customSerializers.get(this.getTypeClass()));
+				return InstantiationUtil.instantiate(customComparators.get(getTypeClass()));
 			}
 
 			if (config.isCodeGenerationEnabled()) {
@@ -472,7 +475,7 @@ public class PojoTypeInfo<T> extends CompositeType<T> {
 		}
 	}
 
-	public static String accesStringForField(Field f) {
+	public static String accessStringForField(Field f) {
 		if (Modifier.isPublic(f.getModifiers())) {
 			return f.getName();
 		}

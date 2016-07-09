@@ -28,7 +28,7 @@ import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.apache.flink.api.java.typeutils.PojoTypeInfo.accesStringForField;
+import static org.apache.flink.api.java.typeutils.PojoTypeInfo.accessStringForField;
 
 public final class PojoComparatorGenerator<T> {
 	private static final Map<String, Class<TypeSerializer<?>>> generatedClasses = new HashMap<>();
@@ -119,21 +119,21 @@ public final class PojoComparatorGenerator<T> {
 		for (int i = 0; i < keyFields.length; ++i) {
 			hashMembers.append(String.format(
 				"code *= TupleComparatorBase.HASH_SALT[%d & 0x1F];\n" +
-				"code += this.f%d.hash(((" + typeName + ")value)." + accesStringForField(keyFields[i]) +
+				"code += this.f%d.hash(((" + typeName + ")value)." + accessStringForField(keyFields[i]) +
 					");\n",
 				i, i));
 		}
 		StringBuilder setReference = new StringBuilder();
 		for (int i = 0; i < comparators.length; ++i) {
 			setReference.append(String.format(
-				"this.f%d.setReference(((" + typeName + ")toCompare)." + accesStringForField(keyFields[i]) + ");\n",
+				"this.f%d.setReference(((" + typeName + ")toCompare)." + accessStringForField(keyFields[i]) + ");\n",
 				i));
 		}
 		StringBuilder equalToReference = new StringBuilder();
 		for (int i = 0; i < comparators.length; ++i) {
 			equalToReference.append(String.format(
 				"if (!this.f%d.equalToReference(((" + typeName + ")candidate)." +
-				accesStringForField(keyFields[i]) + ")) {\n" +
+				accessStringForField(keyFields[i]) + ")) {\n" +
 				"	return false;\n" +
 				"}\n", i));
 		}
@@ -148,8 +148,8 @@ public final class PojoComparatorGenerator<T> {
 		StringBuilder compareFields = new StringBuilder();
 		for (int i = 0; i < comparators.length; ++i) {
 			compareFields.append(String.format(
-				"cmp = f%d.compare(((" + typeName + ")first)." + accesStringForField(keyFields[i]) + "," +
-				"((" + typeName + ")second)." + accesStringForField(keyFields[i]) + ");\n" +
+				"cmp = f%d.compare(((" + typeName + ")first)." + accessStringForField(keyFields[i]) + "," +
+				"((" + typeName + ")second)." + accessStringForField(keyFields[i]) + ");\n" +
 				"if (cmp != 0) {\n" +
 					"return cmp;\n" +
 				"}\n", i));
@@ -159,7 +159,7 @@ public final class PojoComparatorGenerator<T> {
 			putNormalizedKeys.append(String.format("if (%d >= numLeadingNormalizableKeys || numBytes <= 0) break;\n" +
 				"len = normalizedKeyLengths[%d];\n" +
 				"len = numBytes >= len ? len : numBytes;\n" +
-				"f%d.putNormalizedKey(((" + typeName + ")value)." + accesStringForField(keyFields[i]) +
+				"f%d.putNormalizedKey(((" + typeName + ")value)." + accessStringForField(keyFields[i]) +
 				", target, offset, len);\n" +
 				"numBytes -= len;\n" +
 				"offset += len;", i, i, i));
@@ -167,7 +167,7 @@ public final class PojoComparatorGenerator<T> {
 		StringBuilder extractKeys = new StringBuilder();
 		for (int i = 0; i < comparators.length; ++i) {
 			extractKeys.append(String.format(
-				"localIndex += f%d.extractKeys(((" + typeName + ")record)." + accesStringForField(keyFields[i]) +
+				"localIndex += f%d.extractKeys(((" + typeName + ")record)." + accessStringForField(keyFields[i]) +
 					", target, localIndex);\n", i));
 		}
 		Map<String, String> root = new HashMap<>();

@@ -31,7 +31,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static org.apache.flink.util.Preconditions.checkNotNull;
-import static org.apache.flink.api.java.typeutils.PojoTypeInfo.accesStringForField;
+import static org.apache.flink.api.java.typeutils.PojoTypeInfo.accessStringForField;
 import static org.apache.flink.api.java.typeutils.PojoTypeInfo.modifyStringForField;
 
 public final class PojoSerializerGenerator<T> {
@@ -99,10 +99,10 @@ public final class PojoSerializerGenerator<T> {
 		for (int i = 0; i < fieldSerializers.length; ++i) {
 			if (refFields[i].getType().isPrimitive()) {
 				copyFields.append(String.format("((" + typeName + ")target)." + modifyStringForField(refFields[i],
-					"f%d.copy(((" + typeName + ")from)." + accesStringForField(refFields[i])) + ");\n", i));
+					"f%d.copy(((" + typeName + ")from)." + accessStringForField(refFields[i])) + ");\n", i));
 			} else {
 				copyFields.append(String.format(
-					"value = ((" + typeName + ")from)." + accesStringForField(refFields[i]) + ";\n" +
+					"value = ((" + typeName + ")from)." + accessStringForField(refFields[i]) + ";\n" +
 					"if (value != null) {\n" +
 					"	((" + typeName + ")target)." + modifyStringForField(refFields[i], "f%d.copy(value)") + ";\n" +
 					"} else {\n" +
@@ -117,12 +117,12 @@ public final class PojoSerializerGenerator<T> {
 		for (int i = 0; i < fieldSerializers.length; ++i) {
 			if (refFields[i].getType().isPrimitive()) {
 				reuseCopyFields.append(String.format("((" + typeName + ")reuse)." + modifyStringForField(refFields[i],
-					"f%d.copy(((" + typeName + ")from)." + accesStringForField(refFields[i]) + ")") + ";\n", i));
+					"f%d.copy(((" + typeName + ")from)." + accessStringForField(refFields[i]) + ")") + ";\n", i));
 			} else {
 				reuseCopyFields.append(String.format(
-					"value = ((" + typeName + ")from)." + accesStringForField(refFields[i]) + ";\n" +
+					"value = ((" + typeName + ")from)." + accessStringForField(refFields[i]) + ";\n" +
 					"if (value != null) {\n" +
-					"	reuseValue = ((" + typeName + ")reuse)." + accesStringForField(refFields[i]) + ";\n" +
+					"	reuseValue = ((" + typeName + ")reuse)." + accessStringForField(refFields[i]) + ";\n" +
 					"	if (reuseValue != null) {\n" +
 					"		copy = f%d.copy(value, reuseValue);\n" +
 					"	} else {\n" +
@@ -150,11 +150,11 @@ public final class PojoSerializerGenerator<T> {
 			if (refFields[i].getType().isPrimitive()) {
 				serializeFields.append(String.format(
 					"target.writeBoolean(false);\n" +
-					"f%d.serialize(((" + typeName + ")value)." + accesStringForField(refFields[i]) + ", target);\n",
+					"f%d.serialize(((" + typeName + ")value)." + accessStringForField(refFields[i]) + ", target);\n",
 					i));
 			} else {
 				serializeFields.append(String.format(
-					"o = ((" + typeName + ")value)." + accesStringForField(refFields[i]) + ";\n" +
+					"o = ((" + typeName + ")value)." + accessStringForField(refFields[i]) + ";\n" +
 					"if (o == null) {\n" +
 					"	target.writeBoolean(true);\n" +
 					"} else {\n" +
@@ -194,7 +194,7 @@ public final class PojoSerializerGenerator<T> {
 					"if (isNull) {\n" +
 					"	((" + typeName + ")reuse)." + modifyStringForField(refFields[i], "null") + ";\n" +
 					"} else {\n" +
-					"	reuseField = ((" + typeName + ")reuse)." + accesStringForField(refFields[i]) + ";\n" +
+					"	reuseField = ((" + typeName + ")reuse)." + accessStringForField(refFields[i]) + ";\n" +
 					"	if (reuseField != null) {\n" +
 					"		field = f%d.deserialize(reuseField, source);\n" +
 					"	} else {\n" +
