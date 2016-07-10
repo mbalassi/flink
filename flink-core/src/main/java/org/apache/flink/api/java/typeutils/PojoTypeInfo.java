@@ -304,7 +304,6 @@ public class PojoTypeInfo<T> extends CompositeType<T> {
 		return new PojoTypeComparatorBuilder();
 	}
 
-	// used for testing. Maybe use mockito here
 	@PublicEvolving
 	public PojoField getPojoFieldAt(int pos) {
 		if (pos < 0 || pos >= this.fields.length) {
@@ -476,15 +475,23 @@ public class PojoTypeInfo<T> extends CompositeType<T> {
 	}
 
 	public static String accessStringForField(Field f) {
-		if (Modifier.isPublic(f.getModifiers())) {
-			return f.getName();
-		}
-
 		String fieldName = f.getName();
-		return "get" + Character.toUpperCase(fieldName.charAt(0)) + fieldName.substring(1) + "()";
+		if (Modifier.isPublic(f.getModifiers())) {
+			return fieldName;
+		}
+		String getterName = "get" + Character.toUpperCase(fieldName.charAt(0)) + fieldName.substring(1);
+		Class parentClazz = f.getDeclaringClass();
+		try {
+			parentClazz.getMethod(getterName, new Class[0]);
+		} catch (NoSuchMethodException e) {
+			// No getter, it might be a scala class.
+			return fieldName + "()";
+		}
+		return getterName + "()";
 	}
 
 	public static String modifyStringForField(Field f, String arg) {
+		String fieldName = f.getName();
 		if (Modifier.isPublic(f.getModifiers())) {
 			if (f.getType().isPrimitive()) {
 				return f.getName() + " = (" +
@@ -493,14 +500,20 @@ public class PojoTypeInfo<T> extends CompositeType<T> {
 				return f.getName() + " = (" + f.getType().getCanonicalName() + ")" + arg;
 			}
 		}
+		String setterName = "set" + Character.toUpperCase(fieldName.charAt(0)) + fieldName.substring(1);
+		Class parentClazz = f.getDeclaringClass();
+		try {
+			parentClazz.getMethod(setterName, f.getType());
+		} catch (NoSuchMethodException e) {
+			// No getter, it might be a scala class.
+			setterName = fieldName + "_$eq";
+		}
 
-		String fieldName = f.getName();
 		if (f.getType().isPrimitive()) {
-			return "set" + Character.toUpperCase(fieldName.charAt(0)) + fieldName.substring(1) + "(" +
+			return  setterName + "(" +
 				"("+primitiveBoxedClasses.get(f.getType().getCanonicalName()).getCanonicalName() + ")" + arg + ")";
 		} else {
-			return "set" + Character.toUpperCase(fieldName.charAt(0)) + fieldName.substring(1) + "(" +
-				"(" + f.getType().getCanonicalName() + ")" + arg + ")";
+			return setterName + "((" + f.getType().getCanonicalName() + ")" + arg + ")";
 		}
 	}
 

@@ -109,8 +109,8 @@ public final class InstantiationUtil {
 
 		@Override
 		protected Class<?> resolveClass(ObjectStreamClass desc) throws IOException, ClassNotFoundException {
+			String name = desc.getName();
 			if (classLoader != null) {
-				String name = desc.getName();
 				try {
 					return Class.forName(name, false, classLoader);
 				} catch (ClassNotFoundException ex) {
@@ -126,7 +126,12 @@ public final class InstantiationUtil {
 				}
 			}
 
-			return super.resolveClass(desc);
+			try {
+				return super.resolveClass(desc);
+			} catch (ClassNotFoundException ex) {
+				// It is possible the the passed class loader is null but we still want to load generated classes.
+				return Class.forName(name, false, loaderForGeneratedClasses.get(name));
+			}
 		}
 		
 		// ------------------------------------------------
