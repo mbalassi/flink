@@ -170,21 +170,21 @@ public final class PojoComparatorGenerator<T> {
 				"localIndex += f%d.extractKeys(((" + typeName + ")record)." + accessStringForField(keyFields[i]) +
 					", target, localIndex);\n", i));
 		}
-		Map<String, String> root = new HashMap<>();
+		Map<String, Object> root = new HashMap<>();
 		root.put("packageName", packageName);
 		root.put("className", className);
-		root.put("members", members.toString());
-		root.put("initMembers", initMembers.toString());
-		root.put("cloneMembers", cloneMembers.toString());
-		root.put("flatComparators", flatComparators.toString());
-		root.put("hashMembers", hashMembers.toString());
-		root.put("normalizableKeys", normalizableKeys.toString());
-		root.put("setReference", setReference.toString());
-		root.put("equalToReference", equalToReference.toString());
-		root.put("compareToReference", compareToReference.toString());
-		root.put("compareFields", compareFields.toString());
-		root.put("putNormalizedKeys", putNormalizedKeys.toString());
-		root.put("extractKeys", extractKeys.toString());
+		root.put("members", members.toString().split("\n"));
+		root.put("initMembers", initMembers.toString().split("\n"));
+		root.put("cloneMembers", cloneMembers.toString().split("\n"));
+		root.put("flatComparators", flatComparators.toString().split("\n"));
+		root.put("hashMembers", hashMembers.toString().split("\n"));
+		root.put("normalizableKeys", normalizableKeys.toString().split("\n"));
+		root.put("setReference", setReference.toString().split("\n"));
+		root.put("equalToReference", equalToReference.toString().split("\n"));
+		root.put("compareToReference", compareToReference.toString().split("\n"));
+		root.put("compareFields", compareFields.toString().split("\n"));
+		root.put("putNormalizedKeys", putNormalizedKeys.toString().split("\n"));
+		root.put("extractKeys", extractKeys.toString().split("\n"));
 		try {
 			code = InstantiationUtil.getCodeFromTemplate("PojoComparatorTemplate.ftl", root);
 		} catch (IOException e) {

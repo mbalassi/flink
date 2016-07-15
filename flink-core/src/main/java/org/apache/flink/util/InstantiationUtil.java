@@ -69,7 +69,7 @@ public final class InstantiationUtil {
 		}
 	}
 
-	public synchronized static String getCodeFromTemplate(String name, Map<String, String> root) throws IOException {
+	public synchronized static <T> String getCodeFromTemplate(String name, Map<String, T> root) throws IOException {
 		Template temp = cfg.getTemplate(name);
 		Writer w = new StringWriter();
 		try {

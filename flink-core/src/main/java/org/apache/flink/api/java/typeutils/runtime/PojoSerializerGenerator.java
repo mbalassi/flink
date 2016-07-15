@@ -226,23 +226,23 @@ public final class PojoSerializerGenerator<T> {
 				"	stateful = true;\n" +
 				"}\n", i, i, i, i));
 		}
-		Map<String, String> root = new HashMap<>();
+		Map<String, Object> root = new HashMap<>();
 		root.put("isFinal", Boolean.toString(Modifier.isFinal(clazz.getModifiers())));
 		root.put("packageName", packageName);
 		root.put("className", className);
 		root.put("typeName", typeName);
-		root.put("members", members.toString());
-		root.put("initMembers", initMembers.toString());
-		root.put("createFields", createFields.toString());
-		root.put("copyFields", copyFields.toString());
-		root.put("reuseCopyFields", reuseCopyFields.toString());
+		root.put("members", members.toString().split("\n"));
+		root.put("initMembers", initMembers.toString().split("\n"));
+		root.put("createFields", createFields.toString().split("\n"));
+		root.put("copyFields", copyFields.toString().split("\n"));
+		root.put("reuseCopyFields", reuseCopyFields.toString().split("\n"));
 		root.put("memberHash", memberHash.toString());
 		root.put("memberEquals", memberEquals.toString());
-		root.put("serializeFields", serializeFields.toString());
-		root.put("deserializeFields", deserializeFields.toString());
-		root.put("reuseDeserializeFields", reuseDeserializeFields.toString());
-		root.put("dataCopyFields", dataCopyFields.toString());
-		root.put("duplicateSerializers", duplicateSerializers.toString());
+		root.put("serializeFields", serializeFields.toString().split("\n"));
+		root.put("deserializeFields", deserializeFields.toString().split("\n"));
+		root.put("reuseDeserializeFields", reuseDeserializeFields.toString().split("\n"));
+		root.put("dataCopyFields", dataCopyFields.toString().split("\n"));
+		root.put("duplicateSerializers", duplicateSerializers.toString().split("\n"));
 		try {
 			code = InstantiationUtil.getCodeFromTemplate("PojoSerializerTemplate.ftl", root);
 		} catch (IOException e) {
