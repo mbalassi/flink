@@ -404,10 +404,12 @@ public class PojoTypeInfo<T> extends CompositeType<T> {
 
 		private ArrayList<TypeComparator> fieldComparators;
 		private ArrayList<Field> keyFields;
+		private ArrayList<Integer> keyFieldIds;
 
 		public PojoTypeComparatorBuilder() {
 			fieldComparators = new ArrayList<TypeComparator>();
 			keyFields = new ArrayList<Field>();
+			keyFieldIds = new ArrayList<>();
 		}
 
 
@@ -421,6 +423,7 @@ public class PojoTypeInfo<T> extends CompositeType<T> {
 		public void addComparatorField(int fieldId, TypeComparator<?> comparator) {
 			fieldComparators.add(comparator);
 			keyFields.add(fields[fieldId].getField());
+			keyFieldIds.add(fieldId);
 		}
 
 		@Override
@@ -444,7 +447,7 @@ public class PojoTypeInfo<T> extends CompositeType<T> {
 			if (config.isCodeGenerationEnabled()) {
 				return new PojoComparatorGenerator<T>(keyFields.toArray(new Field[keyFields.size()]),
 					fieldComparators.toArray(new TypeComparator[fieldComparators.size()]), createSerializer
-					(config), getTypeClass()).createComparator();
+					(config), getTypeClass(), keyFieldIds.toArray(new Integer[keyFields.size()])).createComparator();
 			}
 
 			return new PojoComparator<T>(

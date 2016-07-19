@@ -36,28 +36,34 @@ public final class PojoComparatorGenerator<T> {
 	private static long counter = 0; // TODO: atomic?
 
 	private transient Field[] keyFields;
+	private transient Integer[] keyFieldIds;
 	private final TypeComparator<Object>[] comparators;
 	private TypeSerializer<T> serializer;
 	private final Class<T> type;
 	private String code;
 
 	public PojoComparatorGenerator(Field[] keyFields, TypeComparator<?>[] comparators, TypeSerializer<T> serializer,
-									Class<T>	type) {
+									Class<T> type, Integer[] keyFieldIds) {
 		this.keyFields = keyFields;
 		this.comparators = (TypeComparator<Object>[]) comparators;
 
 		this.type = type;
 		this.serializer = serializer;
+		this.keyFieldIds = keyFieldIds;
 	}
 
 	public TypeComparator<T> createComparator() {
-		Class<TypeSerializer<?>> comparatorClazz;
+		// Multiple comparators can be generated for each type based on a list of keys. The list of keys and the type
+		// name should determine the generated comparator. This information is used for caching (avoiding
+		// recompilation). Note that, the name of the field is not sufficient because nested POJOs might have a field
+		// with the name.
 		StringBuilder keyBuilder = new StringBuilder();
 		keyBuilder.append(type.getCanonicalName());
-		for(Field f : keyFields) {
-			keyBuilder.append(f.getName());
+		for(Integer i : keyFieldIds) {
+			keyBuilder.append(i);
 		}
 		String key = keyBuilder.toString();
+		Class<TypeSerializer<?>> comparatorClazz;
 		if (generatedClasses.containsKey(key)) {
 			comparatorClazz = generatedClasses.get(key);
 		} else {
