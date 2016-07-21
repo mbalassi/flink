@@ -186,7 +186,15 @@ under the License.
 				</executions>
 			</plugin>
 		</plugins>
-		
+
+		<resources>
+			<resource>
+				<directory>src/main/resources</directory>
+				<includes>
+					<include>**/*.ftl</include>
+				</includes>
+			</resource>
+		</resources>
 	</build>
 
 </project>
