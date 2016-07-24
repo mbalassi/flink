@@ -18,6 +18,7 @@
 
 package org.apache.flink.api.java.typeutils.runtime;
 
+import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.typeutils.TypeComparator;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.util.InstantiationUtil;
@@ -31,25 +32,27 @@ import java.util.Map;
 import static org.apache.flink.api.java.typeutils.PojoTypeInfo.accessStringForField;
 
 public final class PojoComparatorGenerator<T> {
-	private static final Map<String, Class<TypeSerializer<?>>> generatedClasses = new HashMap<>();
+	private static final Map<String, Class<?>> generatedClasses = new HashMap<>();
 	private static final String packageName = "org.apache.flink.api.java.typeutils.runtime.generated";
 	private static long counter = 0; // TODO: atomic?
 
 	private transient Field[] keyFields;
 	private transient Integer[] keyFieldIds;
 	private final TypeComparator<Object>[] comparators;
-	private TypeSerializer<T> serializer;
+	private final TypeSerializer<T> serializer;
 	private final Class<T> type;
+	private final ExecutionConfig config;
 	private String code;
 
 	public PojoComparatorGenerator(Field[] keyFields, TypeComparator<?>[] comparators, TypeSerializer<T> serializer,
-									Class<T> type, Integer[] keyFieldIds) {
+									Class<T> type, Integer[] keyFieldIds, ExecutionConfig config) {
 		this.keyFields = keyFields;
 		this.comparators = (TypeComparator<Object>[]) comparators;
 
 		this.type = type;
 		this.serializer = serializer;
 		this.keyFieldIds = keyFieldIds;
+		this.config = config;
 	}
 
 	public TypeComparator<T> createComparator() {
@@ -63,13 +66,17 @@ public final class PojoComparatorGenerator<T> {
 			keyBuilder.append(i);
 		}
 		String key = keyBuilder.toString();
-		Class<TypeSerializer<?>> comparatorClazz;
+		Class<?> comparatorClazz;
 		if (generatedClasses.containsKey(key)) {
 			comparatorClazz = generatedClasses.get(key);
 		} else {
 			final String className = type.getSimpleName() + "_GeneratedComparator" + Long.toString(counter++);
 			try {
 				generateCode(className);
+				if (config.isWrapGeneratedClassesEnabled()) {
+					return new GenTypeComparatorProxy<>(type, packageName + "." + className, code, comparators,
+						serializer);
+				}
 				comparatorClazz = InstantiationUtil.compile(type.getClassLoader(), packageName + "." + className, code);
 				generatedClasses.put(key, comparatorClazz);
 			} catch (Exception e) {

@@ -35,7 +35,7 @@ import static org.apache.flink.api.java.typeutils.PojoTypeInfo.accessStringForFi
 import static org.apache.flink.api.java.typeutils.PojoTypeInfo.modifyStringForField;
 
 public final class PojoSerializerGenerator<T> {
-	private static final Map<Class<?>, Class<TypeSerializer<?>>> generatedClasses = new HashMap<>();
+	private static final Map<Class<?>, Class<?>> generatedClasses = new HashMap<>();
 	private static final String packageName = "org.apache.flink.api.java.typeutils.runtime.generated";
 
 	private final Class<T> clazz;
@@ -61,11 +61,15 @@ public final class PojoSerializerGenerator<T> {
 	public TypeSerializer<T> createSerializer()  {
 		final String className = clazz.getSimpleName() + "_GeneratedSerializer";
 		try {
-			Class<TypeSerializer<?>> serializerClazz;
+			Class<?> serializerClazz;
 			if (generatedClasses.containsKey(clazz)) {
 				serializerClazz = generatedClasses.get(clazz);
 			} else {
 				generateCode(className);
+				if(config.isWrapGeneratedClassesEnabled()) {
+					return new GenTypeSerializerProxy<>(clazz, packageName + "." + className, code, fieldSerializers,
+						config);
+				}
 				serializerClazz = InstantiationUtil.compile(clazz.getClassLoader(), packageName + "." + className, code);
 				generatedClasses.put(clazz, serializerClazz);
 			}

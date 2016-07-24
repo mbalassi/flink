@@ -80,7 +80,7 @@ public final class InstantiationUtil {
 		return w.toString();
 	}
 
-	public synchronized static Class<TypeSerializer<?>> compile(ClassLoader cl, String name, String code) throws
+	public synchronized static Class<?> compile(ClassLoader cl, String name, String code) throws
 		CompileException, ClassNotFoundException {
 		checkNotNull(cl);
 		SimpleCompiler compiler = new SimpleCompiler();
@@ -88,7 +88,7 @@ public final class InstantiationUtil {
 		compiler.cook(code);
 		ClassLoader loader = compiler.getClassLoader();
 		loaderForGeneratedClasses.put(name, loader);
-		Class<TypeSerializer<?>> serializerClazz = (Class<TypeSerializer<?>>) loader.loadClass(name);
+		Class<?> serializerClazz = loader.loadClass(name);
 		return serializerClazz;
 	}
 

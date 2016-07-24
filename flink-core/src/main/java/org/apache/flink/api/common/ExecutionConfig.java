@@ -116,6 +116,8 @@ public class ExecutionConfig implements Serializable, Archiveable<ArchivedExecut
 
 	private boolean forceCodeGeneration = true;
 
+	private boolean wrapGeneratedClasses = true;
+
 	private CodeAnalysisMode codeAnalysisMode = CodeAnalysisMode.DISABLE;
 
 	/** If set to true, progress updates are printed to System.out during execution */
@@ -547,6 +549,18 @@ public class ExecutionConfig implements Serializable, Archiveable<ArchivedExecut
 
 	public boolean isCodeGenerationEnabled() {
 		return forceCodeGeneration;
+	}
+
+	public void enableWrapGeneratedClasses() {
+		wrapGeneratedClasses = true;
+	}
+
+	public void disableWrapGeneratedClasses() {
+		wrapGeneratedClasses = false;
+	}
+
+	public boolean isWrapGeneratedClassesEnabled() {
+		return wrapGeneratedClasses;
 	}
 
 	/**

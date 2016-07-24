@@ -29,6 +29,7 @@ import org.apache.flink.core.memory.DataOutputView;
 import org.apache.flink.core.memory.MemorySegment;
 import org.apache.flink.types.NullKeyFieldException;
 import org.apache.flink.api.java.typeutils.runtime.TupleComparatorBase;
+import org.apache.flink.api.java.typeutils.runtime.GenTypeComparatorProxy;
 import org.apache.flink.util.InstantiationUtil;
 
 public final class ${className} extends CompositeTypeComparator implements java.io.Serializable {
@@ -112,7 +113,12 @@ public final class ${className} extends CompositeTypeComparator implements java.
 	}
 	@Override
 	public int compareToReference(TypeComparator referencedComparator) {
-		${className} other = (${className}) referencedComparator;
+		${className} other = null;
+		if (referencedComparator instanceof GenTypeComparatorProxy) {
+			other = (${className})((GenTypeComparatorProxy)referencedComparator).getImpl();
+		} else{
+			other = (${className})referencedComparator;
+		}
 		int cmp;
 		<#list compareToReference as cr>
 		${cr}

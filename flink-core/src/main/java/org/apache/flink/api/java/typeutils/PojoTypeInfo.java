@@ -447,7 +447,8 @@ public class PojoTypeInfo<T> extends CompositeType<T> {
 			if (config.isCodeGenerationEnabled()) {
 				return new PojoComparatorGenerator<T>(keyFields.toArray(new Field[keyFields.size()]),
 					fieldComparators.toArray(new TypeComparator[fieldComparators.size()]), createSerializer
-					(config), getTypeClass(), keyFieldIds.toArray(new Integer[keyFields.size()])).createComparator();
+					(config), getTypeClass(), keyFieldIds.toArray(new Integer[keyFields.size()]), config)
+					.createComparator();
 			}
 
 			return new PojoComparator<T>(
