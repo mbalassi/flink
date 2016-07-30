@@ -31,7 +31,6 @@ import org.codehaus.janino.SimpleCompiler;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
@@ -58,15 +57,10 @@ public final class InstantiationUtil {
 		new freemarker.template.Configuration(freemarker.template.Configuration.VERSION_2_3_24);
 
 	static {
-		String templatePath = InstantiationUtil.class.getResource("/PojoSerializerTemplate.ftl").getPath();
-		try {
-			cfg.setDirectoryForTemplateLoading((new File(templatePath)).getParentFile());
-			cfg.setDefaultEncoding("UTF-8");
-			cfg.setTemplateExceptionHandler(freemarker.template.TemplateExceptionHandler.RETHROW_HANDLER);
-			cfg.setLogTemplateExceptions(false);
-		} catch (IOException e) {
-			throw new RuntimeException("Unable to open template path: " + templatePath, e);
-		}
+		cfg.setClassForTemplateLoading(InstantiationUtil.class, "/");
+		cfg.setDefaultEncoding("UTF-8");
+		cfg.setTemplateExceptionHandler(freemarker.template.TemplateExceptionHandler.RETHROW_HANDLER);
+		cfg.setLogTemplateExceptions(false);
 	}
 
 	public synchronized static <T> String getCodeFromTemplate(String name, Map<String, T> root) throws IOException {
