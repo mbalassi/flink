@@ -23,9 +23,12 @@ import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.core.memory.DataInputView;
 import org.apache.flink.core.memory.DataOutputView;
 import org.apache.flink.util.InstantiationUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.lang.reflect.Constructor;
 
 public class GenTypeSerializerProxy<T> extends TypeSerializer<T> {
@@ -40,7 +43,7 @@ public class GenTypeSerializerProxy<T> extends TypeSerializer<T> {
 	private void compile() {
 		try {
 			assert impl == null;
-			Class<?> serializerClazz = InstantiationUtil.compile(clazz.getClassLoader(), name, code);
+			Class<?> serializerClazz = InstantiationUtil.compile(clazz.getClassLoader(), name, code, clazz);
 			Constructor<?>[] ctors = serializerClazz.getConstructors();
 			assert ctors.length == 1;
 			impl = (TypeSerializer<T>) ctors[0].newInstance(new Object[]{clazz, fieldSerializers, config});
@@ -70,10 +73,23 @@ public class GenTypeSerializerProxy<T> extends TypeSerializer<T> {
 		}
 	}
 
-	private void readObject(ObjectInputStream in)
-		throws IOException, ClassNotFoundException {
+	private void writeObject(ObjectOutputStream out) throws IOException {
+		out.defaultWriteObject();
+		out.writeObject(impl);
+	}
+
+	private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
 		in.defaultReadObject();
-		compile();
+		Logger LOG = LoggerFactory.getLogger(this.getClass());
+		try {
+			LOG.info("FOOBAR Attempt to read serializer");
+			impl = (TypeSerializer<T>) in.readObject();
+		} catch (ClassNotFoundException e) {
+			assert impl == null;
+			LOG.info("FOOBAR Recompile serializer after reading.");
+			compile();
+		}
+		LOG.info("FOOBAR Successful compilation.");
 	}
 
 	@Override
@@ -133,7 +149,10 @@ public class GenTypeSerializerProxy<T> extends TypeSerializer<T> {
 
 	@Override
 	public boolean equals(Object obj) {
-		return impl.equals(obj);
+		if (obj instanceof GenTypeSerializerProxy) {
+			return impl.equals(((GenTypeSerializerProxy) obj).impl);
+		}
+		return false;
 	}
 
 	@Override

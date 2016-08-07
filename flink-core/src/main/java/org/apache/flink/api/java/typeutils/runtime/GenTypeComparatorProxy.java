@@ -25,26 +25,30 @@ import org.apache.flink.core.memory.DataInputView;
 import org.apache.flink.core.memory.DataOutputView;
 import org.apache.flink.core.memory.MemorySegment;
 import org.apache.flink.util.InstantiationUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.lang.reflect.Constructor;
 import java.util.List;
 
 public class GenTypeComparatorProxy<T> extends CompositeTypeComparator<T> implements java.io.Serializable {
-	transient private CompositeTypeComparator<T> impl = null;
-
 	private final String code;
 	private final String name;
+	private final String cacheKey;
 	private final Class<T> clazz;
 	private final TypeComparator<Object>[] comparators;
 	private final TypeSerializer<T> serializer;
+
+	transient private CompositeTypeComparator<T> impl = null;
 
 	private void compile() {
 		try {
 			assert impl == null;
 			Class<?> comparatorClazz = InstantiationUtil.compile(clazz.getClassLoader(), name,
-				code);
+				code, cacheKey);
 			Constructor<?>[] ctors = comparatorClazz.getConstructors();
 			assert ctors.length == 1;
 			impl = (CompositeTypeComparator<T>) ctors[0].newInstance(new Object[]{comparators, serializer, clazz});
@@ -54,12 +58,13 @@ public class GenTypeComparatorProxy<T> extends CompositeTypeComparator<T> implem
 	}
 
 	public GenTypeComparatorProxy(Class<T> clazz, String name, String code,TypeComparator<Object>[] comparators,
-									TypeSerializer<T> serializer) {
+									TypeSerializer<T> serializer, String cacheKey) {
 		this.name = name;
 		this.code = code;
 		this.clazz = clazz;
 		this.comparators = comparators;
 		this.serializer = serializer;
+		this.cacheKey = cacheKey;
 		compile();
 	}
 
@@ -69,15 +74,28 @@ public class GenTypeComparatorProxy<T> extends CompositeTypeComparator<T> implem
 		this.clazz = other.clazz;
 		this.comparators = other.comparators; // TODO: stateful comparator?
 		this.serializer = other.serializer; // TODO: stateful serializer?
+		this.cacheKey = other.cacheKey;
 		if (other.impl != null) {
 			this.impl = (CompositeTypeComparator<T>) other.impl.duplicate();
 		}
 	}
 
-	private void readObject(ObjectInputStream in)
-			throws IOException, ClassNotFoundException {
+	private void writeObject(ObjectOutputStream out) throws IOException {
+		out.defaultWriteObject();
+		out.writeObject(impl);
+	}
+
+	private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
 		in.defaultReadObject();
-		compile();
+		Logger LOG = LoggerFactory.getLogger(this.getClass());
+		try {
+			LOG.info("FOOBAR Attempt to read comparator");
+			impl = (CompositeTypeComparator<T>)in.readObject();
+		} catch (ClassNotFoundException e) {
+			assert impl == null;
+			LOG.info("FOOBAR Recompile comparator after reading.");
+			compile();
+		}
 	}
 
 	@Override

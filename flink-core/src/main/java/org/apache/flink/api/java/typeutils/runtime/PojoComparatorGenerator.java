@@ -32,9 +32,7 @@ import java.util.Map;
 import static org.apache.flink.api.java.typeutils.PojoTypeInfo.accessStringForField;
 
 public final class PojoComparatorGenerator<T> {
-	private static final Map<String, Class<?>> generatedClasses = new HashMap<>();
 	private static final String packageName = "org.apache.flink.api.java.typeutils.runtime.generated";
-	private static long counter = 0; // TODO: atomic?
 
 	private transient Field[] keyFields;
 	private transient Integer[] keyFieldIds;
@@ -61,27 +59,21 @@ public final class PojoComparatorGenerator<T> {
 		// recompilation). Note that, the name of the field is not sufficient because nested POJOs might have a field
 		// with the name.
 		StringBuilder keyBuilder = new StringBuilder();
-		keyBuilder.append(type.getCanonicalName());
 		for(Integer i : keyFieldIds) {
 			keyBuilder.append(i);
 		}
-		String key = keyBuilder.toString();
+		String key = type.getCanonicalName() + keyBuilder.toString();
+		final String className = type.getSimpleName() + "_GeneratedComparator" + keyBuilder.toString();
+		final String fullClassName = packageName + "." + className;
 		Class<?> comparatorClazz;
-		if (generatedClasses.containsKey(key)) {
-			comparatorClazz = generatedClasses.get(key);
-		} else {
-			final String className = type.getSimpleName() + "_GeneratedComparator" + Long.toString(counter++);
-			try {
-				generateCode(className);
-				if (config.isWrapGeneratedClassesEnabled()) {
-					return new GenTypeComparatorProxy<>(type, packageName + "." + className, code, comparators,
-						serializer);
-				}
-				comparatorClazz = InstantiationUtil.compile(type.getClassLoader(), packageName + "." + className, code);
-				generatedClasses.put(key, comparatorClazz);
-			} catch (Exception e) {
-				throw new RuntimeException("Unable to generate comparator: " + className, e);
-			}
+		generateCode(className);
+		if (config.isWrapGeneratedClassesEnabled()) {
+			return new GenTypeComparatorProxy<>(type, fullClassName, code, comparators, serializer, key);
+		}
+		try {
+			comparatorClazz = InstantiationUtil.compile(type.getClassLoader(), fullClassName, code, key);
+		} catch (Exception e) {
+			throw new RuntimeException("Unable to generate comparator: " + className, e);
 		}
 		Constructor<?>[] ctors = comparatorClazz.getConstructors();
 		assert ctors.length == 1;

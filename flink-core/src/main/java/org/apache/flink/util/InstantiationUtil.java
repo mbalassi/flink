@@ -28,6 +28,8 @@ import org.apache.flink.core.memory.DataInputViewStreamWrapper;
 import org.apache.flink.core.memory.DataOutputViewStreamWrapper;
 import org.codehaus.commons.compiler.CompileException;
 import org.codehaus.janino.SimpleCompiler;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -53,6 +55,7 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
 @Internal
 public final class InstantiationUtil {
 	private static final HashMap<String, ClassLoader> loaderForGeneratedClasses = new HashMap<>();
+	private static final Map<Object, Class<?>> generatedClasses = new HashMap<>();
 	private static final freemarker.template.Configuration cfg =
 		new freemarker.template.Configuration(freemarker.template.Configuration.VERSION_2_3_24);
 
@@ -74,16 +77,25 @@ public final class InstantiationUtil {
 		return w.toString();
 	}
 
-	public synchronized static Class<?> compile(ClassLoader cl, String name, String code) throws
+	// The caching is key based. The reason is that a separate caching logic is needed for serializers and
+	// comparators.
+	public synchronized static Class<?> compile(ClassLoader cl, String name, String code, Object cacheKey) throws
 		CompileException, ClassNotFoundException {
 		checkNotNull(cl);
-		SimpleCompiler compiler = new SimpleCompiler();
-		compiler.setParentClassLoader(cl);
-		compiler.cook(code);
-		ClassLoader loader = compiler.getClassLoader();
-		loaderForGeneratedClasses.put(name, loader);
-		Class<?> serializerClazz = loader.loadClass(name);
-		return serializerClazz;
+		Class<?> generatedClazz;
+		if (generatedClasses.containsKey(cacheKey)) {
+			generatedClazz = generatedClasses.get(cacheKey);
+		} else {
+			SimpleCompiler compiler = new SimpleCompiler();
+			compiler.setParentClassLoader(cl);
+			compiler.cook(code);
+			ClassLoader loader = compiler.getClassLoader();
+			generatedClazz = loader.loadClass(name);
+			assert !loaderForGeneratedClasses.containsKey(name);
+			loaderForGeneratedClasses.put(name, loader);
+			generatedClasses.put(cacheKey, generatedClazz);
+		}
+		return generatedClazz;
 	}
 
 	/**
@@ -115,7 +127,15 @@ public final class InstantiationUtil {
 						return cl;
 					} else {
 						// search among the compiled classes too
-						return Class.forName(name, false, loaderForGeneratedClasses.get(name));
+						try {
+							return Class.forName(name, false, loaderForGeneratedClasses.get(name));
+						}catch (Exception e) {
+							Logger LOG = LoggerFactory.getLogger(this.getClass());
+							LOG.info("FOOBAR: " + name);
+							LOG.info("FOOBAR: " + loaderForGeneratedClasses.toString());
+							LOG.info("FOOBAR: getRes " + Boolean.toString(loaderForGeneratedClasses.get(name) == null));
+							throw e;
+						}
 					}
 				}
 			}

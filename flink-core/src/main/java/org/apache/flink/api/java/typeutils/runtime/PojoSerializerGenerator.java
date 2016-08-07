@@ -35,7 +35,6 @@ import static org.apache.flink.api.java.typeutils.PojoTypeInfo.accessStringForFi
 import static org.apache.flink.api.java.typeutils.PojoTypeInfo.modifyStringForField;
 
 public final class PojoSerializerGenerator<T> {
-	private static final Map<Class<?>, Class<?>> generatedClasses = new HashMap<>();
 	private static final String packageName = "org.apache.flink.api.java.typeutils.runtime.generated";
 
 	private final Class<T> clazz;
@@ -59,20 +58,16 @@ public final class PojoSerializerGenerator<T> {
 	}
 
 	public TypeSerializer<T> createSerializer()  {
-		final String className = clazz.getSimpleName() + "_GeneratedSerializer";
+		final String className = clazz.getCanonicalName().replace('.', '_') + "_GeneratedSerializer";
+		final String fullClassName = packageName + "." + className;
 		try {
 			Class<?> serializerClazz;
-			if (generatedClasses.containsKey(clazz)) {
-				serializerClazz = generatedClasses.get(clazz);
-			} else {
-				generateCode(className);
-				if(config.isWrapGeneratedClassesEnabled()) {
-					return new GenTypeSerializerProxy<>(clazz, packageName + "." + className, code, fieldSerializers,
-						config);
-				}
-				serializerClazz = InstantiationUtil.compile(clazz.getClassLoader(), packageName + "." + className, code);
-				generatedClasses.put(clazz, serializerClazz);
+			generateCode(className);
+			if(config.isWrapGeneratedClassesEnabled()) {
+				return new GenTypeSerializerProxy<>(clazz, fullClassName, code, fieldSerializers, config);
 			}
+			generateCode(className);
+			serializerClazz = InstantiationUtil.compile(clazz.getClassLoader(), fullClassName, code, clazz);
 			Constructor<?>[] ctors = serializerClazz.getConstructors();
 			assert ctors.length == 1;
 			return (TypeSerializer<T>)ctors[0].newInstance(new Object[]{clazz, fieldSerializers, config});
