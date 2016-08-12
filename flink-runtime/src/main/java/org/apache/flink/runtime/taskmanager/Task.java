@@ -65,6 +65,7 @@ import org.apache.flink.runtime.metrics.groups.TaskMetricGroup;
 import org.apache.flink.runtime.query.TaskKvStateRegistry;
 import org.apache.flink.runtime.state.TaskStateHandles;
 import org.apache.flink.util.Preconditions;
+import org.apache.flink.util.InstantiationUtil;
 import org.apache.flink.util.SerializedValue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -810,6 +811,7 @@ public class Task implements Runnable, TaskActions {
 		if (userCodeClassLoader == null) {
 			throw new Exception("No user code classloader available.");
 		}
+		InstantiationUtil.invalidateGeneratedClassesCache();
 		return userCodeClassLoader;
 	}
 

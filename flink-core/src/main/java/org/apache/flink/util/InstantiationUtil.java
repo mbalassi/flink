@@ -28,8 +28,6 @@ import org.apache.flink.core.memory.DataInputViewStreamWrapper;
 import org.apache.flink.core.memory.DataOutputViewStreamWrapper;
 import org.codehaus.commons.compiler.CompileException;
 import org.codehaus.janino.SimpleCompiler;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -64,6 +62,12 @@ public final class InstantiationUtil {
 		cfg.setDefaultEncoding("UTF-8");
 		cfg.setTemplateExceptionHandler(freemarker.template.TemplateExceptionHandler.RETHROW_HANDLER);
 		cfg.setLogTemplateExceptions(false);
+	}
+
+	// Each time the user class loader changes, the generated classes should be invalidated.
+	public synchronized static void invalidateGeneratedClassesCache() {
+		generatedClasses.clear();
+		loaderForGeneratedClasses.clear();
 	}
 
 	public synchronized static <T> String getCodeFromTemplate(String name, Map<String, T> root) throws IOException {
@@ -127,15 +131,7 @@ public final class InstantiationUtil {
 						return cl;
 					} else {
 						// search among the compiled classes too
-						try {
-							return Class.forName(name, false, loaderForGeneratedClasses.get(name));
-						}catch (Exception e) {
-							Logger LOG = LoggerFactory.getLogger(this.getClass());
-							LOG.info("FOOBAR: " + name);
-							LOG.info("FOOBAR: " + loaderForGeneratedClasses.toString());
-							LOG.info("FOOBAR: getRes " + Boolean.toString(loaderForGeneratedClasses.get(name) == null));
-							throw e;
-						}
+						return Class.forName(name, false, loaderForGeneratedClasses.get(name));
 					}
 				}
 			}

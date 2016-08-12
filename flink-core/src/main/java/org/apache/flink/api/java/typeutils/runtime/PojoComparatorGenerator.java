@@ -63,7 +63,8 @@ public final class PojoComparatorGenerator<T> {
 			keyBuilder.append(i);
 		}
 		String key = type.getCanonicalName() + keyBuilder.toString();
-		final String className = type.getSimpleName() + "_GeneratedComparator" + keyBuilder.toString();
+		final String className = type.getCanonicalName().replace('.', '_') + "_GeneratedComparator" +
+			keyBuilder.toString();
 		final String fullClassName = packageName + "." + className;
 		Class<?> comparatorClazz;
 		generateCode(className);

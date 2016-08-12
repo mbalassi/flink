@@ -25,12 +25,9 @@ import org.apache.flink.core.memory.DataInputView;
 import org.apache.flink.core.memory.DataOutputView;
 import org.apache.flink.core.memory.MemorySegment;
 import org.apache.flink.util.InstantiationUtil;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.lang.reflect.Constructor;
 import java.util.List;
 
@@ -80,22 +77,9 @@ public class GenTypeComparatorProxy<T> extends CompositeTypeComparator<T> implem
 		}
 	}
 
-	private void writeObject(ObjectOutputStream out) throws IOException {
-		out.defaultWriteObject();
-		out.writeObject(impl);
-	}
-
 	private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
 		in.defaultReadObject();
-		Logger LOG = LoggerFactory.getLogger(this.getClass());
-		try {
-			LOG.info("FOOBAR Attempt to read comparator");
-			impl = (CompositeTypeComparator<T>)in.readObject();
-		} catch (ClassNotFoundException e) {
-			assert impl == null;
-			LOG.info("FOOBAR Recompile comparator after reading.");
-			compile();
-		}
+		compile();
 	}
 
 	@Override

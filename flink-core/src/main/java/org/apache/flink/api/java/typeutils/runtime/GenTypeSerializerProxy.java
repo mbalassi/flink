@@ -23,12 +23,9 @@ import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.core.memory.DataInputView;
 import org.apache.flink.core.memory.DataOutputView;
 import org.apache.flink.util.InstantiationUtil;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.lang.reflect.Constructor;
 
 public class GenTypeSerializerProxy<T> extends TypeSerializer<T> {
@@ -73,23 +70,9 @@ public class GenTypeSerializerProxy<T> extends TypeSerializer<T> {
 		}
 	}
 
-	private void writeObject(ObjectOutputStream out) throws IOException {
-		out.defaultWriteObject();
-		out.writeObject(impl);
-	}
-
 	private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
 		in.defaultReadObject();
-		Logger LOG = LoggerFactory.getLogger(this.getClass());
-		try {
-			LOG.info("FOOBAR Attempt to read serializer");
-			impl = (TypeSerializer<T>) in.readObject();
-		} catch (ClassNotFoundException e) {
-			assert impl == null;
-			LOG.info("FOOBAR Recompile serializer after reading.");
-			compile();
-		}
-		LOG.info("FOOBAR Successful compilation.");
+		compile();
 	}
 
 	@Override
