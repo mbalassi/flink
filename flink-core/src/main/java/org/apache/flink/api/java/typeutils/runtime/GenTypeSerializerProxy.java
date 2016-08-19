@@ -64,7 +64,10 @@ public class GenTypeSerializerProxy<T> extends TypeSerializer<T> {
 		this.code = other.code;
 		this.clazz = other.clazz;
 		this.config = other.config;
-		this.fieldSerializers = other.fieldSerializers; // TODO: stateful serializers?
+		this.fieldSerializers = new TypeSerializer[other.fieldSerializers.length];
+		for (int i = 0; i < this.fieldSerializers.length; i++) {
+			this.fieldSerializers[i] = other.fieldSerializers[i].duplicate();
+		}
 		if (other.impl != null) {
 			this.impl = other.impl.duplicate();
 		}
@@ -81,7 +84,7 @@ public class GenTypeSerializerProxy<T> extends TypeSerializer<T> {
 	}
 
 	@Override
-	public GenTypeSerializerProxy<T> duplicate() { // TODO: is this right?
+	public GenTypeSerializerProxy<T> duplicate() {
 		return new GenTypeSerializerProxy<>(this);
 	}
 

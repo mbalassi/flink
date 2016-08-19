@@ -84,8 +84,9 @@ public final class InstantiationUtil {
 
 	// In case a class with a given key exists in the cache, return the corresponding java code. Otherwise return null.
 	public synchronized static String getCodeForCachedClass(String name) {
-		if (generatedClasses.containsKey(name))
+		if (generatedClasses.containsKey(name)) {
 			return generatedClasses.get(name).f1;
+		}
 		return null;
 	}
 

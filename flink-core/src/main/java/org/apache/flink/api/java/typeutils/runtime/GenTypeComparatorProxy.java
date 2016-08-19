@@ -62,12 +62,16 @@ public class GenTypeComparatorProxy<T> extends CompositeTypeComparator<T> implem
 		compile();
 	}
 
+	@SuppressWarnings("unchecked")
 	private GenTypeComparatorProxy(GenTypeComparatorProxy<T> other) {
 		this.name = other.name;
 		this.code = other.code;
 		this.clazz = other.clazz;
-		this.comparators = other.comparators; // TODO: stateful comparator?
-		this.serializer = other.serializer; // TODO: stateful serializer?
+		this.comparators = new TypeComparator[other.comparators.length];
+		for (int i = 0; i < other.comparators.length; i++) {
+			this.comparators[i] = other.comparators[i].duplicate();
+		}
+		this.serializer = other.serializer.duplicate();
 		if (other.impl != null) {
 			this.impl = (CompositeTypeComparator<T>) other.impl.duplicate();
 		}
