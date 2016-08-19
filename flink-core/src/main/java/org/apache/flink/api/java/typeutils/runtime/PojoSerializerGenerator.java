@@ -61,7 +61,7 @@ public final class PojoSerializerGenerator<T> {
 		final String className = clazz.getCanonicalName().replace('.', '_') + "_GeneratedSerializer";
 		final String fullClassName = packageName + "." + className;
 		Class<?> serializerClazz;
-		code = InstantiationUtil.getCodeForCachedClass(clazz);
+		code = InstantiationUtil.getCodeForCachedClass(fullClassName);
 		if (code == null) {
 			generateCode(className);
 		}
@@ -69,7 +69,7 @@ public final class PojoSerializerGenerator<T> {
 			return new GenTypeSerializerProxy<>(clazz, fullClassName, code, fieldSerializers, config);
 		}
 		try {
-			serializerClazz = InstantiationUtil.compile(clazz.getClassLoader(), fullClassName, code, clazz);
+			serializerClazz = InstantiationUtil.compile(clazz.getClassLoader(), fullClassName, code);
 		}
 		catch (Exception e) {
 			throw new RuntimeException("Unable to generate serializer: " + className, e);

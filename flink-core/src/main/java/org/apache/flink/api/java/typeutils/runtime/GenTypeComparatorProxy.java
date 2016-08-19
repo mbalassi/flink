@@ -34,7 +34,6 @@ import java.util.List;
 public class GenTypeComparatorProxy<T> extends CompositeTypeComparator<T> implements java.io.Serializable {
 	private final String code;
 	private final String name;
-	private final String cacheKey;
 	private final Class<T> clazz;
 	private final TypeComparator<Object>[] comparators;
 	private final TypeSerializer<T> serializer;
@@ -44,8 +43,7 @@ public class GenTypeComparatorProxy<T> extends CompositeTypeComparator<T> implem
 	private void compile() {
 		try {
 			assert impl == null;
-			Class<?> comparatorClazz = InstantiationUtil.compile(clazz.getClassLoader(), name,
-				code, cacheKey);
+			Class<?> comparatorClazz = InstantiationUtil.compile(clazz.getClassLoader(), name, code);
 			Constructor<?>[] ctors = comparatorClazz.getConstructors();
 			assert ctors.length == 1;
 			impl = (CompositeTypeComparator<T>) ctors[0].newInstance(new Object[]{comparators, serializer, clazz});
@@ -55,13 +53,12 @@ public class GenTypeComparatorProxy<T> extends CompositeTypeComparator<T> implem
 	}
 
 	public GenTypeComparatorProxy(Class<T> clazz, String name, String code,TypeComparator<Object>[] comparators,
-									TypeSerializer<T> serializer, String cacheKey) {
+									TypeSerializer<T> serializer) {
 		this.name = name;
 		this.code = code;
 		this.clazz = clazz;
 		this.comparators = comparators;
 		this.serializer = serializer;
-		this.cacheKey = cacheKey;
 		compile();
 	}
 
@@ -71,7 +68,6 @@ public class GenTypeComparatorProxy<T> extends CompositeTypeComparator<T> implem
 		this.clazz = other.clazz;
 		this.comparators = other.comparators; // TODO: stateful comparator?
 		this.serializer = other.serializer; // TODO: stateful serializer?
-		this.cacheKey = other.cacheKey;
 		if (other.impl != null) {
 			this.impl = (CompositeTypeComparator<T>) other.impl.duplicate();
 		}

@@ -40,7 +40,7 @@ public class GenTypeSerializerProxy<T> extends TypeSerializer<T> {
 	private void compile() {
 		try {
 			assert impl == null;
-			Class<?> serializerClazz = InstantiationUtil.compile(clazz.getClassLoader(), name, code, clazz);
+			Class<?> serializerClazz = InstantiationUtil.compile(clazz.getClassLoader(), name, code);
 			Constructor<?>[] ctors = serializerClazz.getConstructors();
 			assert ctors.length == 1;
 			impl = (TypeSerializer<T>) ctors[0].newInstance(new Object[]{clazz, fieldSerializers, config});

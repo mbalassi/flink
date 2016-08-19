@@ -61,21 +61,21 @@ public final class PojoComparatorGenerator<T> {
 		StringBuilder keyBuilder = new StringBuilder();
 		for(Integer i : keyFieldIds) {
 			keyBuilder.append(i);
+			keyBuilder.append("_");
 		}
-		String key = type.getCanonicalName() + keyBuilder.toString();
 		final String className = type.getCanonicalName().replace('.', '_') + "_GeneratedComparator" +
 			keyBuilder.toString();
 		final String fullClassName = packageName + "." + className;
 		Class<?> comparatorClazz;
-		code = InstantiationUtil.getCodeForCachedClass(key);
+		code = InstantiationUtil.getCodeForCachedClass(fullClassName);
 		if (code == null) {
 			generateCode(className);
 		}
 		if (config.isWrapGeneratedClassesEnabled()) {
-			return new GenTypeComparatorProxy<>(type, fullClassName, code, comparators, serializer, key);
+			return new GenTypeComparatorProxy<>(type, fullClassName, code, comparators, serializer);
 		}
 		try {
-			comparatorClazz = InstantiationUtil.compile(type.getClassLoader(), fullClassName, code, key);
+			comparatorClazz = InstantiationUtil.compile(type.getClassLoader(), fullClassName, code);
 		} catch (Exception e) {
 			throw new RuntimeException("Unable to generate comparator: " + className, e);
 		}
