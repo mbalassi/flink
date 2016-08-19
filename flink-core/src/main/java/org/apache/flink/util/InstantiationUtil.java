@@ -22,6 +22,7 @@ import freemarker.template.Template;
 import freemarker.template.TemplateException;
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
+import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.core.io.IOReadableWritable;
 import org.apache.flink.core.memory.DataInputViewStreamWrapper;
@@ -53,7 +54,7 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
 @Internal
 public final class InstantiationUtil {
 	private static final HashMap<String, ClassLoader> loaderForGeneratedClasses = new HashMap<>();
-	private static final Map<Object, Class<?>> generatedClasses = new HashMap<>();
+	private static final Map<Object, Tuple2<Class, String>> generatedClasses = new HashMap<>();
 	private static final freemarker.template.Configuration cfg =
 		new freemarker.template.Configuration(freemarker.template.Configuration.VERSION_2_3_24);
 
@@ -62,12 +63,6 @@ public final class InstantiationUtil {
 		cfg.setDefaultEncoding("UTF-8");
 		cfg.setTemplateExceptionHandler(freemarker.template.TemplateExceptionHandler.RETHROW_HANDLER);
 		cfg.setLogTemplateExceptions(false);
-	}
-
-	// Each time the user class loader changes, the generated classes should be invalidated.
-	public synchronized static void invalidateGeneratedClassesCache() {
-		generatedClasses.clear();
-		loaderForGeneratedClasses.clear();
 	}
 
 	public synchronized static <T> String getCodeFromTemplate(String name, Map<String, T> root) throws IOException {
@@ -81,14 +76,27 @@ public final class InstantiationUtil {
 		return w.toString();
 	}
 
+	// Each time the user class loader changes, the generated classes should be invalidated.
+	public synchronized static void invalidateGeneratedClassesCache() {
+		generatedClasses.clear();
+		loaderForGeneratedClasses.clear();
+	}
+
+	// In case a class with a given key exists in the cache, return the corresponding java code. Otherwise return null.
+	public synchronized static String getCodeForCachedClass(Object cacheKey) {
+		if (generatedClasses.containsKey(cacheKey))
+			return generatedClasses.get(cacheKey).f1;
+		return null;
+	}
+
 	// The caching is key based. The reason is that a separate caching logic is needed for serializers and
 	// comparators.
 	public synchronized static Class<?> compile(ClassLoader cl, String name, String code, Object cacheKey) throws
 		CompileException, ClassNotFoundException {
 		checkNotNull(cl);
-		Class<?> generatedClazz;
+		Class generatedClazz;
 		if (generatedClasses.containsKey(cacheKey)) {
-			generatedClazz = generatedClasses.get(cacheKey);
+			generatedClazz = generatedClasses.get(cacheKey).f0;
 		} else {
 			SimpleCompiler compiler = new SimpleCompiler();
 			compiler.setParentClassLoader(cl);
@@ -97,7 +105,7 @@ public final class InstantiationUtil {
 			generatedClazz = loader.loadClass(name);
 			assert !loaderForGeneratedClasses.containsKey(name);
 			loaderForGeneratedClasses.put(name, loader);
-			generatedClasses.put(cacheKey, generatedClazz);
+			generatedClasses.put(cacheKey, new Tuple2<>(generatedClazz, code));
 		}
 		return generatedClazz;
 	}

@@ -67,7 +67,10 @@ public final class PojoComparatorGenerator<T> {
 			keyBuilder.toString();
 		final String fullClassName = packageName + "." + className;
 		Class<?> comparatorClazz;
-		generateCode(className);
+		code = InstantiationUtil.getCodeForCachedClass(key);
+		if (code == null) {
+			generateCode(className);
+		}
 		if (config.isWrapGeneratedClassesEnabled()) {
 			return new GenTypeComparatorProxy<>(type, fullClassName, code, comparators, serializer, key);
 		}
