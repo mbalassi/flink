@@ -107,6 +107,10 @@ public final class PojoComparatorGenerator<T> {
 				"	final int len = f%d.getNormalizeKeyLen();\n" +
 				"	this.normalizedKeyLengths[%d] = len;\n" +
 				"	nKeyLen += len;\n" +
+				"	if (nKeyLen < 0) {\n" +
+				"		nKeyLen = Integer.MAX_VALUE;\n" +
+				"		break;\n" +
+				"	}\n" +
 				"} else {\n" +
 				"	break;\n" +
 				"}\n", i, i, i, i));
