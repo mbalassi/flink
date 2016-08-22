@@ -27,6 +27,7 @@ import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeutils.CompositeType;
 import org.apache.flink.api.common.typeutils.TypeComparator;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
+import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.typeutils.runtime.AvroSerializer;
 import org.apache.flink.api.java.typeutils.runtime.PojoComparator;
 import org.apache.flink.api.java.typeutils.runtime.PojoComparatorGenerator;
@@ -77,7 +78,8 @@ public class PojoTypeInfo<T> extends CompositeType<T> {
 	private static final Pattern PATTERN_NESTED_FIELDS_WILDCARD = Pattern.compile(REGEX_NESTED_FIELDS_WILDCARD);
 
 	private static final Map<Class<?>, Class<? extends TypeSerializer>> customSerializers = new HashMap<>();
-	private static final Map<Class<?>, Class<? extends TypeComparator>> customComparators = new HashMap<>();
+	private static final Map<Tuple2<ArrayList<Integer>, Class>, Class<? extends TypeComparator>> customComparators =
+		new HashMap<>();
 
 	private final PojoField[] fields;
 	
@@ -102,11 +104,12 @@ public class PojoTypeInfo<T> extends CompositeType<T> {
 	 * The chosen serializer will be the first one from the list that is turned on.
 	 *
 	 */
-	public static <C, S extends TypeComparator<C>> void registerCustomComparator(Class<C> clazz, Class<S> comp) {
+	public static <S extends TypeComparator> void registerCustomComparator(ArrayList<Integer> keyIds,
+																			Class clazz, Class<S> comp) {
 		Constructor<?>[] ctors = comp.getConstructors();
 		assert ctors.length == 1;
 		assert ctors[0].getParameterTypes().length == 0;
-		customComparators.put(clazz, comp);
+		customComparators.put(new Tuple2<>(keyIds, clazz), comp);
 	}
 
 	@PublicEvolving
@@ -427,6 +430,7 @@ public class PojoTypeInfo<T> extends CompositeType<T> {
 		}
 
 		@Override
+		@SuppressWarnings("unchecked")
 		public TypeComparator<T> createTypeComparator(ExecutionConfig config) {
 			checkState(
 				keyFields.size() > 0,
@@ -440,8 +444,9 @@ public class PojoTypeInfo<T> extends CompositeType<T> {
 				keyFields.size() == fieldComparators.size(),
 				"Number of key fields and field comparators is not equal.");
 
-			if (customComparators.containsKey(getTypeClass())) {
-				return InstantiationUtil.instantiate(customComparators.get(getTypeClass()));
+			Tuple2<ArrayList<Integer>, Class> custCompKey = new Tuple2(keyFieldIds, getTypeClass());
+			if (customComparators.containsKey(custCompKey)) {
+				return InstantiationUtil.instantiate(customComparators.get(custCompKey));
 			}
 
 			if (config.isCodeGenerationEnabled()) {
