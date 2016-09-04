@@ -559,6 +559,9 @@ public class Task implements Runnable, TaskActions {
 
 			userCodeClassLoader = createUserCodeClassloader(libraryCache);
 			final ExecutionConfig executionConfig = serializedExecutionConfig.deserializeValue(userCodeClassLoader);
+			if (executionConfig.isWrapGeneratedClassesEnabled()) {
+				InstantiationUtil.invalidateGeneratedClassesCache();
+			}
 
 			if (executionConfig.getTaskCancellationInterval() >= 0) {
 				// override task cancellation interval from Flink config if set in ExecutionConfig
@@ -811,7 +814,6 @@ public class Task implements Runnable, TaskActions {
 		if (userCodeClassLoader == null) {
 			throw new Exception("No user code classloader available.");
 		}
-		InstantiationUtil.invalidateGeneratedClassesCache();
 		return userCodeClassLoader;
 	}
 
