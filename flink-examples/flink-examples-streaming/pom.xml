@@ -292,6 +292,30 @@ under the License.
 						</configuration>
 					</execution>
 
+					<!-- FlinkJob -->
+					<execution>
+						<id>FlinkJob</id>
+						<phase>package</phase>
+						<goals>
+							<goal>jar</goal>
+						</goals>
+						<configuration>
+							<classifier>FlinkJob</classifier>
+
+							<archive>
+								<manifestEntries>
+									<program-class>org.apache.flink.streaming.examples.visualization.FlinkJob</program-class>
+								</manifestEntries>
+							</archive>
+
+							<includes>
+								<include>org.apache.flink.streaming.examples.visualization.FlinkJob.class</include>
+								<include>org.apache.flink.streaming.examples.visualization.FlinkJob$*.class</include>
+								<include>org/apache/flink/streaming/examples/wordcount/WordCount$*.class</include>
+							</includes>
+						</configuration>
+					</execution>
+
 					<!-- TopSpeedWindowing -->
 					<execution>
 						<id>TopSpeedWindowing</id>
