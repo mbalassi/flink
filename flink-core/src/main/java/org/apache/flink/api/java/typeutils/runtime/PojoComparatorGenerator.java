@@ -36,7 +36,7 @@ public final class PojoComparatorGenerator<T> {
 
 	private transient Field[] keyFields;
 	private transient Integer[] keyFieldIds;
-	private final TypeComparator<Object>[] comparators;
+	private final TypeComparator<?>[] comparators;
 	private final TypeSerializer<T> serializer;
 	private final Class<T> type;
 	private final ExecutionConfig config;
@@ -45,7 +45,7 @@ public final class PojoComparatorGenerator<T> {
 	public PojoComparatorGenerator(Field[] keyFields, TypeComparator<?>[] comparators, TypeSerializer<T> serializer,
 									Class<T> type, Integer[] keyFieldIds, ExecutionConfig config) {
 		this.keyFields = keyFields;
-		this.comparators = (TypeComparator<Object>[]) comparators;
+		this.comparators = comparators;
 
 		this.type = type;
 		this.serializer = serializer;
@@ -66,26 +66,11 @@ public final class PojoComparatorGenerator<T> {
 		final String className = type.getCanonicalName().replace('.', '_') + "_GeneratedComparator" +
 			keyBuilder.toString();
 		final String fullClassName = packageName + "." + className;
-		Class<?> comparatorClazz;
 		code = InstantiationUtil.getCodeForCachedClass(fullClassName);
 		if (code == null) {
 			generateCode(className);
 		}
-		if (config.isWrapGeneratedClassesEnabled()) {
-			return new GenTypeComparatorProxy<>(type, fullClassName, code, comparators, serializer);
-		}
-		try {
-			comparatorClazz = InstantiationUtil.compile(type.getClassLoader(), fullClassName, code);
-		} catch (Exception e) {
-			throw new RuntimeException("Unable to generate comparator: " + className, e);
-		}
-		Constructor<?>[] ctors = comparatorClazz.getConstructors();
-		assert ctors.length == 1;
-		try {
-			return (TypeComparator<T>) ctors[0].newInstance(new Object[]{comparators, serializer, type});
-		} catch (Exception e) {
-			throw new RuntimeException("Unable to instantiate comparator using: " + ctors[0].getName(), e);
-		}
+		return new GenTypeComparatorProxy<>(type, fullClassName, code, comparators, serializer);
 	}
 
 

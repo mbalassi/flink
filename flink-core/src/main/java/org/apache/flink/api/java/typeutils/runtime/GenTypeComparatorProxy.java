@@ -35,7 +35,7 @@ public class GenTypeComparatorProxy<T> extends CompositeTypeComparator<T> implem
 	private final String code;
 	private final String name;
 	private final Class<T> clazz;
-	private final TypeComparator<Object>[] comparators;
+	private final TypeComparator<?>[] comparators;
 	private final TypeSerializer<T> serializer;
 
 	transient private CompositeTypeComparator<T> impl = null;
@@ -46,13 +46,13 @@ public class GenTypeComparatorProxy<T> extends CompositeTypeComparator<T> implem
 			Class<?> comparatorClazz = InstantiationUtil.compile(clazz.getClassLoader(), name, code);
 			Constructor<?>[] ctors = comparatorClazz.getConstructors();
 			assert ctors.length == 1;
-			impl = (CompositeTypeComparator<T>) ctors[0].newInstance(new Object[]{comparators, serializer, clazz});
+			impl = (CompositeTypeComparator<T>) ctors[0].newInstance(comparators, serializer, clazz);
 		} catch (Exception e) {
 			throw new RuntimeException("Unable to generate serializer: " + name, e);
 		}
 	}
 
-	public GenTypeComparatorProxy(Class<T> clazz, String name, String code,TypeComparator<Object>[] comparators,
+	public GenTypeComparatorProxy(Class<T> clazz, String name, String code,TypeComparator<?>[] comparators,
 									TypeSerializer<T> serializer) {
 		this.name = name;
 		this.code = code;
@@ -62,7 +62,6 @@ public class GenTypeComparatorProxy<T> extends CompositeTypeComparator<T> implem
 		compile();
 	}
 
-	@SuppressWarnings("unchecked")
 	private GenTypeComparatorProxy(GenTypeComparatorProxy<T> other) {
 		this.name = other.name;
 		this.code = other.code;

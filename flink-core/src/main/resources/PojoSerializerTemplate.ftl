@@ -102,61 +102,45 @@ public final class ${className} extends TypeSerializer {
 		}
 	}
 	public ${typeName} createInstance() {
-		if (clazz.isInterface() || Modifier.isAbstract(clazz.getModifiers())) {
-			return null;
-		}
-		try {
-			${typeName} t = (${typeName})clazz.newInstance();
-			initializeFields(t);
-			return t;
-		}
-		catch (Exception e) {
-			throw new RuntimeException("Cannot instantiate class.", e);
-		}
+		<#if alwaysNull == "true">
+		return null;
+		</#if>
+		<#if alwaysNull != "true">
+		${typeName} t = new ${typeName}();
+		initializeFields(t);
+		return t;
+		</#if>
 	}
 	protected void initializeFields(${typeName} t) {
 		<#list createFields as cf>
 		${cf}
 		</#list>
 	}
-	public ${typeName} copy(Object from) {
-		if (from == null) return null;
-		Class<?> actualType = from.getClass();
-		${typeName} target;
-		if (actualType == clazz) {
-			try {
-				target = (${typeName}) from.getClass().newInstance();
-			}
-			catch (Throwable t) {
-				throw new RuntimeException("Cannot instantiate class.", t);
-			}
+	public int getLength() {  return -1; } // TODO: make it smarter based on annotations?
+	<#if isFinal == "true">
+		public ${typeName} copy(Object from) {
+			if (from == null) return null;
+			<#if alwaysNull == "true">
+			${typeName} target = null;
+			</#if>
+			<#if alwaysNull != "true">
+			${typeName} target = new ${typeName}();
+			</#if>
 			<#list copyFields as cf>
 			${cf}
 			</#list>
 			return target;
-		} else {
-			TypeSerializer subclassSerializer = getSubclassSerializer(actualType);
-			return (${typeName})subclassSerializer.copy(from);
 		}
-	}
-	public ${typeName} copy(Object from, Object reuse) {
-		if (from == null) return null;
-		Class actualType = from.getClass();
-		if (actualType == clazz) {
-			if (reuse == null || actualType != reuse.getClass()) {
+		public ${typeName} copy(Object from, Object reuse) {
+			if (from == null) return null;
+			if (reuse == null) {
 				return copy(from);
 			}
 			<#list reuseCopyFields as rcf>
 			${rcf}
 			</#list>
 			return (${typeName})reuse;
-		} else {
-			TypeSerializer subclassSerializer = getSubclassSerializer(actualType);
-			return (${typeName})subclassSerializer.copy(from, reuse);
 		}
-	}
-	public int getLength() {  return -1; } // TODO: make it smarter based on annotations?
-	<#if isFinal == "true">
 		@Override
 		public void serialize(Object value, DataOutputView target) throws IOException {
 			if (value == null) {
@@ -207,6 +191,42 @@ public final class ${className} extends TypeSerializer {
 		}
 	</#if>
 	<#if isFinal != "true">
+		public ${typeName} copy(Object from) {
+			if (from == null) return null;
+			Class<?> actualType = from.getClass();
+			${typeName} target;
+			if (actualType == clazz) {
+				<#if alwaysNull == "true">
+				target = null;
+				</#if>
+				<#if alwaysNull != "true">
+				target = new ${typeName}();
+				</#if>
+				<#list copyFields as cf>
+				${cf}
+				</#list>
+				return target;
+			} else {
+				TypeSerializer subclassSerializer = getSubclassSerializer(actualType);
+				return (${typeName})subclassSerializer.copy(from);
+			}
+		}
+		public ${typeName} copy(Object from, Object reuse) {
+			if (from == null) return null;
+			Class actualType = from.getClass();
+			if (actualType == clazz) {
+				if (reuse == null || actualType != reuse.getClass()) {
+					return copy(from);
+				}
+				<#list reuseCopyFields as rcf>
+				${rcf}
+				</#list>
+				return (${typeName})reuse;
+			} else {
+				TypeSerializer subclassSerializer = getSubclassSerializer(actualType);
+				return (${typeName})subclassSerializer.copy(from, reuse);
+			}
+		}
 		@Override
 		public void serialize(Object value, DataOutputView target) throws IOException {
 			int flags = 0;

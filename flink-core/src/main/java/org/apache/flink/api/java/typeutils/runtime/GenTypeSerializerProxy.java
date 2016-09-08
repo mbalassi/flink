@@ -43,7 +43,7 @@ public class GenTypeSerializerProxy<T> extends TypeSerializer<T> {
 			Class<?> serializerClazz = InstantiationUtil.compile(clazz.getClassLoader(), name, code);
 			Constructor<?>[] ctors = serializerClazz.getConstructors();
 			assert ctors.length == 1;
-			impl = (TypeSerializer<T>) ctors[0].newInstance(new Object[]{clazz, fieldSerializers, config});
+			impl = (TypeSerializer<T>) ctors[0].newInstance(clazz, fieldSerializers, config);
 		} catch (Exception e) {
 			throw new RuntimeException("Unable to generate serializer: " + name, e);
 		}
