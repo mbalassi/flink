@@ -309,8 +309,8 @@ under the License.
 							</archive>
 
 							<includes>
-								<include>org.apache.flink.streaming.examples.visualization.FlinkJob.class</include>
-								<include>org.apache.flink.streaming.examples.visualization.FlinkJob$*.class</include>
+								<include>org.apache/flink/streaming/examples/visualization/FlinkJob.class</include>
+								<include>org.apache/flink/streaming/examples/visualization/FlinkJob$*.class</include>
 								<include>org/apache/flink/streaming/examples/wordcount/WordCount$*.class</include>
 							</includes>
 						</configuration>

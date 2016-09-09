@@ -24,7 +24,6 @@ import org.apache.flink.examples.java.wordcount.util.WordCountData;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.source.ParallelSourceFunction;
-import org.apache.flink.streaming.api.functions.source.SourceFunction;
 import org.apache.flink.streaming.examples.wordcount.WordCount;
 
 import java.util.Random;
@@ -65,6 +64,8 @@ public class FlinkJob {
 		// make parameters available in the web interface
 		env.getConfig().setGlobalJobParameters(params);
 
+		env.disableOperatorChaining();
+
 		DataStream<String> rants = env.addSource(new FlinkRantGenerator()).name("Flink Rant Generator");
 
 		// *************************************************************************
@@ -77,34 +78,32 @@ public class FlinkJob {
 		DataStream<Tuple2<String, Integer>> counts =
 		// split up the lines in pairs (2-tuples) containing: (word,1)
 		rants.flatMap(new WordCount.Tokenizer())
+				.filter(new FilterFunction<Tuple2<String, Integer>>() {
+					@Override
+					public boolean filter(Tuple2<String, Integer> value) throws Exception {
+						return true;
+					}
+				})
 				.name("Tokenizer")
 				// create windows of windowSize records slided every slideSize records
 				.keyBy(0)
 				.countWindow(windowSize, slideSize)
 				// group by the tuple field "0" and sum up tuple field "1"
 				.sum(1)
-				.name("Keyed Window Sum");
+				.name("Keyed Window Sum")
+				.filter(new FilterFunction<Tuple2<String, Integer>>() {
+					@Override
+					public boolean filter(Tuple2<String, Integer> value) throws Exception {
+						return true;
+					}
+				});
 
 		// print result
-		counts.print();
-
-		// *************************************************************************
-		// Co-mentions
-		// *************************************************************************
-
-		DataStream<String> coMentions =
-			rants.filter(new FilterFunction<String>() {
-				@Override
-				public boolean filter(String value) throws Exception {
-					return value.toLowerCase().contains("flink")
-						&& value.toLowerCase().contains("berlin");
-				}
-			}).name("Flink-Berlin Comentions");
-
-		coMentions.print();
+		counts.print().name("Counts Printer");
 
 		// execute program
-		env.execute("WindowWordCount");
+		env.execute("Flink Job");
+//		System.out.println(env.getExecutionPlan());
 	}
 
 	public static class FlinkRantGenerator implements ParallelSourceFunction<String>{
@@ -123,7 +122,8 @@ public class FlinkJob {
 			rnd = new Random();
 
 			while (isRunning) {
-				ctx.collect(rants[rnd.nextInt(rants.length)]);
+//				ctx.collect(rants[rnd.nextInt(rants.length)]);
+				ctx.collect(WordCountData.WORDS[rnd.nextInt(WordCountData.WORDS.length)]);
 				Thread.sleep(100);
 			}
 
