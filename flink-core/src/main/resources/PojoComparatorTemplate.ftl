@@ -39,7 +39,7 @@ public final class ${className} extends CompositeTypeComparator implements java.
 	private final int normalizableKeyPrefixLen;
 	private final int numKeyFields;
 	private final boolean invertNormKey;
-	private TypeSerializer serializer;
+	private ${serializerClassName} serializer;
 	private final Class type;
 	<#list members as m>
 	${m}
@@ -50,7 +50,7 @@ public final class ${className} extends CompositeTypeComparator implements java.
 		</#list>
 		this.type = type;
 		this.numKeyFields = comparators.length;
-		this.serializer = serializer;
+		this.serializer = (${serializerClassName})serializer;
 		this.normalizedKeyLengths = new int[numKeyFields];
 		int nKeys = 0;
 		int nKeyLen = 0;
@@ -75,7 +75,7 @@ public final class ${className} extends CompositeTypeComparator implements java.
 		this.invertNormKey = toClone.invertNormKey;
 		this.type = toClone.type;
 		try {
-			this.serializer = (TypeSerializer) InstantiationUtil.deserializeObject(
+			this.serializer = (${serializerClassName}) InstantiationUtil.deserializeObject(
 				InstantiationUtil.serializeObject(toClone.serializer), Thread.currentThread().getContextClassLoader());
 		} catch (IOException e) {
 			throw new RuntimeException("Cannot copy serializer", e);

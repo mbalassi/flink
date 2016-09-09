@@ -71,11 +71,13 @@ public final class PojoSerializerGenerator<T> {
 		String typeName = clazz.getCanonicalName();
 		StringBuilder members = new StringBuilder();
 		for (int i = 0; i < fieldSerializers.length; ++i) {
-			members.append(String.format("final TypeSerializer f%d;\n", i));
+			String serializerClass = fieldSerializers[i].getClass().getCanonicalName();
+			members.append(String.format("final %s f%d;\n", serializerClass, i));
 		}
 		StringBuilder initMembers = new StringBuilder();
 		for (int i = 0; i < fieldSerializers.length; ++i) {
-			initMembers.append(String.format("f%d = serializerFields[%d];\n", i, i));
+			String serializerClass = fieldSerializers[i].getClass().getCanonicalName();
+			initMembers.append(String.format("f%d = (%s)serializerFields[%d];\n", i, serializerClass, i));
 		}
 		StringBuilder createFields = new StringBuilder();
 		for (int i = 0; i < fieldSerializers.length; ++i) {
@@ -87,7 +89,7 @@ public final class PojoSerializerGenerator<T> {
 		for (int i = 0; i < fieldSerializers.length; ++i) {
 			if (refFields[i].getType().isPrimitive()) {
 				copyFields.append(String.format("((" + typeName + ")target)." + modifyStringForField(refFields[i],
-					"f%d.copy(((" + typeName + ")from)." + accessStringForField(refFields[i])) + ");\n", i));
+					"((" + typeName + ")from)." + accessStringForField(refFields[i])) + ";\n", i));
 			} else {
 				copyFields.append(String.format(
 					"value = ((" + typeName + ")from)." + accessStringForField(refFields[i]) + ";\n" +
@@ -105,7 +107,7 @@ public final class PojoSerializerGenerator<T> {
 		for (int i = 0; i < fieldSerializers.length; ++i) {
 			if (refFields[i].getType().isPrimitive()) {
 				reuseCopyFields.append(String.format("((" + typeName + ")reuse)." + modifyStringForField(refFields[i],
-					"f%d.copy(((" + typeName + ")from)." + accessStringForField(refFields[i]) + ")") + ";\n", i));
+					"((" + typeName + ")from)." + accessStringForField(refFields[i])) + ";\n", i));
 			} else {
 				reuseCopyFields.append(String.format(
 					"value = ((" + typeName + ")from)." + accessStringForField(refFields[i]) + ";\n" +

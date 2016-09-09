@@ -19,6 +19,8 @@
 package org.apache.flink.api.java.typeutils.runtime;
 
 import org.apache.flink.api.common.ExecutionConfig;
+import org.apache.flink.api.common.typeutils.CompositeType;
+import org.apache.flink.api.common.typeutils.CompositeTypeComparator;
 import org.apache.flink.api.common.typeutils.TypeComparator;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.util.InstantiationUtil;
@@ -77,11 +79,13 @@ public final class PojoComparatorGenerator<T> {
 		String typeName = type.getCanonicalName();
 		StringBuilder members = new StringBuilder();
 		for (int i = 0; i < comparators.length; ++i) {
-			members.append(String.format("final TypeComparator f%d;\n", i));
+			String comparatorClass = comparators[i].getClass().getCanonicalName();
+			members.append(String.format("final %s f%d;\n", comparatorClass, i));
 		}
 		StringBuilder initMembers = new StringBuilder();
 		for (int i = 0; i < comparators.length; ++i) {
-			initMembers.append(String.format("f%d = comparators[%d];\n", i, i));
+			String comparatorClass = comparators[i].getClass().getCanonicalName();
+			initMembers.append(String.format("f%d = (%s)comparators[%d];\n", i, comparatorClass, i));
 		}
 		StringBuilder normalizableKeys = new StringBuilder();
 		for (int i = 0; i < comparators.length; ++i) {
@@ -101,16 +105,17 @@ public final class PojoComparatorGenerator<T> {
 		}
 		StringBuilder cloneMembers = new StringBuilder();
 		for (int i = 0; i < comparators.length; ++i) {
-			cloneMembers.append(String.format("f%d = toClone.f%d.duplicate();\n", i, i));
+			String comparatorClass = comparators[i].getClass().getCanonicalName();
+			cloneMembers.append(String.format("f%d = (%s)toClone.f%d.duplicate();\n", i, comparatorClass, i));
 		}
 		StringBuilder flatComparators = new StringBuilder();
 		for (int i = 0; i < comparators.length; ++i) {
-			flatComparators.append(String.format(
-				"if(f%d instanceof CompositeTypeComparator) {\n" +
-				"	((CompositeTypeComparator)f%d).getFlatComparator(flatComparators);\n" +
-				"} else {\n" +
-				"	flatComparators.add(f%d);\n" +
-				"}\n", i, i, i));
+			if (comparators[i] instanceof CompositeTypeComparator) {
+				flatComparators.append(String.format("((CompositeTypeComparator)f%d).getFlatComparator" +
+					"(flatComparators);\n", i));
+			} else {
+				flatComparators.append(String.format("flatComparators.add(f%d);\n", i));
+			}
 		}
 		StringBuilder hashMembers = new StringBuilder();
 		for (int i = 0; i < keyFields.length; ++i) {
@@ -170,6 +175,7 @@ public final class PojoComparatorGenerator<T> {
 		Map<String, Object> root = new HashMap<>();
 		root.put("packageName", packageName);
 		root.put("className", className);
+		root.put("serializerClassName", serializer.getClass().getCanonicalName());
 		root.put("members", members.toString().split("\n"));
 		root.put("initMembers", initMembers.toString().split("\n"));
 		root.put("cloneMembers", cloneMembers.toString().split("\n"));

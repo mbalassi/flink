@@ -148,7 +148,7 @@ public final class InstantiationUtil {
 			try {
 				return super.resolveClass(desc);
 			} catch (ClassNotFoundException ex) {
-				// It is possible the the passed class loader is null but we still want to load generated classes.
+				// It is possible the passed class loader is null but we still want to load generated classes.
 				return Class.forName(name, false, loaderForGeneratedClasses.get(name));
 			}
 		}
