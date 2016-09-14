@@ -500,6 +500,7 @@ public class PojoTypeInfo<T> extends CompositeType<T> {
 		}
 	}
 
+	@PublicEvolving
 	public static String accessStringForField(Field f) throws NoSuchMethodException {
 		String fieldName = f.getName();
 		if (Modifier.isPublic(f.getModifiers())) {
@@ -517,6 +518,7 @@ public class PojoTypeInfo<T> extends CompositeType<T> {
 		return getterName + "()";
 	}
 
+	@PublicEvolving
 	public static String modifyStringForField(Field f, String arg) throws NoSuchMethodException {
 		String fieldName = f.getName();
 		if (Modifier.isPublic(f.getModifiers())) {
