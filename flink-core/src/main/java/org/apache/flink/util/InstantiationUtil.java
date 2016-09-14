@@ -127,26 +127,24 @@ public final class InstantiationUtil {
 		@Override
 		protected Class<?> resolveClass(ObjectStreamClass desc) throws IOException, ClassNotFoundException {
 			String name = desc.getName();
-			if (classLoader != null) {
-				try {
-					return Class.forName(name, false, classLoader);
-				} catch (ClassNotFoundException ex) {
-					// check if class is a primitive class
-					Class<?> cl = primitiveClasses.get(name);
-					if (cl != null) {
-						// return primitive class
-						return cl;
-					} else {
-						// search among the compiled classes too
-						return Class.forName(name, false, generatedClasses.get(name).f2);
+			try {
+				if (classLoader != null) {
+					try {
+						return Class.forName(name, false, classLoader);
+					} catch (ClassNotFoundException ex) {
+						// check if class is a primitive class
+						Class<?> cl = primitiveClasses.get(name);
+						if (cl != null) {
+							// return primitive class
+							return cl;
+						} else {
+							throw ex;
+						}
 					}
 				}
-			}
-
-			try {
 				return super.resolveClass(desc);
 			} catch (ClassNotFoundException ex) {
-				// It is possible the passed class loader is null but we still want to load generated classes.
+				// Search among generated classes.
 				return Class.forName(name, false, generatedClasses.get(name).f2);
 			}
 		}

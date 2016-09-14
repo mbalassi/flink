@@ -112,7 +112,7 @@ public class PojoTypeInfo<T> extends CompositeType<T> {
 		Constructor<?>[] ctors = comp.getConstructors();
 		checkArgument(ctors.length == 1);
 		checkArgument(ctors[0].getParameterTypes().length == 0);
-		customComparators.put(new Tuple2<>(keyIds, clazz), comp);
+		customComparators.put(Tuple2.of(keyIds, clazz), comp);
 	}
 
 	@PublicEvolving
