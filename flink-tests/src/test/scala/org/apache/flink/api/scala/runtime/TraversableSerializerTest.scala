@@ -160,14 +160,16 @@ class TraversableSerializerTestInstance[T](
   @Test
   override def testInstantiate(): Unit = {
     try {
-      val serializer: TypeSerializer[T] = getSerializer
-      val instance: T = serializer.createInstance
-      assertNotNull("The created instance must not be null.", instance)
-      val tpe: Class[T] = getTypeClass
-      assertNotNull("The test is corrupt: type class is null.", tpe)
-      // We cannot check this because Collection Instances are not always of the type
-      // that the user writes, they might have generated names.
-      // assertEquals("Type of the instantiated object is wrong.", tpe, instance.getClass)
+      val serializers: Array[TypeSerializer[T]] = getSerializers
+      for (serializer <- serializers) {
+        val instance: T = serializer.createInstance
+        assertNotNull("The created instance must not be null.", instance)
+        val tpe: Class[T] = getTypeClass
+        assertNotNull("The test is corrupt: type class is null.", tpe)
+        // We cannot check this because Collection Instances are not always of the type
+        // that the user writes, they might have generated names.
+        // assertEquals("Type of the instantiated object is wrong.", tpe, instance.getClass)
+      }
     }
     catch {
       case e: Exception =>
