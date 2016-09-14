@@ -44,6 +44,7 @@ public final class ${className} extends CompositeTypeComparator implements java.
 	<#list members as m>
 	${m}
 	</#list>
+
 	public ${className}(TypeComparator[] comparators, TypeSerializer serializer, Class type) {
 		<#list initMembers as m>
 		${m}
@@ -64,6 +65,7 @@ public final class ${className} extends CompositeTypeComparator implements java.
 		this.normalizableKeyPrefixLen = nKeyLen;
 		this.invertNormKey = inverted;
 	}
+
 	private ${className}(${className} toClone) {
 		<#list cloneMembers as m>
 		${m}
@@ -83,12 +85,14 @@ public final class ${className} extends CompositeTypeComparator implements java.
 			throw new RuntimeException("Cannot copy serializer", e);
 		}
 	}
+
 	@Override
 	public void getFlatComparator(List flatComparators) {
 		<#list flatComparators as fc>
 		${fc}
 		</#list>
 	}
+
 	@Override
 	public int hash(Object value) {
 		int i = 0;
@@ -98,12 +102,14 @@ public final class ${className} extends CompositeTypeComparator implements java.
 		</#list>
 		return code;
 	}
+
 	@Override
 	public void setReference(Object toCompare) {
 		<#list setReference as sr>
 		${sr}
 		</#list>
 	}
+
 	@Override
 	public boolean equalToReference(Object candidate) {
 		<#list equalToReference as er>
@@ -111,6 +117,7 @@ public final class ${className} extends CompositeTypeComparator implements java.
 		</#list>
 		return true;
 	}
+
 	@Override
 	public int compareToReference(TypeComparator referencedComparator) {
 		${className} other = null;
@@ -125,6 +132,7 @@ public final class ${className} extends CompositeTypeComparator implements java.
 		</#list>
 		return 0;
 	}
+
 	@Override
 	public int compare(Object first, Object second) {
 		int cmp;
@@ -133,6 +141,7 @@ public final class ${className} extends CompositeTypeComparator implements java.
 		</#list>
 		return 0;
 	}
+
 	@Override
 	public int compareSerialized(DataInputView firstSource, DataInputView secondSource) throws IOException {
 		Object first = this.serializer.createInstance();
@@ -141,20 +150,24 @@ public final class ${className} extends CompositeTypeComparator implements java.
 		second = this.serializer.deserialize(second, secondSource);
 		return this.compare(first, second);
 	}
+
 	@Override
 	public boolean supportsNormalizedKey() {
 		return this.numLeadingNormalizableKeys > 0;
 	}
+
 	@Override
 	public int getNormalizeKeyLen() {
 		return this.normalizableKeyPrefixLen;
 	}
+
 	@Override
 	public boolean isNormalizedKeyPrefixOnly(int keyBytes) {
 		return this.numLeadingNormalizableKeys < this.numKeyFields ||
 			this.normalizableKeyPrefixLen == Integer.MAX_VALUE ||
 			this.normalizableKeyPrefixLen > keyBytes;
 	}
+
 	@Override
 	public void putNormalizedKey(Object value, MemorySegment target, int offset, int numBytes) {
 		int len;
@@ -164,26 +177,32 @@ public final class ${className} extends CompositeTypeComparator implements java.
 			</#list>
 		} while (false);
 	}
+
 	@Override
 	public boolean invertNormalizedKey() {
 		return this.invertNormKey;
 	}
+
 	@Override
 	public boolean supportsSerializationWithKeyNormalization() {
 		return false;
 	}
+
 	@Override
 	public void writeWithKeyNormalization(Object record, DataOutputView target) throws IOException {
 		throw new UnsupportedOperationException();
 	}
+
 	@Override
 	public Object readWithKeyDenormalization(Object reuse, DataInputView source) throws IOException {
 		throw new UnsupportedOperationException();
 	}
+
 	@Override
 	public ${className} duplicate() {
 		return new ${className}(this);
 	}
+
 	@Override
 	public int extractKeys(Object record, Object[] target, int index) {
 		int localIndex = index;
