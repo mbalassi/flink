@@ -43,7 +43,7 @@ public final class PojoSerializerGenerator {
 	private static final String packageName = "org.apache.flink.api.java.typeutils.runtime.generated";
 
 	public static <T> TypeSerializer<T> createSerializer(Class<T> clazz, TypeSerializer<?>[] fieldSerializers,
-														 Field[] refFields, ExecutionConfig config)  {
+															Field[] refFields, ExecutionConfig config)  {
 		checkNotNull(clazz);
 		checkNotNull(fieldSerializers);
 		checkNotNull(refFields);
@@ -66,7 +66,7 @@ public final class PojoSerializerGenerator {
 	}
 
 	private static <T> String generateCode(String className, Class<T> clazz, TypeSerializer<?>[] fieldSerializers,
-										   Field[] refFields) throws NoSuchMethodException {
+											Field[] refFields) throws NoSuchMethodException {
 		assert fieldSerializers.length > 0;
 		String typeName = clazz.getCanonicalName();
 		StringBuilder members = new StringBuilder();
