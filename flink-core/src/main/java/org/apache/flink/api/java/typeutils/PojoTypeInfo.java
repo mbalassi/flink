@@ -464,9 +464,12 @@ public class PojoTypeInfo<T> extends CompositeType<T> {
 
 			if (config.isCodeGenerationEnabled()) {
 				try {
-					return new PojoComparatorGenerator<>(keyFields.toArray(new Field[keyFields.size()]),
-						fieldComparators.toArray(new TypeComparator[fieldComparators.size()]), createSerializer
-						(config), getTypeClass(), keyFieldIds.toArray(new Integer[keyFields.size()]))
+					return new PojoComparatorGenerator<>(
+						keyFields.toArray(new Field[0]),
+						fieldComparators.toArray(new TypeComparator[0]),
+						createSerializer(config),
+						getTypeClass(),
+						keyFieldIds.toArray(new Integer[keyFields.size()]))
 						.createComparator();
 				} catch (Exception e) {
 					LOG.warn("Unable to generate comparator: " + e.getMessage(), e);
@@ -474,8 +477,8 @@ public class PojoTypeInfo<T> extends CompositeType<T> {
 			}
 
 			return new PojoComparator<>(
-				keyFields.toArray(new Field[keyFields.size()]),
-				fieldComparators.toArray(new TypeComparator[fieldComparators.size()]),
+				keyFields.toArray(new Field[0]),
+				fieldComparators.toArray(new TypeComparator[0]),
 				createSerializer(config),
 				getTypeClass());
 		}
