@@ -288,11 +288,11 @@ public class PojoTypeInfo<T> extends CompositeType<T> {
 		}
 
 		String tail = matcher.group(3);
-		if(tail == null) {
+		if (tail == null) {
 			// we found the type
 			return (TypeInformation<X>) fieldType;
 		} else {
-			if(fieldType instanceof CompositeType<?>) {
+			if (fieldType instanceof CompositeType<?>) {
 				return ((CompositeType<?>) fieldType).getTypeAt(tail);
 			} else {
 				throw new InvalidFieldReferenceException("Nested field expression \""+tail+"\" not possible on atomic type "+fieldType+".");
@@ -352,10 +352,10 @@ public class PojoTypeInfo<T> extends CompositeType<T> {
 			return InstantiationUtil.instantiate(customSerializers.get(this.getTypeClass()));
 		}
 
-		if(config.isForceKryoEnabled()) {
+		if (config.isForceKryoEnabled()) {
 			return new KryoSerializer<T>(getTypeClass(), config);
 		}
-		if(config.isForceAvroEnabled()) {
+		if (config.isForceAvroEnabled()) {
 			return new AvroSerializer<T>(getTypeClass());
 		}
 
@@ -367,16 +367,15 @@ public class PojoTypeInfo<T> extends CompositeType<T> {
 			reflectiveFields[i] = fields[i].getField();
 		}
 
-		if(config.isCodeGenerationEnabled()) {
+		if (config.isCodeGenerationEnabled()) {
 			try {
-				return new PojoSerializerGenerator<T>(getTypeClass(), fieldSerializers, reflectiveFields,
-					config).createSerializer();
+				return PojoSerializerGenerator.createSerializer(getTypeClass(), fieldSerializers,
+					reflectiveFields, config);
 			} catch (Exception e) {
 				LOG.warn("Unable to generate serializer: " + e.getMessage(), e);
 			}
 		}
-
-		return new PojoSerializer<T>(getTypeClass(), fieldSerializers, reflectiveFields, config);
+		return new PojoSerializer<>(getTypeClass(), fieldSerializers, reflectiveFields, config);
 	}
 	
 	@Override
@@ -464,13 +463,10 @@ public class PojoTypeInfo<T> extends CompositeType<T> {
 
 			if (config.isCodeGenerationEnabled()) {
 				try {
-					return new PojoComparatorGenerator<>(
+					return PojoComparatorGenerator.createComparator(
 						keyFields.toArray(new Field[0]),
 						fieldComparators.toArray(new TypeComparator[0]),
-						createSerializer(config),
-						getTypeClass(),
-						keyFieldIds.toArray(new Integer[keyFields.size()]))
-						.createComparator();
+						createSerializer(config), getTypeClass(), keyFieldIds.toArray(new Integer[0]));
 				} catch (Exception e) {
 					LOG.warn("Unable to generate comparator: " + e.getMessage(), e);
 				}
