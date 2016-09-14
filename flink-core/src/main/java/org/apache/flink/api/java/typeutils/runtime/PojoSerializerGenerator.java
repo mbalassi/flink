@@ -18,6 +18,7 @@
 
 package org.apache.flink.api.java.typeutils.runtime;
 
+import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
 
@@ -33,6 +34,11 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
 import static org.apache.flink.api.java.typeutils.PojoTypeInfo.accessStringForField;
 import static org.apache.flink.api.java.typeutils.PojoTypeInfo.modifyStringForField;
 
+/**
+ * This class is intended to generate source code for serializing POJOs and passing it to a wrapper class.
+ * See GenTypeSerializerProxy for mor details.
+ */
+@Internal
 public final class PojoSerializerGenerator {
 	private static final String packageName = "org.apache.flink.api.java.typeutils.runtime.generated";
 
@@ -225,4 +231,3 @@ public final class PojoSerializerGenerator {
 		}
 	}
 }
-

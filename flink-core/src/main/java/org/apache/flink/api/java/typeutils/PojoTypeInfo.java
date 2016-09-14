@@ -81,7 +81,7 @@ public class PojoTypeInfo<T> extends CompositeType<T> {
 	private static final Pattern PATTERN_NESTED_FIELDS = Pattern.compile(REGEX_NESTED_FIELDS);
 	private static final Pattern PATTERN_NESTED_FIELDS_WILDCARD = Pattern.compile(REGEX_NESTED_FIELDS_WILDCARD);
 
-	private static final Logger LOG = LoggerFactory.getLogger(TypeExtractor.class);
+	private static final Logger LOG = LoggerFactory.getLogger(PojoTypeInfo.class);
 
 	private static final Map<Class<?>, Class<? extends TypeSerializer>> customSerializers = new HashMap<>();
 	private static final Map<Tuple2<ArrayList<Integer>, ? extends Class<?>>, Class<? extends TypeComparator>> customComparators =

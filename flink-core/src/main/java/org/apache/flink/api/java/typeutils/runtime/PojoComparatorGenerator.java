@@ -18,6 +18,7 @@
 
 package org.apache.flink.api.java.typeutils.runtime;
 
+import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.common.typeutils.CompositeTypeComparator;
 import org.apache.flink.api.common.typeutils.TypeComparator;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
@@ -30,6 +31,11 @@ import java.util.Map;
 
 import static org.apache.flink.api.java.typeutils.PojoTypeInfo.accessStringForField;
 
+/**
+ * This class is intended to generate source code for comparing POJOs and passing it to a wrapper class.
+ * See GenTypeComparatorProxy for more details.
+ */
+@Internal
 public final class PojoComparatorGenerator {
 	private static final String packageName = "org.apache.flink.api.java.typeutils.runtime.generated";
 
