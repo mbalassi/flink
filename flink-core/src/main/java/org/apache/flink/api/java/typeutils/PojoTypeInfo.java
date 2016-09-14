@@ -485,7 +485,7 @@ public class PojoTypeInfo<T> extends CompositeType<T> {
 		}
 	}
 
-	public static String accessStringForField(Field f) {
+	public static String accessStringForField(Field f) throws NoSuchMethodException {
 		String fieldName = f.getName();
 		if (Modifier.isPublic(f.getModifiers())) {
 			return fieldName;
@@ -496,12 +496,13 @@ public class PojoTypeInfo<T> extends CompositeType<T> {
 			parentClazz.getMethod(getterName);
 		} catch (NoSuchMethodException e) {
 			// No getter, it might be a scala class.
-			return fieldName + "()";
+			getterName = fieldName;
 		}
+		parentClazz.getMethod(getterName);
 		return getterName + "()";
 	}
 
-	public static String modifyStringForField(Field f, String arg) {
+	public static String modifyStringForField(Field f, String arg) throws NoSuchMethodException {
 		String fieldName = f.getName();
 		if (Modifier.isPublic(f.getModifiers())) {
 			if (f.getType().isPrimitive()) {
@@ -520,6 +521,7 @@ public class PojoTypeInfo<T> extends CompositeType<T> {
 			// No getter, it might be a scala class.
 			setterName = fieldName + "_$eq";
 		}
+		parentClazz.getMethod(setterName, f.getType());
 
 		if (f.getType().isPrimitive()) {
 			return  setterName + "(" +
