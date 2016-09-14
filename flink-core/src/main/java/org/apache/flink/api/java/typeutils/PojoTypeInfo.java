@@ -18,6 +18,7 @@
 
 package org.apache.flink.api.java.typeutils;
 
+import com.google.common.collect.ImmutableList;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.flink.annotation.Public;
 import org.apache.flink.annotation.PublicEvolving;
@@ -78,7 +79,7 @@ public class PojoTypeInfo<T> extends CompositeType<T> {
 	private static final Pattern PATTERN_NESTED_FIELDS_WILDCARD = Pattern.compile(REGEX_NESTED_FIELDS_WILDCARD);
 
 	private static final Map<Class<?>, Class<? extends TypeSerializer>> customSerializers = new HashMap<>();
-	private static final Map<Tuple2<ArrayList<Integer>, Class>, Class<? extends TypeComparator>> customComparators =
+	private static final Map<Tuple2<ImmutableList<Integer>, Class>, Class<? extends TypeComparator>> customComparators =
 		new HashMap<>();
 
 	private final PojoField[] fields;
@@ -106,7 +107,7 @@ public class PojoTypeInfo<T> extends CompositeType<T> {
 	 *
 	 */
 	@PublicEvolving
-	public static <S extends TypeComparator> void registerCustomComparator(ArrayList<Integer> keyIds,
+	public static <S extends TypeComparator> void registerCustomComparator(ImmutableList<Integer> keyIds,
 																			Class clazz, Class<S> comp) {
 		Constructor<?>[] ctors = comp.getConstructors();
 		checkArgument(ctors.length == 1);
