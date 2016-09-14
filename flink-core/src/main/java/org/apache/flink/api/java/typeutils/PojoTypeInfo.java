@@ -18,10 +18,12 @@
 
 package org.apache.flink.api.java.typeutils;
 
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.flink.annotation.Public;
 import org.apache.flink.annotation.PublicEvolving;
 import org.apache.flink.api.common.ExecutionConfig;
+import org.apache.flink.api.common.operators.Keys;
 import org.apache.flink.api.common.operators.Keys.ExpressionKeys;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeutils.CompositeType;
@@ -82,7 +84,7 @@ public class PojoTypeInfo<T> extends CompositeType<T> {
 	private static final Logger LOG = LoggerFactory.getLogger(TypeExtractor.class);
 
 	private static final Map<Class<?>, Class<? extends TypeSerializer>> customSerializers = new HashMap<>();
-	private static final Map<Tuple2<ArrayList<Integer>, Class>, Class<? extends TypeComparator>> customComparators =
+	private static final Map<Tuple2<ArrayList<Integer>, ? extends Class<?>>, Class<? extends TypeComparator>> customComparators =
 		new HashMap<>();
 
 	private final PojoField[] fields;
@@ -110,12 +112,14 @@ public class PojoTypeInfo<T> extends CompositeType<T> {
 	 *
 	 */
 	@PublicEvolving
-	public static <S extends TypeComparator> void registerCustomComparator(ArrayList<Integer> keyIds,
-																			Class clazz, Class<S> comp) {
+	public static <C, S extends TypeComparator<C>> void registerCustomComparator(Class<S> comp, Class<C> clazz, String... fields) {
 		Constructor<?>[] ctors = comp.getConstructors();
 		checkArgument(ctors.length == 1);
 		checkArgument(ctors[0].getParameterTypes().length == 0);
-		customComparators.put(Tuple2.of(keyIds, clazz), comp);
+
+		ArrayList<Integer> keyFieldIds = new ArrayList<>(Arrays.asList(ArrayUtils.toObject(
+			new Keys.ExpressionKeys<>(fields, TypeInformation.of(clazz)).computeLogicalKeyPositions())));
+		customComparators.put(Tuple2.of(keyFieldIds, clazz), comp);
 	}
 
 	@PublicEvolving
@@ -453,23 +457,23 @@ public class PojoTypeInfo<T> extends CompositeType<T> {
 				keyFields.size() == fieldComparators.size(),
 				"Number of key fields and field comparators is not equal.");
 
-			Tuple2<ArrayList<Integer>, Class<T>> custCompKey = Tuple2.of(keyFieldIds, getTypeClass());
+			Tuple2<ArrayList<Integer>, ? extends Class<?>> custCompKey = Tuple2.of(keyFieldIds, getTypeClass());
 			if (customComparators.containsKey(custCompKey)) {
 				return InstantiationUtil.instantiate(customComparators.get(custCompKey));
 			}
 
 			if (config.isCodeGenerationEnabled()) {
 				try {
-					return new PojoComparatorGenerator<T>(keyFields.toArray(new Field[keyFields.size()]),
+					return new PojoComparatorGenerator<>(keyFields.toArray(new Field[keyFields.size()]),
 						fieldComparators.toArray(new TypeComparator[fieldComparators.size()]), createSerializer
-						(config), getTypeClass(), keyFieldIds.toArray(new Integer[keyFields.size()]), config)
+						(config), getTypeClass(), keyFieldIds.toArray(new Integer[keyFields.size()]))
 						.createComparator();
 				} catch (Exception e) {
 					LOG.warn("Unable to generate comparator: " + e.getMessage(), e);
 				}
 			}
 
-			return new PojoComparator<T>(
+			return new PojoComparator<>(
 				keyFields.toArray(new Field[keyFields.size()]),
 				fieldComparators.toArray(new TypeComparator[fieldComparators.size()]),
 				createSerializer(config),

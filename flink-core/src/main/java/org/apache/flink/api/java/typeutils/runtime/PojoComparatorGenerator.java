@@ -39,18 +39,16 @@ public final class PojoComparatorGenerator<T> {
 	private final TypeComparator<?>[] comparators;
 	private final TypeSerializer<T> serializer;
 	private final Class<T> type;
-	private final ExecutionConfig config;
 	private String code;
 
 	public PojoComparatorGenerator(Field[] keyFields, TypeComparator<?>[] comparators, TypeSerializer<T> serializer,
-									Class<T> type, Integer[] keyFieldIds, ExecutionConfig config) {
+									Class<T> type, Integer[] keyFieldIds) {
 		this.keyFields = keyFields;
 		this.comparators = comparators;
 
 		this.type = type;
 		this.serializer = serializer;
 		this.keyFieldIds = keyFieldIds;
-		this.config = config;
 	}
 
 	public TypeComparator<T> createComparator() {
