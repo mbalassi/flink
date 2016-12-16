@@ -34,7 +34,7 @@ object FactorModel {
 
     val input = env.fromElements((0,0,1.0))
 
-    val model = ALS()
+    val model = ALS().setImplicit(true)
 
     model.fit(input)
 

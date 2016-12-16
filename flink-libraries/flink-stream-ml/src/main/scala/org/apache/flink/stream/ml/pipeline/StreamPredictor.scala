@@ -176,9 +176,9 @@ object StreamPredictor {
 
     // clean up temporary model persist paths from the first subtask
     override def close(): Unit = {
-      if (getRuntimeContext.getIndexOfThisSubtask == 0){
-        StreamMLTools.cleanUpLocation("/tmp/flink-binary-model")
-      }
+//      if (getRuntimeContext.getIndexOfThisSubtask == 0){
+//        StreamMLTools.cleanUpLocation("/tmp/flink-binary-model")
+//      }
     }
   }
 }
