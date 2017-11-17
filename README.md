@@ -1,4 +1,6 @@
 # Apache Flink
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fmbalassi%2Fflink.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fmbalassi%2Fflink?ref=badge_shield)
+
 
 Apache Flink is an open source stream processing framework with powerful stream- and batch-processing capabilities.
 
@@ -137,3 +139,7 @@ This article describes [how to contribute to Apache Flink](http://flink.apache.o
 Apache Flink is an open source project of The Apache Software Foundation (ASF).
 The Apache Flink project originated from the [Stratosphere](http://stratosphere.eu) research project.
 
+
+
+## License
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fmbalassi%2Fflink.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Fmbalassi%2Fflink?ref=badge_large)
